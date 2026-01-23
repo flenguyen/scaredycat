@@ -404,6 +404,28 @@ const ScaredyCatDetector = (function () {
       contextParts.push(surroundingText);
     }
 
+    // Find the closest "card" or "tile" container and get ALL its text
+    const cardContainer = findCardContainer(element);
+    if (cardContainer) {
+      const cardText = cardContainer.textContent?.trim();
+      if (cardText && cardText.length < 500) {
+        contextParts.push(cardText);
+      }
+      // Also check all links in the card
+      const links = cardContainer.querySelectorAll('a[href]');
+      links.forEach(link => {
+        if (link.href) {
+          try {
+            const url = new URL(link.href);
+            contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
+          } catch (e) { }
+        }
+        if (link.textContent) {
+          contextParts.push(link.textContent.trim());
+        }
+      });
+    }
+
     // Add page context: URL and title (helps for dedicated movie pages)
     try {
       contextParts.push(window.location.pathname.replace(/[-_\/]/g, ' '));
@@ -411,6 +433,53 @@ const ScaredyCatDetector = (function () {
     } catch (e) { }
 
     return contextParts.join(' ').slice(0, 2000); // Increased limit for better context
+  }
+
+  /**
+   * Find the closest card/tile/media container
+   */
+  function findCardContainer(element) {
+    // Common class patterns for media cards across sites
+    const cardPatterns = [
+      /card/i, /tile/i, /poster/i, /thumb/i, /media/i, /movie/i,
+      /item/i, /result/i, /entry/i, /slot/i, /cell/i, /box/i
+    ];
+
+    // Common tag patterns
+    const containerTags = ['article', 'section', 'li', 'figure'];
+
+    let current = element.parentElement;
+    let depth = 0;
+    const maxDepth = 10;
+
+    while (current && depth < maxDepth) {
+      // Check if this is a semantic container
+      if (containerTags.includes(current.tagName.toLowerCase())) {
+        return current;
+      }
+
+      // Check class names for card patterns
+      const className = current.className || '';
+      if (typeof className === 'string') {
+        for (const pattern of cardPatterns) {
+          if (pattern.test(className)) {
+            return current;
+          }
+        }
+      }
+
+      // Check for role attribute
+      const role = current.getAttribute('role');
+      if (role === 'listitem' || role === 'article' || role === 'gridcell') {
+        return current;
+      }
+
+      current = current.parentElement;
+      depth++;
+    }
+
+    // Fallback: return grandparent or parent if nothing found
+    return element.parentElement?.parentElement || element.parentElement;
   }
 
   /**
@@ -559,6 +628,27 @@ const ScaredyCatDetector = (function () {
     return allowedItems.some(item => url.includes(item));
   }
 
+  /**
+   * Debug function to see what context is extracted from an element
+   */
+  function debugElement(element) {
+    const context = extractTextContext(element);
+    const titleMatch = checkTitleMatch(context, horrorDatabase?.titles || []);
+    const keywordResult = calculateKeywordScore(context, horrorDatabase?.keywords || []);
+
+    console.log('Scaredy Cat Debug:', {
+      element: element.tagName,
+      src: element.src || element.style?.backgroundImage || 'N/A',
+      contextLength: context.length,
+      context: context.slice(0, 500),
+      titleMatch,
+      keywordResult,
+      threshold: getThreshold()
+    });
+
+    return { context, titleMatch, keywordResult };
+  }
+
   // Public API
   return {
     loadDatabase,
@@ -568,7 +658,9 @@ const ScaredyCatDetector = (function () {
     getThreshold,
     extractTextContext,
     normalizeText,
-    isAllowed
+    isAllowed,
+    debugElement,
+    findCardContainer
   };
 })();
 
