@@ -1,0 +1,31 @@
+/**
+ * Scaredy Cat - Early Block CSS
+ * Injected at document_start to prevent autoplay before JS loads
+ * Elements are revealed once processed by the content script
+ */
+
+/* Hide iframes that haven't been processed yet - prevents video autoplay */
+iframe:not([data-scaredycat-processed]) {
+  visibility: hidden !important;
+}
+
+/* Hide videos that haven't been processed */
+video:not([data-scaredycat-processed]) {
+  visibility: hidden !important;
+}
+
+/* Once processed and marked safe, show them */
+iframe[data-scaredycat-processed="safe"],
+iframe[data-scaredycat-processed="skip"],
+iframe[data-scaredycat-processed="allowed"],
+video[data-scaredycat-processed="safe"],
+video[data-scaredycat-processed="skip"],
+video[data-scaredycat-processed="allowed"] {
+  visibility: visible !important;
+}
+
+/* Blocked elements stay hidden (overlay will cover them) */
+iframe[data-scaredycat-processed="blocked"],
+video[data-scaredycat-processed="blocked"] {
+  visibility: visible !important; /* Overlay handles the hiding */
+}

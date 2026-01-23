@@ -159,16 +159,25 @@
   function performInitialScan() {
     if (!isEnabled) return;
 
-    // Find all images, videos, iframes, and picture elements
+    // PRIORITY: Scan iframes and videos FIRST to stop autoplay
+    const priorityElements = document.querySelectorAll(
+      'iframe:not([data-scaredycat-processed]), ' +
+      'video:not([data-scaredycat-processed])'
+    );
+
+    if (priorityElements.length > 0) {
+      console.log(`Scaredy Cat: Priority scanning ${priorityElements.length} video/iframe elements`);
+      scanElements(Array.from(priorityElements));
+    }
+
+    // Then scan images and other elements
     const mediaElements = document.querySelectorAll(
       'img:not([data-scaredycat-processed]), ' +
-      'video:not([data-scaredycat-processed]), ' +
-      'iframe:not([data-scaredycat-processed]), ' +
       'picture:not([data-scaredycat-processed]), ' +
       '[style*="background-image"]:not([data-scaredycat-processed])'
     );
 
-    console.log(`Scaredy Cat: Found ${mediaElements.length} media elements to scan`);
+    console.log(`Scaredy Cat: Found ${mediaElements.length} other media elements to scan`);
 
     // Process in batches
     const elements = Array.from(mediaElements);
