@@ -144,10 +144,18 @@ const ScaredyCatBlocker = (function () {
     try {
       video.pause();
       video.muted = true;
+      video.volume = 0;
       // Remove autoplay to prevent it from starting again
       video.removeAttribute('autoplay');
+      video.setAttribute('autoplay', 'false');
       // Also set currentTime to 0 to reset
       video.currentTime = 0;
+      // Prevent future play attempts
+      video.onplay = function() {
+        this.pause();
+        this.currentTime = 0;
+      };
+      console.log('Scaredy Cat: Video paused and muted');
     } catch (e) {
       console.error('Scaredy Cat: Failed to pause video', e);
     }

@@ -9,18 +9,22 @@
   display: inline-block;
   overflow: hidden;
   border-radius: 4px;
+  background: #14141e; /* Solid dark background as fallback */
 }
 
 /* Blurred element */
 .scaredycat-blurred {
-  filter: blur(25px) brightness(0.7) !important;
+  filter: blur(30px) brightness(0.3) !important;
   transition: filter 0.3s ease-in-out !important;
   pointer-events: none !important; /* Prevent interaction with blurred content */
+  opacity: 0.3 !important;
 }
 
 /* Ensure videos can't play while blurred */
-video.scaredycat-blurred {
+video.scaredycat-blurred,
+iframe.scaredycat-blurred {
   pointer-events: none !important;
+  opacity: 0 !important; /* Completely hide video/iframe content */
 }
 
 /* Overlay on top of blurred content */
@@ -30,7 +34,7 @@ video.scaredycat-blurred {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(20, 20, 30, 0.97);
   display: flex;
   align-items: center;
   justify-content: center;
