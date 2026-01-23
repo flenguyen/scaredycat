@@ -283,7 +283,7 @@ const ScaredyCatDetector = (function () {
       contextParts.push(element.getAttribute('aria-label'));
     }
 
-    // Get image src/filename
+    // Get image src/filename and full URL path
     if (element.src) {
       try {
         const url = new URL(element.src);
@@ -291,22 +291,54 @@ const ScaredyCatDetector = (function () {
         // Clean up filename
         const cleanName = filename.replace(/[-_]/g, ' ').replace(/\.[^.]+$/, '');
         contextParts.push(cleanName);
+        // Also add full path for more context
+        contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
       } catch (e) { }
     }
 
-    // Get data attributes that might contain titles
-    const dataAttrs = ['data-title', 'data-name', 'data-movie', 'data-show', 'data-alt'];
-    for (const attr of dataAttrs) {
-      const value = element.getAttribute(attr);
-      if (value) contextParts.push(value);
+    // Get video poster
+    if (element.poster) {
+      try {
+        const url = new URL(element.poster);
+        contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
+      } catch (e) { }
     }
 
-    // Get parent element context
+    // Get ALL data attributes (many sites use custom ones)
+    for (const attr of element.attributes) {
+      if (attr.name.startsWith('data-')) {
+        const value = attr.value;
+        if (value && value.length > 2 && value.length < 200) {
+          contextParts.push(value);
+        }
+      }
+    }
+
+    // Check srcset for additional URLs
+    const srcset = element.getAttribute('srcset') || element.getAttribute('data-srcset');
+    if (srcset) {
+      const urls = srcset.split(',').map(s => s.trim().split(' ')[0]);
+      for (const urlStr of urls) {
+        try {
+          const url = new URL(urlStr, window.location.origin);
+          contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
+        } catch (e) { }
+      }
+    }
+
+    // Get parent element context (increased depth for complex layouts)
     let parent = element.parentElement;
     let depth = 0;
-    while (parent && depth < 5) {
+    while (parent && depth < 8) {
       // Check for relevant text in parent
       if (parent.title) contextParts.push(parent.title);
+
+      // Check ALL data attributes on parents too
+      for (const attr of parent.attributes) {
+        if (attr.name.startsWith('data-') && attr.value.length > 2 && attr.value.length < 200) {
+          contextParts.push(attr.value);
+        }
+      }
 
       // Check for links with text
       if (parent.tagName === 'A') {
@@ -322,6 +354,10 @@ const ScaredyCatDetector = (function () {
           } catch (e) { }
         }
       }
+
+      // Check for common container classes/roles that might have titles
+      const ariaLabel = parent.getAttribute('aria-label');
+      if (ariaLabel) contextParts.push(ariaLabel);
 
       parent = parent.parentElement;
       depth++;
@@ -346,7 +382,13 @@ const ScaredyCatDetector = (function () {
       contextParts.push(surroundingText);
     }
 
-    return contextParts.join(' ').slice(0, 1000); // Limit total context length
+    // Add page context: URL and title (helps for dedicated movie pages)
+    try {
+      contextParts.push(window.location.pathname.replace(/[-_\/]/g, ' '));
+      contextParts.push(document.title);
+    } catch (e) { }
+
+    return contextParts.join(' ').slice(0, 2000); // Increased limit for better context
   }
 
   /**

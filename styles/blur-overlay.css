@@ -15,6 +15,12 @@
 .scaredycat-blurred {
   filter: blur(25px) brightness(0.7) !important;
   transition: filter 0.3s ease-in-out !important;
+  pointer-events: none !important; /* Prevent interaction with blurred content */
+}
+
+/* Ensure videos can't play while blurred */
+video.scaredycat-blurred {
+  pointer-events: none !important;
 }
 
 /* Overlay on top of blurred content */

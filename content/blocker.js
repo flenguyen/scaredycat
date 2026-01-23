@@ -60,6 +60,16 @@ const ScaredyCatBlocker = (function () {
     // Apply blur to the element itself
     element.classList.add('scaredycat-blurred');
 
+    // Handle video elements - pause and mute them
+    const wasPlaying = isVideoPlaying(element);
+    const wasMuted = element.muted;
+    if (element.tagName === 'VIDEO') {
+      pauseVideo(element);
+    }
+    // Also check for videos inside iframes or nested elements
+    const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
+    nestedVideos.forEach(v => pauseVideo(v));
+
     // Store reference for stats and management
     const id = generateId();
     wrapper.setAttribute('data-scaredycat-id', id);
@@ -67,7 +77,9 @@ const ScaredyCatBlocker = (function () {
       element,
       wrapper,
       analysisResult,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      wasPlaying,
+      wasMuted
     });
 
     // Notify background about blocked content
@@ -81,10 +93,53 @@ const ScaredyCatBlocker = (function () {
   }
 
   /**
+   * Check if a video is currently playing
+   */
+  function isVideoPlaying(element) {
+    if (element.tagName === 'VIDEO') {
+      return !element.paused && !element.ended;
+    }
+    return false;
+  }
+
+  /**
+   * Pause a video element and mute it
+   */
+  function pauseVideo(video) {
+    try {
+      video.pause();
+      video.muted = true;
+      // Remove autoplay to prevent it from starting again
+      video.removeAttribute('autoplay');
+      // Also set currentTime to 0 to reset
+      video.currentTime = 0;
+    } catch (e) {
+      console.error('Scaredy Cat: Failed to pause video', e);
+    }
+  }
+
+  /**
+   * Resume a video element
+   */
+  function resumeVideo(video, shouldPlay, wasMuted) {
+    try {
+      video.muted = wasMuted || false;
+      if (shouldPlay) {
+        video.play().catch(() => {
+          // Autoplay might be blocked, that's ok
+        });
+      }
+    } catch (e) {
+      console.error('Scaredy Cat: Failed to resume video', e);
+    }
+  }
+
+  /**
    * Reveal a blocked element
    */
   function revealElement(element, wrapper) {
     const id = wrapper.getAttribute('data-scaredycat-id');
+    const data = blockedElements.get(id);
 
     // Remove blur from element
     element.classList.remove('scaredycat-blurred');
@@ -96,6 +151,14 @@ const ScaredyCatBlocker = (function () {
       setTimeout(() => overlay.remove(), 300);
     }
 
+    // Resume video if it was playing before
+    if (element.tagName === 'VIDEO') {
+      resumeVideo(element, data?.wasPlaying, data?.wasMuted);
+    }
+    // Also check for nested videos
+    const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
+    nestedVideos.forEach(v => resumeVideo(v, false, false));
+
     // Add "hide again" button
     addHideAgainButton(element, wrapper);
 
@@ -103,8 +166,8 @@ const ScaredyCatBlocker = (function () {
     revealedElements.add(id);
 
     // Update stored data
-    if (blockedElements.has(id)) {
-      blockedElements.get(id).revealed = true;
+    if (data) {
+      data.revealed = true;
     }
   }
 
@@ -138,6 +201,13 @@ const ScaredyCatBlocker = (function () {
 
     // Re-apply blur
     element.classList.add('scaredycat-blurred');
+
+    // Pause video again if it's a video element
+    if (element.tagName === 'VIDEO') {
+      pauseVideo(element);
+    }
+    const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
+    nestedVideos.forEach(v => pauseVideo(v));
 
     // Re-create overlay
     const overlay = document.createElement('div');
