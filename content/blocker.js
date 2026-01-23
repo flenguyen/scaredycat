@@ -61,12 +61,25 @@ const ScaredyCatBlocker = (function () {
     element.classList.add('scaredycat-blurred');
 
     // Handle video elements - pause and mute them
-    const wasPlaying = isVideoPlaying(element);
-    const wasMuted = element.muted;
+    let wasPlaying = false;
+    let wasMuted = false;
+    let originalSrc = null;
+
     if (element.tagName === 'VIDEO') {
+      wasPlaying = isVideoPlaying(element);
+      wasMuted = element.muted;
       pauseVideo(element);
     }
-    // Also check for videos inside iframes or nested elements
+
+    // Handle iframe elements - blank the src to stop playback
+    if (element.tagName === 'IFRAME') {
+      originalSrc = element.src;
+      // Store src and blank it to stop any video playback
+      element.setAttribute('data-scaredycat-original-src', originalSrc);
+      element.src = 'about:blank';
+    }
+
+    // Also check for videos inside nested elements
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => pauseVideo(v));
 
@@ -79,7 +92,8 @@ const ScaredyCatBlocker = (function () {
       analysisResult,
       timestamp: Date.now(),
       wasPlaying,
-      wasMuted
+      wasMuted,
+      originalSrc
     });
 
     // Notify background about blocked content
@@ -155,6 +169,13 @@ const ScaredyCatBlocker = (function () {
     if (element.tagName === 'VIDEO') {
       resumeVideo(element, data?.wasPlaying, data?.wasMuted);
     }
+
+    // Restore iframe src if it was blanked
+    if (element.tagName === 'IFRAME' && data?.originalSrc) {
+      element.src = data.originalSrc;
+      element.removeAttribute('data-scaredycat-original-src');
+    }
+
     // Also check for nested videos
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => resumeVideo(v, false, false));
@@ -206,6 +227,20 @@ const ScaredyCatBlocker = (function () {
     if (element.tagName === 'VIDEO') {
       pauseVideo(element);
     }
+
+    // Re-blank iframe src if it's an iframe
+    if (element.tagName === 'IFRAME') {
+      const originalSrc = element.src;
+      if (originalSrc && originalSrc !== 'about:blank') {
+        element.setAttribute('data-scaredycat-original-src', originalSrc);
+        element.src = 'about:blank';
+        // Update stored data with new src
+        if (blockedElements.has(id)) {
+          blockedElements.get(id).originalSrc = originalSrc;
+        }
+      }
+    }
+
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => pauseVideo(v));
 

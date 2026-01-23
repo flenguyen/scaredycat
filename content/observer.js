@@ -39,7 +39,7 @@ const ScaredyCatObserver = (function () {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['src', 'srcset', 'data-src', 'data-srcset', 'poster']
+      attributeFilter: ['src', 'srcset', 'data-src', 'data-srcset', 'poster', 'style', 'data-background']
     });
 
     isObserving = true;
@@ -99,6 +99,8 @@ const ScaredyCatObserver = (function () {
       const mediaElements = node.querySelectorAll(
         'img:not([data-scaredycat-processed]), ' +
         'video:not([data-scaredycat-processed]), ' +
+        'iframe:not([data-scaredycat-processed]), ' +
+        'picture:not([data-scaredycat-processed]), ' +
         '[style*="background-image"]:not([data-scaredycat-processed])'
       );
 
@@ -119,7 +121,7 @@ const ScaredyCatObserver = (function () {
     const tag = element.tagName.toLowerCase();
 
     // Direct media elements
-    if (tag === 'img' || tag === 'video') {
+    if (tag === 'img' || tag === 'video' || tag === 'iframe' || tag === 'picture') {
       return true;
     }
 

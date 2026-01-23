@@ -234,6 +234,31 @@ video.scaredycat-blurred {
   width: 100%;
 }
 
+/* Handle iframe elements */
+iframe.scaredycat-blurred {
+  display: block;
+  width: 100%;
+  pointer-events: none !important;
+}
+
+/* Ensure iframes are fully covered */
+.scaredycat-wrapper iframe {
+  position: relative;
+}
+
+/* Handle picture elements */
+picture.scaredycat-blurred,
+picture.scaredycat-blurred img {
+  filter: blur(25px) brightness(0.7) !important;
+  pointer-events: none !important;
+}
+
+/* Handle elements with background images */
+.scaredycat-blurred[style*="background"] {
+  filter: blur(25px) brightness(0.7) !important;
+  pointer-events: none !important;
+}
+
 /* Prevent text selection on overlay */
 .scaredycat-overlay {
   user-select: none;

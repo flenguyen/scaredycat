@@ -159,17 +159,29 @@
   function performInitialScan() {
     if (!isEnabled) return;
 
-    // Find all images and videos
+    // Find all images, videos, iframes, and picture elements
     const mediaElements = document.querySelectorAll(
       'img:not([data-scaredycat-processed]), ' +
-      'video:not([data-scaredycat-processed])'
+      'video:not([data-scaredycat-processed]), ' +
+      'iframe:not([data-scaredycat-processed]), ' +
+      'picture:not([data-scaredycat-processed]), ' +
+      '[style*="background-image"]:not([data-scaredycat-processed])'
     );
 
     console.log(`Scaredy Cat: Found ${mediaElements.length} media elements to scan`);
 
     // Process in batches
     const elements = Array.from(mediaElements);
-    scanElements(elements);
+
+    // Also find elements with background images via computed style
+    const allElements = document.querySelectorAll('div, section, article, a, span, figure');
+    const bgElements = Array.from(allElements).filter(el => {
+      if (el.hasAttribute('data-scaredycat-processed')) return false;
+      const bg = getComputedStyle(el).backgroundImage;
+      return bg && bg !== 'none' && bg.includes('url(');
+    });
+
+    scanElements([...elements, ...bgElements]);
   }
 
   /**

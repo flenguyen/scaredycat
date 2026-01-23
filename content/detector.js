@@ -304,6 +304,28 @@ const ScaredyCatDetector = (function () {
       } catch (e) { }
     }
 
+    // Get iframe src (for embedded videos like YouTube)
+    if (element.tagName === 'IFRAME' && element.src) {
+      try {
+        const url = new URL(element.src);
+        contextParts.push(url.hostname);
+        contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
+        contextParts.push(url.search.replace(/[-_&=]/g, ' '));
+      } catch (e) { }
+    }
+
+    // Get background image URL
+    const bgImage = element.style?.backgroundImage || getComputedStyle(element).backgroundImage;
+    if (bgImage && bgImage !== 'none') {
+      const urlMatch = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
+      if (urlMatch) {
+        try {
+          const url = new URL(urlMatch[1], window.location.origin);
+          contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
+        } catch (e) { }
+      }
+    }
+
     // Get ALL data attributes (many sites use custom ones)
     for (const attr of element.attributes) {
       if (attr.name.startsWith('data-')) {
@@ -488,11 +510,24 @@ const ScaredyCatDetector = (function () {
    * Check if an element should be analyzed (size check, visibility, etc.)
    */
   function shouldAnalyzeElement(element) {
-    // Skip tiny images (likely icons)
-    if (element.tagName === 'IMG') {
-      const width = element.naturalWidth || element.width || element.offsetWidth;
-      const height = element.naturalHeight || element.height || element.offsetHeight;
+    const tagName = element.tagName?.toUpperCase();
 
+    // Skip tiny elements (likely icons)
+    const width = element.naturalWidth || element.width || element.offsetWidth || 0;
+    const height = element.naturalHeight || element.height || element.offsetHeight || 0;
+
+    // Different size thresholds for different element types
+    if (tagName === 'IMG' && (width < 100 || height < 100)) {
+      return false;
+    }
+
+    // For videos and iframes, use smaller threshold (trailers can be small)
+    if ((tagName === 'VIDEO' || tagName === 'IFRAME') && (width < 50 || height < 50)) {
+      return false;
+    }
+
+    // For background image elements, check computed size
+    if (tagName !== 'IMG' && tagName !== 'VIDEO' && tagName !== 'IFRAME') {
       if (width < 100 || height < 100) {
         return false;
       }
@@ -509,7 +544,7 @@ const ScaredyCatDetector = (function () {
     }
 
     // Skip SVG elements
-    if (element.tagName === 'SVG' || element.closest('svg')) {
+    if (tagName === 'SVG' || element.closest('svg')) {
       return false;
     }
 
