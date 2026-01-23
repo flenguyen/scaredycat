@@ -221,16 +221,21 @@
         // Mark as processed
         element.setAttribute('data-scaredycat-processed', result.isHorror ? 'blocked' : 'safe');
 
+        // Log all analyzed elements for debugging
+        console.log('Scaredy Cat: Analyzed', {
+          tag: element.tagName,
+          src: (element.src || element.currentSrc || '').slice(0, 80),
+          isHorror: result.isHorror,
+          confidence: result.confidence,
+          threshold: result.threshold,
+          reasons: result.reasons,
+          contextPreview: result.context?.slice(0, 150)
+        });
+
         // Apply blur if horror content detected
         if (result.isHorror) {
           ScaredyCatBlocker.createBlurOverlay(element, result);
           blockedCount++;
-
-          console.log('Scaredy Cat: Blocked content', {
-            confidence: result.confidence,
-            reasons: result.reasons,
-            context: result.context?.slice(0, 100)
-          });
         }
 
         processedCount++;
@@ -303,7 +308,43 @@
     }, 500);
   });
 
-  // Expose for debugging
+  // Expose for debugging - inject into page context
+  const debugScript = document.createElement('script');
+  debugScript.textContent = `
+    window.ScaredyCatDebug = {
+      inspectElement: function(el) {
+        if (!el) {
+          console.log('Usage: ScaredyCatDebug.inspectElement(element) or right-click element > Inspect, then ScaredyCatDebug.inspectElement($0)');
+          return;
+        }
+        window.postMessage({ type: 'SCAREDYCAT_DEBUG', action: 'inspect' }, '*');
+        window._scaredycatDebugTarget = el;
+      }
+    };
+    console.log('Scaredy Cat: Debug available. Use ScaredyCatDebug.inspectElement($0) after inspecting an element.');
+  `;
+  document.documentElement.appendChild(debugScript);
+  debugScript.remove();
+
+  // Listen for debug requests from page context
+  window.addEventListener('message', async (event) => {
+    if (event.data?.type === 'SCAREDYCAT_DEBUG') {
+      const el = window._scaredycatDebugTarget || document.querySelector(':hover');
+      if (el) {
+        const context = ScaredyCatDetector.extractTextContext(el);
+        const result = await ScaredyCatDetector.analyzeElement(el);
+        console.log('Scaredy Cat Debug Results:', {
+          element: el.tagName,
+          src: el.src || el.currentSrc || getComputedStyle(el).backgroundImage || 'N/A',
+          dimensions: `${el.offsetWidth}x${el.offsetHeight}`,
+          context: context,
+          analysisResult: result
+        });
+      }
+    }
+  });
+
+  // Also expose in content script context for extension debugging
   window.ScaredyCat = {
     isEnabled: () => isEnabled,
     getStats: () => ({
@@ -320,6 +361,12 @@
       isEnabled = true;
       performInitialScan();
       ScaredyCatObserver.startObserving();
+    },
+    debug: async (el) => {
+      const context = ScaredyCatDetector.extractTextContext(el);
+      const result = await ScaredyCatDetector.analyzeElement(el);
+      console.log('Scaredy Cat Debug:', { context, result });
+      return { context, result };
     }
   };
 
