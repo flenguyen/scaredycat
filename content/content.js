@@ -317,43 +317,7 @@
     }, 500);
   });
 
-  // Expose for debugging - inject into page context
-  const debugScript = document.createElement('script');
-  debugScript.textContent = `
-    window.ScaredyCatDebug = {
-      inspectElement: function(el) {
-        if (!el) {
-          console.log('Usage: ScaredyCatDebug.inspectElement(element) or right-click element > Inspect, then ScaredyCatDebug.inspectElement($0)');
-          return;
-        }
-        window.postMessage({ type: 'SCAREDYCAT_DEBUG', action: 'inspect' }, '*');
-        window._scaredycatDebugTarget = el;
-      }
-    };
-    console.log('Scaredy Cat: Debug available. Use ScaredyCatDebug.inspectElement($0) after inspecting an element.');
-  `;
-  document.documentElement.appendChild(debugScript);
-  debugScript.remove();
-
-  // Listen for debug requests from page context
-  window.addEventListener('message', async (event) => {
-    if (event.data?.type === 'SCAREDYCAT_DEBUG') {
-      const el = window._scaredycatDebugTarget || document.querySelector(':hover');
-      if (el) {
-        const context = ScaredyCatDetector.extractTextContext(el);
-        const result = await ScaredyCatDetector.analyzeElement(el);
-        console.log('Scaredy Cat Debug Results:', {
-          element: el.tagName,
-          src: el.src || el.currentSrc || getComputedStyle(el).backgroundImage || 'N/A',
-          dimensions: `${el.offsetWidth}x${el.offsetHeight}`,
-          context: context,
-          analysisResult: result
-        });
-      }
-    }
-  });
-
-  // Also expose in content script context for extension debugging
+  // Expose for debugging in content script context
   window.ScaredyCat = {
     isEnabled: () => isEnabled,
     getStats: () => ({
