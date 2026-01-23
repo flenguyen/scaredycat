@@ -426,11 +426,8 @@ const ScaredyCatDetector = (function () {
       });
     }
 
-    // Add page context: URL and title (helps for dedicated movie pages)
-    try {
-      contextParts.push(window.location.pathname.replace(/[-_\/]/g, ' '));
-      contextParts.push(document.title);
-    } catch (e) { }
+    // Note: We intentionally do NOT include page URL/title here
+    // as it causes too many false positives (e.g., RT logo on RT site)
 
     return contextParts.join(' ').slice(0, 2000); // Increased limit for better context
   }
@@ -575,6 +572,39 @@ const ScaredyCatDetector = (function () {
     };
   }
 
+  // URL patterns for logos/icons that should never be blocked
+  const LOGO_WHITELIST_PATTERNS = [
+    /logo/i,
+    /icon/i,
+    /favicon/i,
+    /brand/i,
+    /sprite/i,
+    /avatar/i,
+    /profile/i,
+    /user.*photo/i,
+    /accounts\.google/i,
+    /gstatic\.com/i,
+    /googleapis\.com/i,
+    /googleusercontent/i,
+    /facebook\.com.*logo/i,
+    /twitter\.com.*logo/i,
+    /cdn\.auth0/i,
+    /\.svg$/i,
+    /badge/i,
+    /rating/i,
+    /star/i,
+    /certified/i,
+    /verified/i
+  ];
+
+  /**
+   * Check if a URL looks like a logo or icon
+   */
+  function isLikelyLogo(src) {
+    if (!src) return false;
+    return LOGO_WHITELIST_PATTERNS.some(pattern => pattern.test(src));
+  }
+
   /**
    * Check if an element should be analyzed (size check, visibility, etc.)
    */
@@ -585,19 +615,36 @@ const ScaredyCatDetector = (function () {
     const width = element.naturalWidth || element.width || element.offsetWidth || 0;
     const height = element.naturalHeight || element.height || element.offsetHeight || 0;
 
+    // Get element source for logo detection
+    const src = element.src || element.currentSrc || '';
+
+    // Skip logos and icons based on URL patterns
+    if (isLikelyLogo(src)) {
+      return false;
+    }
+
     // Different size thresholds for different element types
-    if (tagName === 'IMG' && (width < 100 || height < 100)) {
+    // Increased threshold to 150px to skip more logos
+    if (tagName === 'IMG' && (width < 150 || height < 150)) {
       return false;
     }
 
     // For videos and iframes, use smaller threshold (trailers can be small)
-    if ((tagName === 'VIDEO' || tagName === 'IFRAME') && (width < 50 || height < 50)) {
+    if ((tagName === 'VIDEO' || tagName === 'IFRAME') && (width < 100 || height < 100)) {
       return false;
     }
 
     // For background image elements, check computed size
     if (tagName !== 'IMG' && tagName !== 'VIDEO' && tagName !== 'IFRAME') {
-      if (width < 100 || height < 100) {
+      if (width < 150 || height < 150) {
+        return false;
+      }
+    }
+
+    // Skip elements inside header/nav (usually logos)
+    if (element.closest('header, nav, [role="banner"], [role="navigation"]')) {
+      // Only skip small images in headers (large ones might be hero images)
+      if (width < 300 || height < 200) {
         return false;
       }
     }
