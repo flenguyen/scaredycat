@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "Scaredy Cat",
+  "version": "1.0.0",
+  "description": "Protects you from horror content while browsing. Because not everyone wants to see scary stuff! 🙀",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "content/detector.js",
+        "content/blocker.js",
+        "content/observer.js",
+        "content/content.js"
+      ],
+      "css": ["styles/blur-overlay.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Scaredy Cat - Horror Content Blocker"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["data/horror-database.json"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
