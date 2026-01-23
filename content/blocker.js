@@ -12,6 +12,20 @@ const ScaredyCatBlocker = (function () {
    * Create a blur overlay for an element
    */
   function createBlurOverlay(element, analysisResult) {
+    console.log('Scaredy Cat: Creating blur overlay for', element.tagName, element.src?.slice(0, 50));
+
+    // Check if element is still in DOM
+    if (!element.parentNode) {
+      console.warn('Scaredy Cat: Element has no parent, cannot wrap');
+      return null;
+    }
+
+    // Check if already wrapped
+    if (element.closest('.scaredycat-wrapper')) {
+      console.log('Scaredy Cat: Element already wrapped, skipping');
+      return null;
+    }
+
     // Create wrapper container
     const wrapper = document.createElement('div');
     wrapper.className = 'scaredycat-wrapper';
@@ -102,6 +116,13 @@ const ScaredyCatBlocker = (function () {
     } catch (e) {
       // Extension context may be invalidated
     }
+
+    console.log('Scaredy Cat: Blur overlay created successfully', {
+      wrapperId: id,
+      wrapperInDOM: wrapper.isConnected,
+      elementBlurred: element.classList.contains('scaredycat-blurred'),
+      wrapperSize: `${wrapper.offsetWidth}x${wrapper.offsetHeight}`
+    });
 
     return wrapper;
   }
