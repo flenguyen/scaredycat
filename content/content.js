@@ -13,11 +13,47 @@
   let isInitialized = false;
   let currentHostname = window.location.hostname;
 
+  // Trusted domains where we should never run
+  const TRUSTED_DOMAINS = [
+    'loom.com',
+    'loomcdn.com',
+    'zoom.us',
+    'zoom.com',
+    'meet.google.com',
+    'teams.microsoft.com',
+    'teams.live.com',
+    'webex.com',
+    'slack.com',
+    'discord.com',
+    'discordapp.com',
+    'twitch.tv',
+    'whereby.com',
+    'around.co',
+    'screen.so',
+    'cal.com',
+    'calendly.com'
+  ];
+
+  // Check if current site is trusted
+  function isTrustedDomain() {
+    return TRUSTED_DOMAINS.some(domain =>
+      currentHostname === domain || currentHostname.endsWith('.' + domain)
+    );
+  }
+
   /**
    * Initialize the extension
    */
   async function init() {
     if (isInitialized) return;
+
+    // Skip entirely on trusted domains (Loom, Zoom, etc.)
+    if (isTrustedDomain()) {
+      console.log('Scaredy Cat: Skipping trusted domain:', currentHostname);
+      isInitialized = true;
+      isEnabled = false;
+      return;
+    }
 
     console.log('Scaredy Cat: Initializing...');
 

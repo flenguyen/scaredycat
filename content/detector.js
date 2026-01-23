@@ -597,6 +597,37 @@ const ScaredyCatDetector = (function () {
     /verified/i
   ];
 
+  // Trusted domains/URLs - never block content from these sources
+  const TRUSTED_SOURCES = [
+    /loom\.com/i,
+    /loomcdn\.com/i,
+    /zoom\.us/i,
+    /zoom\.com/i,
+    /meet\.google\.com/i,
+    /teams\.microsoft/i,
+    /teams\.live/i,
+    /webex\.com/i,
+    /slack\.com/i,
+    /discord\.com/i,
+    /discordapp\.com/i,
+    /twitch\.tv/i,
+    /whereby\.com/i,
+    /around\.co/i,
+    /screen\.so/i,
+    /cal\.com/i,
+    /calendly\.com/i,
+    /chrome-extension:/i,
+    /moz-extension:/i
+  ];
+
+  /**
+   * Check if URL is from a trusted source
+   */
+  function isTrustedSource(src) {
+    if (!src) return false;
+    return TRUSTED_SOURCES.some(pattern => pattern.test(src));
+  }
+
   /**
    * Check if a URL looks like a logo or icon
    */
@@ -615,8 +646,13 @@ const ScaredyCatDetector = (function () {
     const width = element.naturalWidth || element.width || element.offsetWidth || 0;
     const height = element.naturalHeight || element.height || element.offsetHeight || 0;
 
-    // Get element source for logo detection
+    // Get element source for logo/trusted source detection
     const src = element.src || element.currentSrc || '';
+
+    // Skip trusted sources (Loom, Zoom, Meet, etc.)
+    if (isTrustedSource(src)) {
+      return false;
+    }
 
     // Skip logos and icons based on URL patterns
     if (isLikelyLogo(src)) {
