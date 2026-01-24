@@ -613,8 +613,7 @@ const ScaredyCatDetector = (function () {
     extractTextContext,
     normalizeText,
     isAllowed,
-    debugElement,
-    findCardContainer
+    debugElement
   };
 })();
 
