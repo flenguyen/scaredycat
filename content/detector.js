@@ -192,12 +192,57 @@ const ScaredyCatDetector = (function () {
     return (longer.length - distance) / longer.length;
   }
 
+  // Known non-horror titles/franchises that contain words similar to horror titles
+  // These should never trigger a match
+  const NON_HORROR_PATTERNS = [
+    /lord of the rings/i,
+    /lotr/i,
+    /rings of power/i,
+    /fellowship of the ring/i,
+    /return of the king/i,
+    /two towers/i,
+    /the hobbit/i,
+    /middle earth/i,
+    /no other (choice|way|option)/i,
+    /each other/i,
+    /one another/i,
+    /wedding ring/i,
+    /engagement ring/i,
+    /boxing ring/i,
+    /ring finger/i,
+    /tree ring/i,
+    /phone ring/i,
+    /door bell/i,
+    /saturn.*ring/i,
+    /olympic ring/i,
+    /fall season/i,
+    /fall collection/i,
+    /fall fashion/i,
+    /fall preview/i,
+    /fall tv/i,
+    /free fall/i,
+    /niagara falls/i,
+    /autumn/i
+  ];
+
+  /**
+   * Check if text matches a known non-horror pattern
+   */
+  function isNonHorrorContent(text) {
+    return NON_HORROR_PATTERNS.some(pattern => pattern.test(text));
+  }
+
   /**
    * Check if text contains a horror title (exact or fuzzy match)
    */
   function checkTitleMatch(text, titles) {
     const normalizedText = normalizeText(text);
     const normalizedWithNumbers = normalizeNumbers(normalizedText);
+
+    // Skip if this matches known non-horror content
+    if (isNonHorrorContent(text)) {
+      return { matched: false, score: 0, title: null, reason: 'Non-horror content detected' };
+    }
 
     let bestMatch = { matched: false, score: 0, title: null };
 
@@ -206,16 +251,31 @@ const ScaredyCatDetector = (function () {
       const titleWithNumbers = normalizeNumbers(titleNormalized);
 
       // Check main title
+      // For very short titles (4 chars or less like "It", "Us", "Ma", "Old", "Run"),
+      // only match via variations to avoid false positives on common words
+      const skipMainTitle = titleNormalized.length <= 4;
+
       const variations = [
-        titleNormalized,
-        titleWithNumbers,
-        titleNormalized.replace(/\s/g, ''), // No spaces version
+        ...(skipMainTitle ? [] : [titleNormalized, titleWithNumbers, titleNormalized.replace(/\s/g, '')]),
         ...(entry.variations || []).map(v => normalizeText(v))
       ];
 
       for (const variant of variations) {
-        // Exact match (substring)
-        if (normalizedText.includes(variant) || normalizedWithNumbers.includes(variant)) {
+        // For short titles (less than 8 chars), require word boundary match to avoid false positives
+        // e.g., "ring" shouldn't match "lord of the rings", "other" shouldn't match "no other choice"
+        const needsWordBoundary = variant.length < 8;
+
+        let matched = false;
+        if (needsWordBoundary) {
+          // Use word boundary regex for short titles
+          const wordBoundaryRegex = new RegExp(`\\b${variant}\\b`);
+          matched = wordBoundaryRegex.test(normalizedText) || wordBoundaryRegex.test(normalizedWithNumbers);
+        } else {
+          // Substring match for longer titles
+          matched = normalizedText.includes(variant) || normalizedWithNumbers.includes(variant);
+        }
+
+        if (matched) {
           const score = Math.min(100, 50 + (variant.length * 2));
           if (score > bestMatch.score) {
             bestMatch = { matched: true, score, title: entry.title };
@@ -272,253 +332,54 @@ const ScaredyCatDetector = (function () {
    * Extract text context from an element and its surroundings
    */
   function extractTextContext(element) {
-    const contextParts = [];
+    const parts = [];
 
-    // Get element's own text attributes
-    if (element.alt) contextParts.push(element.alt);
-    if (element.title) contextParts.push(element.title);
+    // Quick attribute checks - no DOM traversal
+    if (element.alt) parts.push(element.alt);
+    if (element.title) parts.push(element.title);
 
-    // Get aria-label
-    if (element.getAttribute('aria-label')) {
-      contextParts.push(element.getAttribute('aria-label'));
-    }
-
-    // Get image src/filename and full URL path
-    if (element.src) {
+    // Extract from src URL
+    const src = element.src || element.poster || '';
+    if (src) {
       try {
-        const url = new URL(element.src);
-        const filename = url.pathname.split('/').pop();
-        // Clean up filename
-        const cleanName = filename.replace(/[-_]/g, ' ').replace(/\.[^.]+$/, '');
-        contextParts.push(cleanName);
-        // Also add full path for more context
-        contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-      } catch (e) { }
+        const path = new URL(src).pathname.replace(/[-_\/]/g, ' ');
+        parts.push(path);
+      } catch (e) {}
     }
 
-    // Get video poster
-    if (element.poster) {
-      try {
-        const url = new URL(element.poster);
-        contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-      } catch (e) { }
-    }
+    // Check key data attributes
+    const dataTitle = element.getAttribute('data-title') || element.getAttribute('data-name');
+    if (dataTitle) parts.push(dataTitle);
 
-    // Get iframe src (for embedded videos like YouTube)
-    if (element.tagName === 'IFRAME' && element.src) {
-      try {
-        const url = new URL(element.src);
-        contextParts.push(url.hostname);
-        contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-        contextParts.push(url.search.replace(/[-_&=]/g, ' '));
-      } catch (e) { }
-    }
-
-    // Get background image URL
-    const bgImage = element.style?.backgroundImage || getComputedStyle(element).backgroundImage;
-    if (bgImage && bgImage !== 'none') {
-      const urlMatch = bgImage.match(/url\(["']?([^"')]+)["']?\)/);
-      if (urlMatch) {
-        try {
-          const url = new URL(urlMatch[1], window.location.origin);
-          contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-        } catch (e) { }
-      }
-    }
-
-    // Get ALL data attributes (many sites use custom ones)
-    for (const attr of element.attributes) {
-      if (attr.name.startsWith('data-')) {
-        const value = attr.value;
-        if (value && value.length > 2 && value.length < 200) {
-          contextParts.push(value);
-        }
-      }
-    }
-
-    // Check srcset for additional URLs
-    const srcset = element.getAttribute('srcset') || element.getAttribute('data-srcset');
-    if (srcset) {
-      const urls = srcset.split(',').map(s => s.trim().split(' ')[0]);
-      for (const urlStr of urls) {
-        try {
-          const url = new URL(urlStr, window.location.origin);
-          contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-        } catch (e) { }
-      }
-    }
-
-    // Get parent element context (increased depth for complex layouts)
+    // Check parent link (max 3 levels up)
     let parent = element.parentElement;
-    let depth = 0;
-    while (parent && depth < 8) {
-      // Check for relevant text in parent
-      if (parent.title) contextParts.push(parent.title);
-
-      // Check ALL data attributes on parents too
-      for (const attr of parent.attributes) {
-        if (attr.name.startsWith('data-') && attr.value.length > 2 && attr.value.length < 200) {
-          contextParts.push(attr.value);
-        }
-      }
-
-      // Check for links with text
+    for (let i = 0; i < 3 && parent; i++) {
       if (parent.tagName === 'A') {
         const linkText = parent.textContent?.trim();
-        if (linkText && linkText.length < 200) {
-          contextParts.push(linkText);
-        }
-        // Check href for title info
+        if (linkText && linkText.length < 150) parts.push(linkText);
         if (parent.href) {
           try {
-            const url = new URL(parent.href);
-            contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-          } catch (e) { }
+            parts.push(new URL(parent.href).pathname.replace(/[-_\/]/g, ' '));
+          } catch (e) {}
         }
+        break;
       }
-
-      // Check for common container classes/roles that might have titles
       const ariaLabel = parent.getAttribute('aria-label');
-      if (ariaLabel) contextParts.push(ariaLabel);
-
+      if (ariaLabel) parts.push(ariaLabel);
       parent = parent.parentElement;
-      depth++;
     }
 
-    // Look for nearby headings
-    const nearbyHeadings = findNearbyHeadings(element);
-    contextParts.push(...nearbyHeadings);
-
-    // Look for figcaption
-    const figure = element.closest('figure');
-    if (figure) {
-      const caption = figure.querySelector('figcaption');
-      if (caption) {
-        contextParts.push(caption.textContent?.trim() || '');
+    // On media sites, do minimal extra checks
+    if (isMediaSiteCached()) {
+      // IMDB: check for nearby title
+      const container = element.closest('[data-testid], [data-qa]');
+      if (container) {
+        const title = container.querySelector('[class*="title"], h1, h2, h3');
+        if (title) parts.push(title.textContent?.trim() || '');
       }
     }
 
-    // Get surrounding text (siblings and nearby elements)
-    const surroundingText = getSurroundingText(element);
-    if (surroundingText) {
-      contextParts.push(surroundingText);
-    }
-
-    // Find the closest "card" or "tile" container and get ALL its text
-    const cardContainer = findCardContainer(element);
-    if (cardContainer) {
-      const cardText = cardContainer.textContent?.trim();
-      if (cardText && cardText.length < 500) {
-        contextParts.push(cardText);
-      }
-      // Also check all links in the card
-      const links = cardContainer.querySelectorAll('a[href]');
-      links.forEach(link => {
-        if (link.href) {
-          try {
-            const url = new URL(link.href);
-            contextParts.push(url.pathname.replace(/[-_\/]/g, ' '));
-          } catch (e) { }
-        }
-        if (link.textContent) {
-          contextParts.push(link.textContent.trim());
-        }
-      });
-    }
-
-    // Note: We intentionally do NOT include page URL/title here
-    // as it causes too many false positives (e.g., RT logo on RT site)
-
-    return contextParts.join(' ').slice(0, 2000); // Increased limit for better context
-  }
-
-  /**
-   * Find the closest card/tile/media container
-   */
-  function findCardContainer(element) {
-    // Common class patterns for media cards across sites
-    const cardPatterns = [
-      /card/i, /tile/i, /poster/i, /thumb/i, /media/i, /movie/i,
-      /item/i, /result/i, /entry/i, /slot/i, /cell/i, /box/i
-    ];
-
-    // Common tag patterns
-    const containerTags = ['article', 'section', 'li', 'figure'];
-
-    let current = element.parentElement;
-    let depth = 0;
-    const maxDepth = 10;
-
-    while (current && depth < maxDepth) {
-      // Check if this is a semantic container
-      if (containerTags.includes(current.tagName.toLowerCase())) {
-        return current;
-      }
-
-      // Check class names for card patterns
-      const className = current.className || '';
-      if (typeof className === 'string') {
-        for (const pattern of cardPatterns) {
-          if (pattern.test(className)) {
-            return current;
-          }
-        }
-      }
-
-      // Check for role attribute
-      const role = current.getAttribute('role');
-      if (role === 'listitem' || role === 'article' || role === 'gridcell') {
-        return current;
-      }
-
-      current = current.parentElement;
-      depth++;
-    }
-
-    // Fallback: return grandparent or parent if nothing found
-    return element.parentElement?.parentElement || element.parentElement;
-  }
-
-  /**
-   * Find headings near the element
-   */
-  function findNearbyHeadings(element) {
-    const headings = [];
-    const container = element.closest('article, section, div, li');
-
-    if (container) {
-      const headingElements = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      for (const h of headingElements) {
-        const text = h.textContent?.trim();
-        if (text && text.length < 200) {
-          headings.push(text);
-        }
-      }
-    }
-
-    return headings.slice(0, 3); // Limit to 3 headings
-  }
-
-  /**
-   * Get text from surrounding sibling elements
-   */
-  function getSurroundingText(element) {
-    const texts = [];
-    const parent = element.parentElement;
-
-    if (!parent) return '';
-
-    // Get text from siblings
-    for (const sibling of parent.children) {
-      if (sibling !== element && sibling.textContent) {
-        const text = sibling.textContent.trim();
-        if (text.length > 0 && text.length < 300) {
-          texts.push(text);
-        }
-      }
-    }
-
-    return texts.join(' ').slice(0, 500);
+    return parts.join(' ').slice(0, 1000);
   }
 
   /**
@@ -636,67 +497,77 @@ const ScaredyCatDetector = (function () {
     return LOGO_WHITELIST_PATTERNS.some(pattern => pattern.test(src));
   }
 
+  // Media-focused sites that need lower thresholds
+  const MEDIA_SITE_PATTERNS = [
+    /rottentomatoes\.com/i,
+    /imdb\.com/i,
+    /themoviedb\.org/i,
+    /letterboxd\.com/i,
+    /justwatch\.com/i,
+    /netflix\.com/i,
+    /hulu\.com/i,
+    /disneyplus\.com/i,
+    /hbomax\.com/i,
+    /max\.com/i,
+    /amazon\.com.*video/i,
+    /primevideo\.com/i,
+    /peacocktv\.com/i,
+    /paramountplus\.com/i,
+    /apple\.com.*tv/i,
+    /tv\.apple\.com/i,
+    /vudu\.com/i,
+    /fandango\.com/i,
+    /youtube\.com/i,
+    /shudder\.com/i,
+    /amc\.com/i,
+    /fxnetworks\.com/i
+  ];
+
+  /**
+   * Check if current site is a media-focused site (needs smaller thresholds)
+   */
+  function isMediaSite() {
+    const hostname = window.location.hostname;
+    return MEDIA_SITE_PATTERNS.some(pattern => pattern.test(hostname));
+  }
+
   /**
    * Check if an element should be analyzed (size check, visibility, etc.)
    */
+// Cache media site check
+  let _isMediaSiteCached = null;
+  function isMediaSiteCached() {
+    if (_isMediaSiteCached === null) {
+      _isMediaSiteCached = isMediaSite();
+    }
+    return _isMediaSiteCached;
+  }
+
   function shouldAnalyzeElement(element) {
     const tagName = element.tagName?.toUpperCase();
+    if (!tagName) return false;
 
-    // Skip tiny elements (likely icons)
+    // Quick checks first - no DOM traversal
+    if (tagName === 'SVG' || element.hasAttribute('data-scaredycat-processed')) {
+      return false;
+    }
+
+    // Size check
     const width = element.naturalWidth || element.width || element.offsetWidth || 0;
     const height = element.naturalHeight || element.height || element.offsetHeight || 0;
+    const minSize = isMediaSiteCached() ? 60 : 100;
 
-    // Get element source for logo/trusted source detection
-    const src = element.src || element.currentSrc || '';
-
-    // Skip trusted sources (Loom, Zoom, Meet, etc.)
-    if (isTrustedSource(src)) {
+    if (tagName === 'IMG' && (width < minSize || height < minSize)) {
       return false;
     }
 
-    // Skip logos and icons based on URL patterns
-    if (isLikelyLogo(src)) {
+    if ((tagName === 'VIDEO' || tagName === 'IFRAME') && (width < 80 || height < 80)) {
       return false;
     }
 
-    // Different size thresholds for different element types
-    // Increased threshold to 150px to skip more logos
-    if (tagName === 'IMG' && (width < 150 || height < 150)) {
-      return false;
-    }
-
-    // For videos and iframes, use smaller threshold (trailers can be small)
-    if ((tagName === 'VIDEO' || tagName === 'IFRAME') && (width < 100 || height < 100)) {
-      return false;
-    }
-
-    // For background image elements, check computed size
-    if (tagName !== 'IMG' && tagName !== 'VIDEO' && tagName !== 'IFRAME') {
-      if (width < 150 || height < 150) {
-        return false;
-      }
-    }
-
-    // Skip elements inside header/nav (usually logos)
-    if (element.closest('header, nav, [role="banner"], [role="navigation"]')) {
-      // Only skip small images in headers (large ones might be hero images)
-      if (width < 300 || height < 200) {
-        return false;
-      }
-    }
-
-    // Skip hidden elements
-    if (element.offsetParent === null && getComputedStyle(element).position !== 'fixed') {
-      return false;
-    }
-
-    // Skip elements that are already processed
-    if (element.hasAttribute('data-scaredycat-processed')) {
-      return false;
-    }
-
-    // Skip SVG elements
-    if (tagName === 'SVG' || element.closest('svg')) {
+    // Skip logos based on src
+    const src = element.src || '';
+    if (src && /logo|icon|sprite|avatar|badge/i.test(src)) {
       return false;
     }
 
