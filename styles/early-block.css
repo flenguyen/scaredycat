@@ -1,14 +1,28 @@
 /**
  * Scaredy Cat - Early Block CSS
- * Injected at document_start to prevent autoplay before JS loads
- *
- * NOTE: We removed the aggressive hiding of all iframes/videos
- * because it breaks legitimate tools like Loom, screen recorders, etc.
- * Instead, we rely on fast JS processing to catch horror content.
+ * Minimal CSS that only targets specific known selectors on media sites.
+ * Uses specific selectors to avoid performance impact on regular sites.
  */
 
-/* Only hide iframes/videos that have been explicitly marked for blocking */
-iframe[data-scaredycat-processed="blocked"],
-video[data-scaredycat-processed="blocked"] {
-  visibility: visible !important; /* Overlay handles the hiding */
+/* IMDB hero content - specific selectors only */
+.ipc-media--poster:not([data-scaredycat-processed]),
+.ipc-poster:not([data-scaredycat-processed]),
+[data-testid="hero-media__slate"]:not([data-scaredycat-processed]),
+[data-testid="hero-title-block__poster"]:not([data-scaredycat-processed]) {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Rotten Tomatoes specific */
+[data-qa="poster-image"]:not([data-scaredycat-processed]) {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Reveal once processed */
+[data-scaredycat-processed="safe"],
+[data-scaredycat-processed="skip"],
+[data-scaredycat-processed="allowed"],
+[data-scaredycat-processed="blocked"] {
+  opacity: 1 !important;
 }
