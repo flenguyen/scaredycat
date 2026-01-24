@@ -78,6 +78,7 @@ const ScaredyCatBlocker = (function () {
     let wasPlaying = false;
     let wasMuted = false;
     let originalSrc = null;
+    let stoppedIframes = [];
 
     if (element.tagName === 'VIDEO') {
       wasPlaying = isVideoPlaying(element);
@@ -88,7 +89,6 @@ const ScaredyCatBlocker = (function () {
     // Handle iframe elements - blank the src to stop playback
     if (element.tagName === 'IFRAME') {
       originalSrc = element.src;
-      // Store src and blank it to stop any video playback
       element.setAttribute('data-scaredycat-original-src', originalSrc);
       element.src = 'about:blank';
     }
@@ -96,6 +96,55 @@ const ScaredyCatBlocker = (function () {
     // Also check for videos inside nested elements
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => pauseVideo(v));
+
+    // IMPORTANT: Find and stop ALL videos/iframes near the blocked element
+    // Search multiple levels up to find the media container
+    const containerSelectors = [
+      '[class*="player"]', '[class*="video"]', '[class*="trailer"]', '[class*="media"]',
+      '[class*="hero"]', '[class*="slate"]', '[data-testid*="video"]', '[data-testid*="hero"]',
+      'section', 'article', 'main'
+    ];
+
+    let container = null;
+    for (const selector of containerSelectors) {
+      container = element.closest(selector);
+      if (container) break;
+    }
+
+    // Fallback: go up 5 levels in the DOM
+    if (!container) {
+      container = element.parentElement?.parentElement?.parentElement?.parentElement?.parentElement;
+    }
+
+    if (container) {
+      // Stop all videos in the container
+      const containerVideos = container.querySelectorAll('video');
+      containerVideos.forEach(v => {
+        if (!v.closest('.scaredycat-wrapper')) {
+          pauseVideo(v);
+        }
+      });
+
+      // Blank all iframes in the container (YouTube embeds, etc.)
+      const containerIframes = container.querySelectorAll('iframe[src*="youtube"], iframe[src*="vimeo"], iframe[src*="player"], iframe[src*="video"]');
+      containerIframes.forEach(iframe => {
+        if (!iframe.closest('.scaredycat-wrapper') && iframe.src && iframe.src !== 'about:blank') {
+          const iframeSrc = iframe.src;
+          iframe.setAttribute('data-scaredycat-original-src', iframeSrc);
+          iframe.src = 'about:blank';
+          stoppedIframes.push(iframe);
+        }
+      });
+    }
+
+    // For ANY horror content, aggressively stop all videos on the page
+    // This catches cases where the video player is in a completely different DOM location
+    if (analysisResult?.isHorror) {
+      stopAllPageVideos();
+
+      // Also set up ongoing monitoring since videos may load/play after blocking
+      startVideoMonitor();
+    }
 
     // Store reference for stats and management
     const id = generateId();
@@ -107,7 +156,8 @@ const ScaredyCatBlocker = (function () {
       timestamp: Date.now(),
       wasPlaying,
       wasMuted,
-      originalSrc
+      originalSrc,
+      stoppedIframes
     });
 
     // Notify background about blocked content
@@ -208,6 +258,17 @@ const ScaredyCatBlocker = (function () {
     // Also check for nested videos
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => resumeVideo(v, false, false));
+
+    // Restore any iframes that were stopped in the container
+    if (data?.stoppedIframes) {
+      data.stoppedIframes.forEach(iframe => {
+        const originalSrc = iframe.getAttribute('data-scaredycat-original-src');
+        if (originalSrc) {
+          iframe.src = originalSrc;
+          iframe.removeAttribute('data-scaredycat-original-src');
+        }
+      });
+    }
 
     // Add "hide again" button
     addHideAgainButton(element, wrapper);
@@ -328,6 +389,9 @@ const ScaredyCatBlocker = (function () {
    * Remove all blurs on the page
    */
   function removeAllBlurs() {
+    // Stop video monitoring
+    stopVideoMonitor();
+
     const wrappers = document.querySelectorAll('.scaredycat-wrapper');
     wrappers.forEach(wrapper => {
       const element = wrapper.querySelector('img, video, [data-scaredycat-processed]');
@@ -337,6 +401,12 @@ const ScaredyCatBlocker = (function () {
     });
     blockedElements.clear();
     revealedElements.clear();
+
+    // Restore all blanked iframes
+    document.querySelectorAll('iframe[data-scaredycat-original-src]').forEach(iframe => {
+      iframe.src = iframe.getAttribute('data-scaredycat-original-src');
+      iframe.removeAttribute('data-scaredycat-original-src');
+    });
   }
 
   /**
@@ -389,6 +459,82 @@ const ScaredyCatBlocker = (function () {
         wrapper.style.height = element.offsetHeight + 'px';
       }
     });
+  }
+
+  /**
+   * Stop all videos and video iframes on the page and cover them with blur overlay
+   */
+  function stopAllPageVideos() {
+    // Stop and cover all video elements
+    document.querySelectorAll('video').forEach(v => {
+      if (!v.closest('.scaredycat-wrapper')) {
+        pauseVideo(v);
+        // Also create a blur overlay on the video
+        createBlurOverlay(v, { isHorror: true, confidence: 100, reasons: ['Video on horror page'] });
+      }
+    });
+
+    // Cover and blank all video iframes (YouTube, Vimeo, etc.)
+    document.querySelectorAll('iframe').forEach(iframe => {
+      const src = iframe.src || '';
+      if (src && src !== 'about:blank' &&
+          (src.includes('youtube') || src.includes('vimeo') || src.includes('player') ||
+           src.includes('video') || src.includes('embed'))) {
+        if (!iframe.closest('.scaredycat-wrapper')) {
+          // Create blur overlay first, then blank the src
+          createBlurOverlay(iframe, { isHorror: true, confidence: 100, reasons: ['Video iframe on horror page'] });
+        }
+      }
+    });
+  }
+
+  /**
+   * Monitor for videos that start playing after initial block
+   */
+  let videoMonitorInterval = null;
+  function startVideoMonitor() {
+    // Don't start multiple monitors
+    if (videoMonitorInterval) return;
+
+    // Check every 500ms for 10 seconds for any uncovered videos
+    let checks = 0;
+    videoMonitorInterval = setInterval(() => {
+      checks++;
+
+      // Find and cover any videos not already wrapped
+      document.querySelectorAll('video').forEach(v => {
+        if (!v.closest('.scaredycat-wrapper')) {
+          pauseVideo(v);
+          createBlurOverlay(v, { isHorror: true, confidence: 100, reasons: ['Video on horror page'] });
+        }
+      });
+
+      // Find and cover any video iframes not already wrapped
+      document.querySelectorAll('iframe').forEach(iframe => {
+        const src = iframe.src || iframe.getAttribute('data-scaredycat-original-src') || '';
+        if (!iframe.closest('.scaredycat-wrapper') &&
+            (src.includes('youtube') || src.includes('vimeo') || src.includes('player') ||
+             src.includes('video') || src.includes('embed'))) {
+          createBlurOverlay(iframe, { isHorror: true, confidence: 100, reasons: ['Video iframe on horror page'] });
+        }
+      });
+
+      // Stop after 10 seconds (20 checks)
+      if (checks >= 20) {
+        clearInterval(videoMonitorInterval);
+        videoMonitorInterval = null;
+      }
+    }, 500);
+  }
+
+  /**
+   * Stop the video monitor (called when all blurs removed)
+   */
+  function stopVideoMonitor() {
+    if (videoMonitorInterval) {
+      clearInterval(videoMonitorInterval);
+      videoMonitorInterval = null;
+    }
   }
 
   // Listen for resize events
