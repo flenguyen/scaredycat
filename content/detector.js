@@ -222,7 +222,16 @@ const ScaredyCatDetector = (function () {
     /fall tv/i,
     /free fall/i,
     /niagara falls/i,
-    /autumn/i
+    /autumn/i,
+    // Tech/business content patterns
+    /ai (employee|assistant|agent|tool|platform|startup|company)/i,
+    /\b(saas|startup|ceo|cfo|cto|founder)\b/i,
+    /taking.*(by storm|off|over)/i,
+    /getting started with/i,
+    /how (it|this) (actually )?works/i,
+    /worth (watching|reading|trying)/i,
+    /linkedin\.com/i,
+    /lnkd\.in/i
   ];
 
   /**
