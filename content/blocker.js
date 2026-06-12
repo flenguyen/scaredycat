@@ -82,7 +82,7 @@ const ScaredyCatBlocker = (function () {
     message.className = 'scaredycat-message';
     message.innerHTML = `
       <span class="scaredycat-icon">🙀</span>
-      <span class="scaredycat-text">Horror content hidden</span>
+      <span class="scaredycat-text">Content hidden</span>
       <button class="scaredycat-show-btn" type="button" title="Show anyway">
         <span class="scaredycat-btn-full">Show anyway</span>
         <span class="scaredycat-btn-short">Show</span>
@@ -375,7 +375,7 @@ const ScaredyCatBlocker = (function () {
     overlay.innerHTML = `
       <div class="scaredycat-message">
         <span class="scaredycat-icon">🙀</span>
-        <span class="scaredycat-text">Horror content hidden</span>
+        <span class="scaredycat-text">Content hidden</span>
         <button class="scaredycat-show-btn" type="button">Show anyway</button>
       </div>
     `;

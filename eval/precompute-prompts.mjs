@@ -48,7 +48,16 @@ const PROMPTS = [
   { label: 'safe', text: 'a musician, concert, or album cover' },
   { label: 'safe', text: 'a car, vehicle, or technology gadget' },
   { label: 'safe', text: 'a baby or children playing' },
-  { label: 'safe', text: 'a fashion or beauty photo' }
+  { label: 'safe', text: 'a fashion or beauty photo' },
+  // Dark-but-not-horror genres: without these, action/fantasy posters
+  // (Mortal Kombat, Masters of the Universe) read as horror-adjacent.
+  { label: 'safe', text: 'an action movie poster with explosions, guns, or car chases' },
+  { label: 'safe', text: 'a science fiction movie poster with spaceships or futuristic technology' },
+  { label: 'safe', text: 'a fantasy adventure movie poster with warriors, dragons, or magic' },
+  { label: 'safe', text: 'a superhero movie poster' },
+  { label: 'safe', text: 'a video game cover or fighting game artwork' },
+  { label: 'safe', text: 'a dark moody movie poster for a thriller, crime, or spy film' },
+  { label: 'safe', text: 'a war or military movie poster' }
 ];
 
 console.log(`Embedding ${PROMPTS.length} prompts with ${MODEL_ID} text tower...`);

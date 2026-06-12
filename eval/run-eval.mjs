@@ -93,6 +93,14 @@ function evaluate() {
         if (predicted) textMissCaught++;
         continue; // not counted against the text layer
       }
+      if (entry.vetoExpected) {
+        // Known text-layer FP that the image veto handles in production.
+        // Tracked, but a definite-band text block here is a regression.
+        if (newR.band === 'definite_horror') {
+          fp++; fpList.push({ ...entry, note: entry.note + ' [DEFINITE — veto impossible!]' });
+        }
+        continue;
+      }
       if (entry.label === 'horror') {
         if (predicted) tp++; else { fn++; fnList.push(entry); }
       } else {

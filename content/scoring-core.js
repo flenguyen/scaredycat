@@ -180,11 +180,16 @@ const ScaredyCatScoring = (function () {
       // Short main titles ("It", "Us", "Ma") only match via explicit variations.
       const skipMainTitle = titleNormalized.length <= 4;
 
+      // The auto no-space variant exists for multi-word collapses seen in
+      // URLs ("elmstreet", "28dayslater"). Short collapses degenerate into
+      // common English words — "F.E.A.R." must not become "fear" and match
+      // "Cape Fear" — so require at least 8 chars.
+      const noSpace = titleNormalized.replace(/\s/g, '');
       const variants = [
         ...(skipMainTitle ? [] : [
           titleNormalized,
           titleWithNumbers,
-          titleNormalized.replace(/\s/g, '')
+          ...(noSpace.length >= 8 ? [noSpace] : [])
         ]),
         ...(entry.variations || []).map(v => normalizeText(v))
       ];

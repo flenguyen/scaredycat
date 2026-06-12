@@ -23,8 +23,10 @@ const PIXEL = await sharp({
 
 const PAGE = `<!DOCTYPE html><html><head><title>smoke</title></head><body>
   <h1>Test page</h1>
-  <!-- DEFINITE band: strong title match, should blur immediately -->
-  <img id="definite" src="/img/the-conjuring-poster.jpg" alt="The Conjuring official poster" width="300" height="400">
+  <!-- DEFINITE band: strong title match (>=85), blurs immediately on text
+       alone. NB: bare "The Conjuring" scores 83 = AMBIGUOUS by design — a
+       weak title over a provably innocuous image gets vetoed. -->
+  <img id="definite" src="/img/the-conjuring-poster.jpg" alt="The Conjuring: Last Rites official trailer poster" width="300" height="400">
   <!-- AMBIGUOUS band: keyword-only -> ML veto on a plain red pixel -->
   <img id="keyword" src="/img/creepy-haunted-nightmare.jpg" alt="creepy haunted nightmare scary" width="300" height="400">
   <!-- SAFE: no signal at all -->

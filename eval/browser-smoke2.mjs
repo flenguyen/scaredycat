@@ -8,10 +8,21 @@ import puppeteer from 'puppeteer-core';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
-const posterRes = await fetch('https://upload.wikimedia.org/wikipedia/en/d/d9/Hereditary.png',
-  { headers: { 'User-Agent': 'scaredycat-eval/1.0' } });
-const POSTER = Buffer.from(await posterRes.arrayBuffer());
-console.log(`fetched poster: ${(POSTER.length / 1e3).toFixed(0)}KB`);
+// Fixture cached locally: Wikipedia rate-limits repeated fetches, and a
+// failed fetch must fail loudly here, not surface as a bogus test result.
+import fs from 'node:fs';
+const FIXTURE = '/tmp/scaredycat-fixtures/hereditary.png';
+if (!fs.existsSync(FIXTURE)) {
+  fs.mkdirSync(path.dirname(FIXTURE), { recursive: true });
+  const posterRes = await fetch('https://upload.wikimedia.org/wikipedia/en/d/d9/Hereditary.png',
+    { headers: { 'User-Agent': 'scaredycat-eval/1.0 (github.com/flenguyen/scaredycat)' } });
+  if (!posterRes.ok) throw new Error(`fixture fetch failed: HTTP ${posterRes.status}`);
+  const buf = Buffer.from(await posterRes.arrayBuffer());
+  if (buf.length < 10000) throw new Error(`fixture suspiciously small: ${buf.length}B`);
+  fs.writeFileSync(FIXTURE, buf);
+}
+const POSTER = fs.readFileSync(FIXTURE);
+console.log(`poster fixture: ${(POSTER.length / 1e3).toFixed(0)}KB`);
 
 const PAGE = `<!DOCTYPE html><html><head><title>Best horror movies of 2026 ranked</title></head><body>
 <h1>Our favorites this year</h1>

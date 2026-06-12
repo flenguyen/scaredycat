@@ -12,6 +12,7 @@
   let settings = null;
   let isInitialized = false;
   const currentHostname = window.location.hostname;
+  const UNVERIFIED_BLOCK_SCORE = ScaredyCatMLBridge.UNVERIFIED_BLOCK_SCORE;
 
   // Trusted domains where we should never run
   const TRUSTED_DOMAINS = [
@@ -303,10 +304,13 @@
           classifyAndApply(element, result, url);
           return;
         }
-        // No pixels to classify (iframes) or ML unavailable:
-        // fall back to the legacy text-only decision.
+        // No pixels to classify (videos without posters, iframes) or ML
+        // unavailable: with nothing to confirm or veto, demand strong text
+        // evidence. A bare-threshold weak match ("Freaky Friday" ~ "Freaky",
+        // 62) is exactly the false-positive class this guards against;
+        // keyword-stacked horror text still clears 80.
         applyVerdict(element, result, {
-          isHorror: result.isHorrorTextOnly,
+          isHorror: result.isHorrorTextOnly && result.confidence >= UNVERIFIED_BLOCK_SCORE,
           confidence: result.confidence,
           reasons: result.reasons
         });
@@ -331,12 +335,14 @@
     ScaredyCatMLBridge.classifyUrl(url).then((imageScore) => {
       if (!element.isConnected) return;
       console.debug(`Scaredy Cat: image score=${imageScore === null ? 'n/a' : Math.round(imageScore)} ${url.slice(0, 80)}`);
-      const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore);
+      const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore, {
+        pageHasHorrorSignal: ScaredyCatDetector.hasPageHorrorSignal()
+      });
       applyVerdict(element, textResult, verdict);
     }).catch(() => {
       if (!element.isConnected) return;
       applyVerdict(element, textResult, {
-        isHorror: textResult.isHorrorTextOnly,
+        isHorror: textResult.isHorrorTextOnly && textResult.confidence >= UNVERIFIED_BLOCK_SCORE,
         confidence: textResult.confidence,
         reasons: textResult.reasons
       });

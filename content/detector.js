@@ -382,6 +382,9 @@ const ScaredyCatDetector = (function () {
     isAllowed,
     isLikelyLogo,
     isMediaSite: isMediaSiteCached,
+    // Page-level signal only (not the media-site shortcut): used to lower
+    // the image-alone block bar on pages that are themselves horror-themed.
+    hasPageHorrorSignal: () => pageHasHorrorSignal,
     debugElement
   };
 })();

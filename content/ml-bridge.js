@@ -12,10 +12,26 @@ const ScaredyCatMLBridge = (function () {
   // unavailable (model not bundled, offscreen failure), stop asking.
   let mlUnavailable = false;
 
-  // Image evidence at/above this score blocks on its own.
-  const IMAGE_BLOCK_SCORE = 70;
-  // Image evidence at/below this score vetoes a keyword-only text block.
-  const IMAGE_VETO_SCORE = 25;
+  // Image evidence at/above this score blocks on its own. Calibrated against
+  // a poster corpus (eval/corpus.json + Wikipedia poster sweep): scariest
+  // safe poster (Cape Fear) ~72, atmospheric horror (Hereditary) 74-81
+  // depending on backend (WebGPU and CPU disagree by several points). The
+  // two classes overlap, so the bar is contextual: high on neutral pages,
+  // lower when the page itself carries horror signal and weak evidence may
+  // reinforce. Dark action/fantasy posters (Mortal Kombat 34, White House
+  // Down 0) sit far below either bar.
+  const IMAGE_BLOCK_SCORE = 76;
+  const IMAGE_BLOCK_SCORE_HORROR_PAGE = 65;
+  // Image evidence at/below this score vetoes a non-definite text block.
+  // Calibrated: Devil Wears Prada 37 / Mortal Kombat 34 must veto their
+  // short-title collisions; moody horror posters (Nun 51, Insidious 59)
+  // must not veto weak-but-real text signals.
+  const IMAGE_VETO_SCORE = 40;
+  // Without image evidence (no pixels, fetch failed, ML unavailable), text
+  // alone must be this strong to block. Weak short-title collisions
+  // ("Freaky Friday" ~ "Freaky" = 62) stay below; keyword-stacked horror
+  // text clears it.
+  const UNVERIFIED_BLOCK_SCORE = 80;
 
   /**
    * URL whose pixels represent this element, or null if there are none we
@@ -59,13 +75,13 @@ const ScaredyCatMLBridge = (function () {
    * Combine the text layer's result with image evidence into a final verdict.
    * Returns { isHorror, confidence, reasons }.
    */
-  function combineVerdict(textResult, imageScore) {
+  function combineVerdict(textResult, imageScore, opts = {}) {
     const reasons = [...(textResult.reasons || [])];
 
     if (imageScore === null) {
-      // No image evidence: fall back to the legacy text-only decision.
+      // No image evidence: only strong text blocks unverified.
       return {
-        isHorror: textResult.isHorrorTextOnly,
+        isHorror: textResult.isHorrorTextOnly && textResult.confidence >= UNVERIFIED_BLOCK_SCORE,
         confidence: textResult.confidence,
         reasons
       };
@@ -73,7 +89,10 @@ const ScaredyCatMLBridge = (function () {
 
     reasons.push(`Image classifier: ${Math.round(imageScore)}%`);
 
-    if (imageScore >= IMAGE_BLOCK_SCORE) {
+    const blockScore = opts.pageHasHorrorSignal
+      ? IMAGE_BLOCK_SCORE_HORROR_PAGE
+      : IMAGE_BLOCK_SCORE;
+    if (imageScore >= blockScore) {
       return {
         isHorror: true,
         confidence: Math.max(textResult.confidence, Math.round(imageScore)),
@@ -82,10 +101,12 @@ const ScaredyCatMLBridge = (function () {
     }
 
     if (textResult.isHorrorTextOnly) {
-      // Keyword-driven text blocks can be vetoed by clean image evidence —
-      // this kills the LinkedIn/AI-hype false positives. Title matches are
-      // never vetoed: horror posters often look innocuous.
-      const vetoed = !textResult.titleMatched && imageScore <= IMAGE_VETO_SCORE;
+      // Non-definite text blocks can be vetoed by clean image evidence.
+      // This covers keyword stacks (LinkedIn/AI hype) AND weak short-title
+      // collisions: "Freaky Friday" matching "Freaky", "The Devil Wears
+      // Prada" matching "Devil". Only DEFINITE title matches (>=85, which
+      // blur before ML ever runs) are immune.
+      const vetoed = imageScore <= IMAGE_VETO_SCORE;
       return {
         isHorror: !vetoed,
         confidence: vetoed ? Math.round(imageScore) : textResult.confidence,
@@ -104,6 +125,7 @@ const ScaredyCatMLBridge = (function () {
     getClassifiableUrl,
     classifyUrl,
     combineVerdict,
+    UNVERIFIED_BLOCK_SCORE,
     isUnavailable: () => mlUnavailable
   };
 })();
