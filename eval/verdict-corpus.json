@@ -1,0 +1,39 @@
+{
+  "description": "End-to-end verdict fixtures for combined-eval.mjs: text scoring + page signal + image fusion. imageScore values are calibrated poster scores recorded in ml-bridge.js (Cape Fear 72, Hereditary 74, Nun 51, Insidious 59, Devil Wears Prada 37, Mortal Kombat 34, White House Down 0) plus synthetic stress points. page references the pages map; mediaSite mirrors isMediaSiteCached(). gate entries exit nonzero on mismatch. sensitivity defaults to medium.",
+  "pages": {
+    "neutral": { "titleUrl": "Example streaming site movies and shows", "h1": "Trending today" },
+    "rtHome": { "titleUrl": "Rotten Tomatoes: Movies | TV Shows | Movie Trailers | Reviews", "h1": "Movies in Theaters Scary Movie The Conjuring Last Rites" },
+    "horrorListicle": { "titleUrl": "Best horror movies of 2026 ranked", "h1": "Our favorites this year" },
+    "horrorTitlePage": { "titleUrl": "The Conjuring: Last Rites - Movie Reviews m the conjuring last rites", "h1": "The Conjuring: Last Rites" }
+  },
+  "entries": [
+    { "id": "v-freaky-null", "label": "safe", "context": "Freaky Friday trailer Lindsay Lohan Jamie Lee Curtis", "imageScore": null, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "substring collision, no image evidence" },
+    { "id": "v-freaky-50", "label": "safe", "context": "Freaky Friday trailer Lindsay Lohan Jamie Lee Curtis", "imageScore": 50, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "mid poster score: today's veto (<=40) misses this band" },
+    { "id": "v-freaky-66", "label": "safe", "context": "Freaky Friday trailer Lindsay Lohan Jamie Lee Curtis", "imageScore": 66, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "stress: dark-ish poster on poisoned homepage" },
+    { "id": "v-dwp-37", "label": "safe", "context": "The Devil Wears Prada Meryl Streep Anne Hathaway", "imageScore": 37, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "measured poster score" },
+    { "id": "v-dwp-null", "label": "safe", "context": "The Devil Wears Prada Meryl Streep Anne Hathaway", "imageScore": null, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "no image evidence" },
+    { "id": "v-dwp-50", "label": "safe", "context": "The Devil Wears Prada Meryl Streep Anne Hathaway", "imageScore": 50, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "mid poster score above veto line" },
+    { "id": "v-monstersinc-30", "label": "safe", "context": "Monsters Inc Pixar family animation", "imageScore": 30, "page": "neutral", "mediaSite": true, "expectBlock": false, "gate": true, "note": "'monsters' 8-char substring collision" },
+    { "id": "v-mk-34", "label": "safe", "context": "Mortal Kombat 2 trailer fatality gameplay", "imageScore": 34, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "measured poster score" },
+    { "id": "v-mk-66", "label": "safe", "context": "Mortal Kombat 2 trailer fatality gameplay", "imageScore": 66, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "image-only on poisoned homepage: 66 >= 65 blocks today" },
+    { "id": "v-furious-72", "label": "safe", "context": "The Furious official trailer", "imageScore": 72, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "Cape Fear-class dark poster, zero text signal" },
+    { "id": "v-motu-68", "label": "safe", "context": "Masters of the Universe official trailer He-Man", "imageScore": 68, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "image-only on poisoned homepage" },
+    { "id": "v-disclosure-70", "label": "safe", "context": "Disclosure Day Steven Spielberg Colman Domingo sci-fi", "imageScore": 70, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "image-only on poisoned homepage" },
+    { "id": "v-whd-0", "label": "safe", "context": "White House Down Channing Tatum action movie", "imageScore": 0, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "measured poster score" },
+    { "id": "v-capefear-72", "label": "safe", "context": "Cape Fear Robert De Niro thriller", "imageScore": 72, "page": "neutral", "mediaSite": true, "expectBlock": false, "gate": true, "note": "scariest known-safe poster, weak keyword text" },
+
+    { "id": "v-conjuring-def", "label": "horror", "context": "The Conjuring Last Rites official trailer new line cinema", "imageScore": null, "page": "neutral", "mediaSite": true, "expectBlock": true, "gate": true, "note": "definite title match blocks without ML" },
+    { "id": "v-devil-real-55", "label": "horror", "context": "Watch Devil (2010) official trailer HD", "imageScore": 55, "page": "neutral", "mediaSite": true, "expectBlock": true, "gate": true, "note": "real Devil: exact-bounded short title, image above veto" },
+    { "id": "v-freaky-real-55", "label": "horror", "context": "Freaky 2020 Vince Vaughn body swap slasher trailer", "imageScore": 55, "page": "neutral", "mediaSite": true, "expectBlock": true, "gate": true, "note": "real Freaky: year-bounded, must keep blocking" },
+    { "id": "v-nun-rtcard-51", "label": "horror", "context": "The Nun Valak demonic poster m the nun 2018", "imageScore": 51, "page": "neutral", "mediaSite": true, "expectBlock": true, "gate": true, "note": "measured Nun poster: slug occurrence keeps the match exact" },
+    { "id": "v-hereditary-still-74", "label": "horror", "context": "movie-still-04521.jpg gallery image", "imageScore": 74, "page": "horrorListicle", "mediaSite": false, "expectBlock": true, "gate": true, "note": "smoke2 case: neutral text, genuine horror page keeps 65 bar" },
+    { "id": "v-insidious-59-horrorpage", "label": "horror", "context": "insidious red door poster", "imageScore": 59, "page": "horrorTitlePage", "mediaSite": true, "expectBlock": true, "gate": true, "note": "measured poster; title text + image above veto" },
+    { "id": "v-kwstack-null", "label": "horror", "context": "Zombie apocalypse survival horror gameplay gore warning", "imageScore": null, "page": "neutral", "mediaSite": false, "expectBlock": true, "gate": true, "note": "keyword stack strong enough to block unverified" },
+    { "id": "v-smile-cast-80", "label": "horror", "context": "Smile Sosie Bacon trailer", "imageScore": 80, "page": "neutral", "mediaSite": true, "expectBlock": true, "gate": true, "note": "partial title + strong image evidence must still block" },
+
+    { "id": "v-smile-cast-49", "label": "horror", "context": "Smile Sosie Bacon trailer", "imageScore": 49, "page": "neutral", "mediaSite": true, "expectBlock": false, "gate": false, "note": "ACCEPTED TRADEOFF: partial title (cast-name neighbor) + mid image no longer blocks; realistic cards carry a slug occurrence (see v-nun-rtcard-51)" },
+    { "id": "v-devil-real-null", "label": "horror", "context": "Watch Devil (2010) official trailer HD", "imageScore": null, "page": "neutral", "mediaSite": true, "expectBlock": false, "gate": false, "note": "pre-existing behavior: 66 < UNVERIFIED_BLOCK_SCORE 80 without pixels" },
+    { "id": "v-singlekw-high", "label": "safe", "context": "zombie run 5k charity event zombie costumes", "imageScore": 50, "page": "neutral", "mediaSite": false, "sensitivity": "high", "expectBlock": false, "gate": true, "note": "repeated single keyword at high sensitivity must not block without positive image" },
+    { "id": "v-ai-scary-50", "label": "safe", "context": "This new AI agent is scary good at writing code", "imageScore": 50, "page": "neutral", "mediaSite": false, "sensitivity": "high", "expectBlock": false, "gate": true, "note": "colloquial 'scary' at high sensitivity" }
+  ]
+}

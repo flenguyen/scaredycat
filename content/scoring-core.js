@@ -31,17 +31,10 @@ const ScaredyCatScoring = (function () {
   const NEAR_MISS_WINDOW = 20;
 
   // Known non-horror phrasings that collide with horror titles/keywords.
-  // NOTE: with the ML veto in place, only structural patterns should be added
-  // here; content guesses belong to the image classifier now.
+  // NOTE: only structural/idiom patterns belong here. Title-shaped entries
+  // (LOTR etc.) live in the database's safeTitles list, which suppresses
+  // overlapping matches by span instead of short-circuiting the whole text.
   const NON_HORROR_PATTERNS = [
-    /lord of the rings/i,
-    /lotr/i,
-    /rings of power/i,
-    /fellowship of the ring/i,
-    /return of the king/i,
-    /two towers/i,
-    /the hobbit/i,
-    /middle earth/i,
     /no other (choice|way|option)/i,
     /each other/i,
     /one another/i,
@@ -92,6 +85,32 @@ const ScaredyCatScoring = (function () {
     'the', 'of', 'a', 'an', 'in', 'on', 'at', 'and', 'to', 'for',
     'part', 'chapter', 'vs', 'with', 'from', 'movie', 'film'
   ]);
+
+  // Tokens that commonly surround a title in extracted page context without
+  // changing what title it is ("Watch Devil (2010) official trailer HD").
+  // A short title variant flanked by anything OUTSIDE this set is probably a
+  // fragment of a longer, different title ("Freaky Friday", "Smile Sosie
+  // Bacon") and gets demoted to a 'partial' match. Day names are deliberately
+  // not filler. Digit-only and single-character tokens are treated as filler
+  // by isSuspiciousNeighbor.
+  const CONTEXT_FILLER_TOKENS = new Set([
+    'the', 'a', 'an', 'and', 'of', 'in', 'on', 'at', 'to', 'for', 'with',
+    'from', 'by', 'vs', 'part', 'chapter', 'movie', 'movies', 'film', 'films',
+    'tv', 'show', 'shows', 'series', 'season', 'episode', 'watch', 'watching',
+    'stream', 'streaming', 'see', 'official', 'trailer', 'teaser', 'clip',
+    'scene', 'poster', 'hd', '4k', 'uhd', 'review', 'reviews', 'rating',
+    'rated', 'rotten', 'tomatoes', 'tomatometer', 'audience', 'score', 'cast',
+    'crew', 'full', 'free', 'online', 'now', 'new', 'top', 'best', 'vol',
+    'volume', 'edition', 'anniversary', 'remastered', 'extended', 'original',
+    'img', 'image', 'photo', 'video', 'jpg', 'jpeg', 'png', 'webp', 'gif',
+    'ii', 'iii', 'iv', 'vi', 'vii', 'viii', 'ix'
+  ]);
+
+  function isSuspiciousNeighbor(token) {
+    if (!token || token.length <= 1) return false;
+    if (/^\d+$/.test(token)) return false;
+    return !CONTEXT_FILLER_TOKENS.has(token);
+  }
 
   function normalizeText(text) {
     if (!text) return '';
@@ -230,6 +249,22 @@ const ScaredyCatScoring = (function () {
       ? new RegExp(`(?=(${longAlternation.join('|')}))`, 'g')
       : null;
 
+    // Safe titles: known non-horror titles that lexically contain a horror
+    // variant or keyword ("The Devil Wears Prada" ⊃ "Devil"). Compiled into
+    // one word-bounded, longest-first alternation; matches become spans that
+    // suppress any strictly shorter horror match they cover.
+    const safeVariantSet = new Set();
+    for (const safeTitle of database.safeTitles || []) {
+      const safeNormalized = normalizeText(safeTitle);
+      if (!safeNormalized) continue;
+      safeVariantSet.add(safeNormalized);
+      safeVariantSet.add(normalizeNumbers(safeNormalized));
+    }
+    const safeAlternation = [...safeVariantSet].sort(byLengthDesc).map(escapeRegex);
+    const safeRegex = safeAlternation.length
+      ? new RegExp(`\\b(${safeAlternation.join('|')})\\b`, 'g')
+      : null;
+
     const keywordWeights = new Map();
     for (const { keyword, weight } of keywords) {
       keywordWeights.set(normalizeText(keyword), weight);
@@ -256,11 +291,36 @@ const ScaredyCatScoring = (function () {
       shortRegex, shortVariants,
       longRegex, longVariants,
       fuzzyVariants, fuzzyTokenIndex,
+      safeRegex,
       keywordRegex, keywordWeights, keywordPrefixes
     };
   }
 
-  function collectRegexMatches(regex, text, variantMap, best) {
+  const EMPTY_SPANS = [];
+
+  /** Spans of safe-title matches in `text`, or EMPTY_SPANS (the common case). */
+  function collectSafeSpans(safeRegex, text) {
+    if (!safeRegex || !text) return EMPTY_SPANS;
+    safeRegex.lastIndex = 0;
+    let spans = null;
+    let m;
+    while ((m = safeRegex.exec(text)) !== null) {
+      (spans || (spans = [])).push({ start: m.index, end: m.index + m[1].length });
+    }
+    return spans || EMPTY_SPANS;
+  }
+
+  /** Whether [start, end) is covered by a STRICTLY longer safe span. */
+  function isCoveredBySafeSpan(safeSpans, start, end) {
+    for (const span of safeSpans) {
+      if (span.start <= start && end <= span.end && (span.end - span.start) > (end - start)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function collectRegexMatches(regex, text, variantMap, best, safeSpans) {
     if (!regex) return best;
     regex.lastIndex = 0;
     let m;
@@ -270,9 +330,10 @@ const ScaredyCatScoring = (function () {
       if (!seen.has(variant)) {
         seen.add(variant);
         const score = variantScore(variant.length);
-        if (score > best.score) {
+        if (score > best.score &&
+            !isCoveredBySafeSpan(safeSpans, m.index, m.index + variant.length)) {
           const info = variantMap.get(variant);
-          best = { matched: true, score, title: info ? info.title : variant };
+          best = { matched: true, score, title: info ? info.title : variant, variant, text };
         }
       }
       // Lookahead matches are zero-width: advance manually.
@@ -281,17 +342,51 @@ const ScaredyCatScoring = (function () {
     return best;
   }
 
-  function checkTitleMatch(rawText, normalizedText, normalizedWithNumbers, compiled) {
+  // Variants below this length are common-word collision territory ("devil",
+  // "freaky", "smile"): whether they mean the horror title depends on what
+  // surrounds them.
+  const STRENGTH_CHECK_MAX_VARIANT = 8;
+
+  /**
+   * 'exact'   — some occurrence of the winning variant is bounded by string
+   *             edges, digits, or filler tokens: the variant IS the title
+   *             being named ("Watch Devil (2010) trailer").
+   * 'partial' — every occurrence has an adjacent meaningful word: the variant
+   *             is probably a fragment of a longer, different title
+   *             ("Freaky Friday", "Smile Sosie Bacon").
+   * Real title cards usually carry at least one cleanly bounded occurrence
+   * (alt text, URL slug), so checking all occurrences protects recall.
+   */
+  function computeMatchStrength(text, variant, safeSpans) {
+    const re = new RegExp(`\\b${escapeRegex(variant)}\\b`, 'g');
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const start = m.index;
+      const end = start + variant.length;
+      if (isCoveredBySafeSpan(safeSpans, start, end)) continue;
+      const prevToken = start === 0 ? '' :
+        text.slice(text.lastIndexOf(' ', start - 2) + 1, start - 1);
+      const nextSpace = text.indexOf(' ', end + 1);
+      const nextToken = end >= text.length ? '' :
+        text.slice(end + 1, nextSpace === -1 ? text.length : nextSpace);
+      if (!isSuspiciousNeighbor(prevToken) && !isSuspiciousNeighbor(nextToken)) {
+        return 'exact';
+      }
+    }
+    return 'partial';
+  }
+
+  function checkTitleMatch(rawText, normalizedText, normalizedWithNumbers, compiled, safeSpans, safeSpansNum) {
     if (isNonHorrorContent(rawText)) {
-      return { matched: false, score: 0, title: null, reason: 'Non-horror content detected' };
+      return { matched: false, score: 0, title: null, strength: null, reason: 'Non-horror content detected' };
     }
 
     let best = { matched: false, score: 0, title: null };
 
-    best = collectRegexMatches(compiled.shortRegex, normalizedText, compiled.shortVariants, best);
-    best = collectRegexMatches(compiled.shortRegex, normalizedWithNumbers, compiled.shortVariants, best);
-    best = collectRegexMatches(compiled.longRegex, normalizedText, compiled.longVariants, best);
-    best = collectRegexMatches(compiled.longRegex, normalizedWithNumbers, compiled.longVariants, best);
+    best = collectRegexMatches(compiled.shortRegex, normalizedText, compiled.shortVariants, best, safeSpans);
+    best = collectRegexMatches(compiled.shortRegex, normalizedWithNumbers, compiled.shortVariants, best, safeSpansNum);
+    best = collectRegexMatches(compiled.longRegex, normalizedText, compiled.longVariants, best, safeSpans);
+    best = collectRegexMatches(compiled.longRegex, normalizedWithNumbers, compiled.longVariants, best, safeSpansNum);
 
     // Fuzzy pass. similarity(variant, fullText) can only exceed 0.8 when the
     // lengths are within 25% of each other, so:
@@ -312,38 +407,56 @@ const ScaredyCatScoring = (function () {
         if (sim > 0.8) {
           const score = Math.floor(sim * 80);
           if (score > best.score) {
-            best = { matched: true, score, title };
+            // Fuzzy compares the variant against the WHOLE text, so the
+            // match is never a fragment of a longer title: always exact.
+            best = { matched: true, score, title, variant: null, text: normalizedText };
           }
         }
       }
     }
 
+    if (best.matched) {
+      best.strength = (best.variant && best.variant.length < STRENGTH_CHECK_MAX_VARIANT)
+        ? computeMatchStrength(
+            best.text, best.variant,
+            best.text === normalizedWithNumbers ? safeSpansNum : safeSpans
+          )
+        : 'exact';
+    } else {
+      best.strength = null;
+    }
     return best;
   }
 
-  function calculateKeywordScore(normalizedText, compiled) {
+  function calculateKeywordScore(normalizedText, compiled, safeSpans) {
     const regex = compiled.keywordRegex;
-    if (!regex) return { score: 0, keywords: [] };
+    if (!regex) return { score: 0, keywords: [], maxWeight: 0 };
 
     regex.lastIndex = 0;
     const counts = new Map();
     let m;
     while ((m = regex.exec(normalizedText)) !== null) {
-      counts.set(m[1], (counts.get(m[1]) || 0) + 1);
-      const prefixes = compiled.keywordPrefixes.get(m[1]);
-      if (prefixes) {
-        for (const p of prefixes) counts.set(p, (counts.get(p) || 0) + 1);
+      // A keyword inside a safe-title span isn't horror evidence
+      // ("devil" inside "The Devil Wears Prada").
+      if (!isCoveredBySafeSpan(safeSpans, m.index, m.index + m[1].length)) {
+        counts.set(m[1], (counts.get(m[1]) || 0) + 1);
+        const prefixes = compiled.keywordPrefixes.get(m[1]);
+        if (prefixes) {
+          for (const p of prefixes) counts.set(p, (counts.get(p) || 0) + 1);
+        }
       }
       // Lookahead matches are zero-width: advance manually.
       regex.lastIndex = m.index + 1;
     }
-    if (counts.size === 0) return { score: 0, keywords: [] };
+    if (counts.size === 0) return { score: 0, keywords: [], maxWeight: 0 };
 
     let totalScore = 0;
+    let maxWeight = 0;
     const matchedKeywords = [];
     for (const [keyword, count] of counts) {
       const weight = compiled.keywordWeights.get(keyword) || 0;
       totalScore += weight * Math.min(count, 3);
+      if (weight > maxWeight) maxWeight = weight;
       matchedKeywords.push(keyword);
     }
 
@@ -353,15 +466,17 @@ const ScaredyCatScoring = (function () {
       totalScore = Math.floor(totalScore * 1.15);
     }
 
-    return { score: Math.min(totalScore, 100), keywords: matchedKeywords };
+    return { score: Math.min(totalScore, 100), keywords: matchedKeywords, maxWeight };
   }
 
   /**
    * Analyze a text context. Pure and synchronous.
    *
    * opts: {
-   *   threshold: number,            // block threshold for current sensitivity
-   *   pageHasHorrorSignal: boolean, // page-level title/URL scored as horror-adjacent
+   *   threshold: number,          // block threshold for current sensitivity
+   *   scanQuietElements: boolean, // route zero-signal elements to the image
+   *                               // classifier (horror-signal pages and media
+   *                               // sites); does NOT imply the page is horror
    * }
    *
    * Returns {
@@ -381,6 +496,7 @@ const ScaredyCatScoring = (function () {
       return {
         confidence: 0, reasons: ['No text context'], context: '',
         titleScore: 0, titleMatched: false, matchedTitle: null, keywordScore: 0,
+        titleMatchStrength: null, requiresPositiveImage: false,
         band: BANDS.AMBIGUOUS,
         isHorrorTextOnly: false
       };
@@ -389,8 +505,13 @@ const ScaredyCatScoring = (function () {
     const normalizedText = normalizeText(trimmed);
     const normalizedWithNumbers = normalizeNumbers(normalizedText);
 
-    const titleMatch = checkTitleMatch(trimmed, normalizedText, normalizedWithNumbers, compiled);
-    const keywordResult = calculateKeywordScore(normalizedText, compiled);
+    const safeSpans = collectSafeSpans(compiled.safeRegex, normalizedText);
+    const safeSpansNum = normalizedWithNumbers === normalizedText
+      ? safeSpans
+      : collectSafeSpans(compiled.safeRegex, normalizedWithNumbers);
+
+    const titleMatch = checkTitleMatch(trimmed, normalizedText, normalizedWithNumbers, compiled, safeSpans, safeSpansNum);
+    const keywordResult = calculateKeywordScore(normalizedText, compiled, safeSpans);
 
     let finalScore = 0;
     const reasons = [];
@@ -412,19 +533,36 @@ const ScaredyCatScoring = (function () {
     }
 
     const isHorrorTextOnly = finalScore >= threshold;
+    const partialTitle = titleMatch.matched && titleMatch.strength === 'partial';
+    // A lone non-definitive keyword ("scary", "devil", "evil") is not enough
+    // text evidence to block at any sensitivity; multiple distinct keywords
+    // or a strong one (weight >= 28: "horror" tier) still qualify.
+    const strongKeywords = keywordResult.keywords.length >= 2 ||
+      keywordResult.maxWeight >= 28;
+    const keywordsBlockAlone = strongKeywords && keywordResult.score >= threshold;
 
     let band;
-    if (isHorrorTextOnly && titleMatch.matched && titleMatch.score >= DEFINITE_TITLE_SCORE) {
+    let requiresPositiveImage = false;
+    if (isHorrorTextOnly && titleMatch.matched && !partialTitle &&
+        titleMatch.score >= DEFINITE_TITLE_SCORE) {
       band = BANDS.DEFINITE_HORROR;
     } else if (isHorrorTextOnly) {
       // Keyword-driven or weak-title block: let the image classifier confirm
       // (this is the veto that kills the LinkedIn/AI false positives).
       band = BANDS.AMBIGUOUS;
+      // Fragment-of-another-title matches and weak keyword evidence flip the
+      // burden of proof: the image must positively confirm (>= block bar),
+      // not merely fail to veto. A partial title doesn't taint the verdict
+      // when strong keyword evidence clears the threshold by itself.
+      requiresPositiveImage = partialTitle
+        ? !keywordsBlockAlone
+        : !titleMatch.matched && !strongKeywords;
     } else if (finalScore >= Math.max(20, threshold - NEAR_MISS_WINDOW)) {
       // Near miss: text alone wouldn't block, image evidence could.
       band = BANDS.AMBIGUOUS;
-    } else if (finalScore === 0 && opts.pageHasHorrorSignal) {
-      // Quiet element on a horror-heavy page: worth a look at the pixels.
+    } else if (finalScore === 0 && opts.scanQuietElements) {
+      // Quiet element on a horror-signal page or media site: worth a look
+      // at the pixels.
       band = BANDS.AMBIGUOUS;
     } else {
       band = BANDS.LIKELY_SAFE;
@@ -440,6 +578,8 @@ const ScaredyCatScoring = (function () {
       // synopsis lookup) don't have to parse it back out of `reasons`.
       matchedTitle: titleMatch.matched ? titleMatch.title : null,
       keywordScore: keywordResult.score,
+      titleMatchStrength: titleMatch.matched ? titleMatch.strength : null,
+      requiresPositiveImage,
       band,
       isHorrorTextOnly
     };

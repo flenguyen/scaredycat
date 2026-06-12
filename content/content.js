@@ -12,7 +12,6 @@
   let settings = null;
   let isInitialized = false;
   const currentHostname = window.location.hostname;
-  const UNVERIFIED_BLOCK_SCORE = ScaredyCatMLBridge.UNVERIFIED_BLOCK_SCORE;
 
   // Trusted domains where we should never run
   const TRUSTED_DOMAINS = [
@@ -299,15 +298,10 @@
           return;
         }
         // No pixels to classify (videos without posters, iframes) or ML
-        // unavailable: with nothing to confirm or veto, demand strong text
-        // evidence. A bare-threshold weak match ("Freaky Friday" ~ "Freaky",
-        // 62) is exactly the false-positive class this guards against;
-        // keyword-stacked horror text still clears 80.
-        applyVerdict(element, result, {
-          isHorror: result.isHorrorTextOnly && result.confidence >= UNVERIFIED_BLOCK_SCORE,
-          confidence: result.confidence,
-          reasons: result.reasons
-        });
+        // unavailable: combineVerdict's null-image path demands strong text
+        // evidence (>= UNVERIFIED_BLOCK_SCORE) and refuses weak signals that
+        // need positive image confirmation ("Freaky Friday" ~ "Freaky").
+        applyVerdict(element, result, ScaredyCatMLBridge.combineVerdict(result, null));
         return;
       }
 
@@ -335,11 +329,7 @@
       applyVerdict(element, textResult, verdict);
     }).catch(() => {
       if (!element.isConnected) return;
-      applyVerdict(element, textResult, {
-        isHorror: textResult.isHorrorTextOnly && textResult.confidence >= UNVERIFIED_BLOCK_SCORE,
-        confidence: textResult.confidence,
-        reasons: textResult.reasons
-      });
+      applyVerdict(element, textResult, ScaredyCatMLBridge.combineVerdict(textResult, null));
     });
   }
 

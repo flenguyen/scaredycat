@@ -58,8 +58,13 @@ function generatedEntries() {
 const corpus = [...corpusFile.entries, ...generatedEntries()];
 
 function runNew(context, threshold) {
-  return Scoring.analyzeText(context, compiled, { threshold, pageHasHorrorSignal: false });
+  return Scoring.analyzeText(context, compiled, { threshold, scanQuietElements: false });
 }
+
+// The legacy parity check validated the original scoring refactor. Scoring
+// has since intentionally diverged (safeTitles suppression, partial-match
+// demotion), so it only runs with --parity for archaeology.
+const CHECK_PARITY = process.argv.includes('--parity');
 
 const compiled = Scoring.compile(database);
 
@@ -75,16 +80,17 @@ function evaluate() {
     const fpList = [], fnList = [], parityDiffs = [];
 
     for (const entry of corpus) {
-      const oldR = legacyAnalyzeText(entry.context, database, threshold);
       const newR = runNew(entry.context, threshold);
 
-      // Parity: the refactor must not change the text-only verdict.
-      if (oldR.isHorror !== newR.isHorrorTextOnly || oldR.confidence !== newR.confidence) {
-        parityDiffs.push({
-          id: entry.id, context: entry.context.slice(0, 60),
-          old: { isHorror: oldR.isHorror, conf: oldR.confidence },
-          new: { isHorror: newR.isHorrorTextOnly, conf: newR.confidence }
-        });
+      if (CHECK_PARITY) {
+        const oldR = legacyAnalyzeText(entry.context, database, threshold);
+        if (oldR.isHorror !== newR.isHorrorTextOnly || oldR.confidence !== newR.confidence) {
+          parityDiffs.push({
+            id: entry.id, context: entry.context.slice(0, 60),
+            old: { isHorror: oldR.isHorror, conf: oldR.confidence },
+            new: { isHorror: newR.isHorrorTextOnly, conf: newR.confidence }
+          });
+        }
       }
 
       const predicted = newR.isHorrorTextOnly;
@@ -115,11 +121,13 @@ function evaluate() {
     console.log(`── sensitivity=${name} (threshold ${threshold}) ──`);
     console.log(`   precision ${precision}%  recall ${recall}%  FP-rate ${fpRate}%   (tp=${tp} fp=${fp} tn=${tn} fn=${fn})`);
     console.log(`   neutral-text horror (image-layer territory): ${textMissCaught}/${textMissTotal} caught by text`);
-    if (parityDiffs.length) {
-      console.log(`   ⚠ PARITY DIFFS vs legacy: ${parityDiffs.length}`);
-      parityDiffs.slice(0, 10).forEach(d => console.log('     ', JSON.stringify(d)));
-    } else {
-      console.log('   parity vs legacy scorer: identical verdicts & confidences ✓');
+    if (CHECK_PARITY) {
+      if (parityDiffs.length) {
+        console.log(`   ⚠ PARITY DIFFS vs legacy: ${parityDiffs.length}`);
+        parityDiffs.slice(0, 10).forEach(d => console.log('     ', JSON.stringify(d)));
+      } else {
+        console.log('   parity vs legacy scorer: identical verdicts & confidences ✓');
+      }
     }
     if (fpList.length) {
       console.log('   false positives:');

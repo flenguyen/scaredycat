@@ -22,6 +22,11 @@ const ScaredyCatMLBridge = (function () {
   // Down 0) sit far below either bar.
   const IMAGE_BLOCK_SCORE = 76;
   const IMAGE_BLOCK_SCORE_HORROR_PAGE = 65;
+  // With ZERO text signal on a neutral page, pixels carry the full burden of
+  // proof, and 76 sits only 4 points above the scariest known-safe poster
+  // (Cape Fear 72). Dark non-horror posters (The Furious, Masters of the
+  // Universe class) live in the 65-75 band and must not block image-only.
+  const IMAGE_ONLY_BLOCK_SCORE = 80;
   // Image evidence at/below this score vetoes a non-definite text block.
   // Calibrated: Devil Wears Prada 37 / Mortal Kombat 34 must veto their
   // short-title collisions; moody horror posters (Nun 51, Insidious 59)
@@ -79,9 +84,13 @@ const ScaredyCatMLBridge = (function () {
     const reasons = [...(textResult.reasons || [])];
 
     if (imageScore === null) {
-      // No image evidence: only strong text blocks unverified.
+      // No image evidence: only strong text blocks unverified, and text that
+      // needs positive image confirmation (fragment title matches, weak
+      // keywords) can never block without it.
       return {
-        isHorror: textResult.isHorrorTextOnly && textResult.confidence >= UNVERIFIED_BLOCK_SCORE,
+        isHorror: textResult.isHorrorTextOnly &&
+          !textResult.requiresPositiveImage &&
+          textResult.confidence >= UNVERIFIED_BLOCK_SCORE,
         confidence: textResult.confidence,
         reasons
       };
@@ -91,7 +100,7 @@ const ScaredyCatMLBridge = (function () {
 
     const blockScore = opts.pageHasHorrorSignal
       ? IMAGE_BLOCK_SCORE_HORROR_PAGE
-      : IMAGE_BLOCK_SCORE;
+      : (textResult.confidence === 0 ? IMAGE_ONLY_BLOCK_SCORE : IMAGE_BLOCK_SCORE);
     if (imageScore >= blockScore) {
       return {
         isHorror: true,
@@ -101,11 +110,21 @@ const ScaredyCatMLBridge = (function () {
     }
 
     if (textResult.isHorrorTextOnly) {
+      if (textResult.requiresPositiveImage) {
+        // Fragment-of-another-title matches ("Freaky Friday" ~ "Freaky") and
+        // weak keyword evidence carry the burden of proof: the image had to
+        // CONFIRM (>= block bar, handled above) — merely "not vetoed" is not
+        // enough. Reaching here means it didn't confirm.
+        return {
+          isHorror: false,
+          confidence: textResult.confidence,
+          reasons: [...reasons, 'Weak text signal without image confirmation']
+        };
+      }
       // Non-definite text blocks can be vetoed by clean image evidence.
-      // This covers keyword stacks (LinkedIn/AI hype) AND weak short-title
-      // collisions: "Freaky Friday" matching "Freaky", "The Devil Wears
-      // Prada" matching "Devil". Only DEFINITE title matches (>=85, which
-      // blur before ML ever runs) are immune.
+      // This covers keyword stacks (LinkedIn/AI hype) and exact-bounded
+      // short-title matches with mid-range posters. Only DEFINITE title
+      // matches (>=85, which blur before ML ever runs) are immune.
       const vetoed = imageScore <= IMAGE_VETO_SCORE;
       return {
         isHorror: !vetoed,

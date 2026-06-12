@@ -110,23 +110,37 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Score the page itself (title + URL + first heading) once, so quiet
-   * elements on horror-heavy pages can be routed to the image classifier.
+   * Score the page itself once. Two signals with different stakes:
+   *
+   * - pageHasHorrorSignal lowers the image block bar for the WHOLE page
+   *   (ml-bridge), so it reads only document.title + URL — a homepage h1
+   *   carousel listing one horror title must not put every poster on the
+   *   page under the lowered bar — and requires a definite-strength title
+   *   match. A partial collision ("Freaky Friday" ~ "Freaky") page title
+   *   does not qualify; a dedicated horror title page still does.
+   *
+   * - pageMatchedTitle only feeds synopsis lookup for synthetic blocks, so
+   *   it keeps the wider title + URL + h1 context.
    */
   function computePageSignal() {
     try {
-      const h1 = document.querySelector('h1');
-      const pageContext = [
+      const titleUrlContext = [
         document.title || '',
-        window.location.pathname.replace(/[-_\/]/g, ' '),
+        window.location.pathname.replace(/[-_\/]/g, ' ')
+      ].join(' ');
+      const opts = { threshold: getThreshold(), scanQuietElements: false };
+      const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
+      pageHasHorrorSignal =
+        (pageResult.titleMatched && pageResult.titleScore >= 85) ||
+        pageResult.keywordScore >= 30;
+
+      const h1 = document.querySelector('h1');
+      const fullContext = [
+        titleUrlContext,
         h1 ? (h1.textContent || '').slice(0, 200) : ''
       ].join(' ');
-      const result = ScaredyCatScoring.analyzeText(pageContext, compiledIndex, {
-        threshold: getThreshold(),
-        pageHasHorrorSignal: false
-      });
-      pageHasHorrorSignal = result.titleMatched || result.keywordScore >= 30;
-      pageMatchedTitle = result.matchedTitle || null;
+      const fullResult = ScaredyCatScoring.analyzeText(fullContext, compiledIndex, opts);
+      pageMatchedTitle = fullResult.matchedTitle || pageResult.matchedTitle || null;
     } catch (e) {
       pageHasHorrorSignal = false;
       pageMatchedTitle = null;
@@ -278,7 +292,7 @@ const ScaredyCatDetector = (function () {
     if (result === undefined) {
       result = ScaredyCatScoring.analyzeText(context, compiledIndex, {
         threshold,
-        pageHasHorrorSignal: pageHasHorrorSignal || isMediaSiteCached()
+        scanQuietElements: pageHasHorrorSignal || isMediaSiteCached()
       });
       if (memo.size >= MEMO_LIMIT) {
         memo.delete(memo.keys().next().value); // drop oldest entry
@@ -298,6 +312,8 @@ const ScaredyCatDetector = (function () {
       isHorrorTextOnly: result.isHorrorTextOnly,
       titleMatched: result.titleMatched,
       matchedTitle: result.matchedTitle || null,
+      titleMatchStrength: result.titleMatchStrength || null,
+      requiresPositiveImage: !!result.requiresPositiveImage,
       titleScore: result.titleScore,
       keywordScore: result.keywordScore
     };
