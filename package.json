@@ -1,0 +1,18 @@
+{
+  "name": "scaredycat",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
+  "type": "module",
+  "scripts": {
+    "eval": "node eval/run-eval.mjs",
+    "eval:image": "node eval/run-eval.mjs --image",
+    "bench": "node eval/run-eval.mjs --bench",
+    "setup:model": "node eval/setup-model.mjs",
+    "precompute:prompts": "node eval/precompute-prompts.mjs",
+    "smoke": "node eval/browser-smoke.mjs && node eval/browser-smoke2.mjs"
+  },
+  "devDependencies": {
+    "@huggingface/transformers": "^3.0.0"
+  }
+}

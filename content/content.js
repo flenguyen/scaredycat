@@ -98,7 +98,20 @@
         sendResponse({ success: true });
         break;
       case 'GET_PAGE_STATS':
-        sendResponse({ success: true, blockedCount: ScaredyCatBlocker.getBlockedCount() });
+        sendResponse({
+          success: true,
+          blockedCount: ScaredyCatBlocker.getBlockedCount(),
+          blockedItems: ScaredyCatBlocker.getBlockedItems()
+        });
+        break;
+      case 'ALLOW_ITEM': {
+        const allowed = allowBlockedItem(message.id);
+        sendResponse({ success: allowed });
+        break;
+      }
+      case 'SHOW_ALL_PAGE':
+        ScaredyCatBlocker.revealAll();
+        sendResponse({ success: true });
         break;
       case 'RESCAN_PAGE':
         if (isEnabled) {
@@ -112,6 +125,37 @@
       default:
         sendResponse({ success: false });
     }
+    return true;
+  }
+
+  /**
+   * Allow a blocked item: persist it to the allowlist (by URL, and by matched
+   * title so allowing "The Exorcist" once allows it everywhere), then unblur.
+   */
+  function allowBlockedItem(id) {
+    const data = ScaredyCatBlocker.getBlockedData(id);
+    if (!data) return false;
+
+    const items = [];
+    const src = data.element?.src || data.element?.poster || '';
+    if (src) items.push(src);
+    const titleReason = (data.analysisResult?.reasons || [])
+      .find(r => r.startsWith('Matched title:'));
+    if (titleReason) {
+      const title = titleReason.match(/"(.+)"/)?.[1];
+      if (title) items.push(ScaredyCatDetector.normalizeText(title));
+    }
+
+    for (const item of items) {
+      chrome.runtime.sendMessage({ type: 'ADD_TO_ALLOWLIST', item }).catch(() => {});
+      if (settings && !settings.allowedItems?.includes(item)) {
+        settings.allowedItems = [...(settings.allowedItems || []), item];
+      }
+    }
+
+    const element = data.element;
+    ScaredyCatBlocker.removeBlur(element);
+    if (element) element.setAttribute('data-scaredycat-processed', 'allowed');
     return true;
   }
 
@@ -140,40 +184,133 @@
   }
 
   /**
-   * Scan elements for horror content
+   * Scan elements for horror content.
+   * Viewport-visible elements are scored immediately; offscreen ones are
+   * deferred to idle time so scanning never competes with page interaction.
    */
-  async function scanElements(elements) {
+  function scanElements(elements) {
     if (!isEnabled || !isInitialized || !settings || elements.length === 0) return;
 
+    const visible = [];
+    const deferred = [];
+    const viewportHeight = window.innerHeight;
     for (const element of elements) {
       if (element.hasAttribute('data-scaredycat-processed')) continue;
-      if (!ScaredyCatDetector.shouldAnalyzeElement(element)) {
-        element.setAttribute('data-scaredycat-processed', 'skip');
-        revealEarlyHidden(element);
-        continue;
-      }
+      const rect = element.getBoundingClientRect();
+      const inViewport = rect.bottom > -200 && rect.top < viewportHeight + 200;
+      (inViewport ? visible : deferred).push(element);
+    }
 
-      // Check allowlist
-      const src = element.src || element.poster || '';
-      if (settings.allowedItems?.length && ScaredyCatDetector.isAllowed(src, settings.allowedItems)) {
+    for (const element of visible) scanOne(element);
+
+    if (deferred.length) {
+      const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
+      idle(() => {
+        for (const element of deferred) scanOne(element);
+      });
+    }
+  }
+
+  /**
+   * Whether the analysis result matches an allowlisted title.
+   */
+  function isAllowedByTitle(result, allowedItems) {
+    if (!allowedItems?.length || !result.titleMatched) return false;
+    const titleReason = (result.reasons || []).find(r => r.startsWith('Matched title:'));
+    const title = titleReason?.match(/"(.+)"/)?.[1];
+    return !!title && allowedItems.includes(ScaredyCatDetector.normalizeText(title));
+  }
+
+  function scanOne(element) {
+    if (element.hasAttribute('data-scaredycat-processed')) return;
+    if (!ScaredyCatDetector.shouldAnalyzeElement(element)) {
+      element.setAttribute('data-scaredycat-processed', 'skip');
+      revealEarlyHidden(element);
+      return;
+    }
+
+    // Check allowlist by URL
+    const src = element.src || element.poster || '';
+    if (settings.allowedItems?.length && ScaredyCatDetector.isAllowed(src, settings.allowedItems)) {
+      element.setAttribute('data-scaredycat-processed', 'allowed');
+      revealEarlyHidden(element);
+      return;
+    }
+
+    try {
+      const result = ScaredyCatDetector.analyzeElement(element);
+      const BANDS = ScaredyCatDetector.BANDS;
+
+      // Allowlist by matched title ("allow The Exorcist everywhere")
+      if (isAllowedByTitle(result, settings.allowedItems)) {
         element.setAttribute('data-scaredycat-processed', 'allowed');
         revealEarlyHidden(element);
-        continue;
+        return;
       }
 
-      try {
-        const result = await ScaredyCatDetector.analyzeElement(element);
-        element.setAttribute('data-scaredycat-processed', result.isHorror ? 'blocked' : 'safe');
+      if (result.band === BANDS.DEFINITE_HORROR) {
+        // Strong title match: blur immediately, no ML latency.
+        element.setAttribute('data-scaredycat-processed', 'blocked');
+        ScaredyCatBlocker.createBlurOverlay(element, result);
+        return;
+      }
 
-        if (result.isHorror) {
-          ScaredyCatBlocker.createBlurOverlay(element, result);
-        } else {
-          revealEarlyHidden(element);
+      if (result.band === BANDS.AMBIGUOUS) {
+        const url = ScaredyCatMLBridge.getClassifiableUrl(element);
+        if (url && !ScaredyCatMLBridge.isUnavailable()) {
+          classifyAndApply(element, result, url);
+          return;
         }
-      } catch (e) {
-        element.setAttribute('data-scaredycat-processed', 'error');
-        revealEarlyHidden(element);
+        // No pixels to classify (iframes) or ML unavailable:
+        // fall back to the legacy text-only decision.
+        applyVerdict(element, result, {
+          isHorror: result.isHorrorTextOnly,
+          confidence: result.confidence,
+          reasons: result.reasons
+        });
+        return;
       }
+
+      element.setAttribute('data-scaredycat-processed', 'safe');
+      revealEarlyHidden(element);
+    } catch (e) {
+      element.setAttribute('data-scaredycat-processed', 'error');
+      revealEarlyHidden(element);
+    }
+  }
+
+  /**
+   * Ambiguous element: keep it pending (early-hidden elements STAY hidden)
+   * until the image classifier weighs in.
+   */
+  function classifyAndApply(element, textResult, url) {
+    element.setAttribute('data-scaredycat-processed', 'pending');
+
+    ScaredyCatMLBridge.classifyUrl(url).then((imageScore) => {
+      if (!element.isConnected) return;
+      const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore);
+      applyVerdict(element, textResult, verdict);
+    }).catch(() => {
+      if (!element.isConnected) return;
+      applyVerdict(element, textResult, {
+        isHorror: textResult.isHorrorTextOnly,
+        confidence: textResult.confidence,
+        reasons: textResult.reasons
+      });
+    });
+  }
+
+  function applyVerdict(element, textResult, verdict) {
+    element.setAttribute('data-scaredycat-processed', verdict.isHorror ? 'blocked' : 'safe');
+    if (verdict.isHorror) {
+      ScaredyCatBlocker.createBlurOverlay(element, {
+        ...textResult,
+        isHorror: true,
+        confidence: verdict.confidence,
+        reasons: verdict.reasons
+      });
+    } else {
+      revealEarlyHidden(element);
     }
   }
 

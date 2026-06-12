@@ -434,10 +434,30 @@ const ScaredyCatBlocker = (function () {
         revealed: data.revealed || false,
         confidence: data.analysisResult?.confidence || 0,
         reasons: data.analysisResult?.reasons || [],
-        context: data.analysisResult?.context || ''
+        context: data.analysisResult?.context || '',
+        src: data.element?.src || data.element?.poster || ''
       });
     });
     return items;
+  }
+
+  /**
+   * Get the tracked data for one blocked item (for allow/reveal by id)
+   */
+  function getBlockedData(id) {
+    return blockedElements.get(id) || null;
+  }
+
+  /**
+   * Reveal everything blocked on this page (session-only; the allowlist
+   * is untouched and a rescan will block again)
+   */
+  function revealAll() {
+    blockedElements.forEach((data) => {
+      if (!data.revealed && data.element && data.wrapper?.isConnected) {
+        revealElement(data.element, data.wrapper);
+      }
+    });
   }
 
   /**
@@ -548,10 +568,12 @@ const ScaredyCatBlocker = (function () {
   return {
     createBlurOverlay,
     revealElement,
+    revealAll,
     removeBlur,
     removeAllBlurs,
     getBlockedCount,
     getBlockedItems,
+    getBlockedData,
     isBlocked
   };
 })();

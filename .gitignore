@@ -1,0 +1,4 @@
+node_modules/
+.cache/
+# dev-only model file (prompt precompute); the extension ships only the vision tower
+models/Xenova/mobileclip_s0/onnx/text_model_quantized.onnx

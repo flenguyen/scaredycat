@@ -1,7 +1,13 @@
 /**
  * Scaredy Cat - Background Service Worker
- * Handles extension state, messaging, and storage management
+ * Handles extension state, messaging, storage management, and routing of
+ * image classification requests to the offscreen ML document.
  */
+
+importScripts('background/verdict-cache.js', 'background/ml-router.js');
+
+// Trim the verdict cache when the worker spins up.
+ScaredyCatVerdictCache.prune();
 
 // Default settings for new installations
 const DEFAULT_SETTINGS = {
@@ -37,6 +43,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * Handle incoming messages from content scripts or popup
  */
 async function handleMessage(message, sender) {
+  // Classification requests are hot-path: skip the settings read.
+  if (message.type === 'CLASSIFY_IMAGE') {
+    return ScaredyCatMLRouter.handleClassifyRequest(message.url);
+  }
+
   const { settings } = await chrome.storage.sync.get('settings');
 
   switch (message.type) {

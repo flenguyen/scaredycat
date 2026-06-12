@@ -1,51 +1,50 @@
 /**
  * Scaredy Cat - Horror Content Detector
- * Core detection logic for identifying horror-related content
+ * DOM-aware wrapper around the pure scoring core (scoring-core.js).
+ * The database is compiled once at load; per-element analysis is synchronous,
+ * memoized, and returns a detection band for the ML pipeline.
  */
 
 const ScaredyCatDetector = (function () {
-  // Horror database (loaded from JSON)
+  // Horror database (loaded from JSON) and its compiled indexes
   let horrorDatabase = null;
-  let isLoading = false;
+  let compiledIndex = null;
   let loadPromise = null;
-
-  // Sensitivity thresholds
-  const SENSITIVITY_THRESHOLDS = {
-    low: 80,
-    medium: 60,
-    high: 40
-  };
 
   // Current sensitivity setting
   let currentSensitivity = 'medium';
 
+  // Page-level horror signal, computed once per page after DB load.
+  let pageHasHorrorSignal = false;
+
+  // Memoized analysis results: normalized context -> raw scoring result.
+  // Card grids repeat near-identical contexts constantly.
+  const MEMO_LIMIT = 500;
+  const memo = new Map();
+
+  const BANDS = ScaredyCatScoring.BANDS;
+
   /**
-   * Load the horror database from JSON file
+   * Load the horror database from JSON file and compile it once.
    */
   async function loadDatabase() {
-    if (horrorDatabase) return horrorDatabase;
+    if (compiledIndex) return horrorDatabase;
     if (loadPromise) return loadPromise;
 
-    isLoading = true;
-    loadPromise = new Promise(async (resolve) => {
+    loadPromise = (async () => {
       try {
         const url = chrome.runtime.getURL('data/horror-database.json');
         const response = await fetch(url);
         horrorDatabase = await response.json();
         console.log(`Scaredy Cat: Loaded ${horrorDatabase.titles.length} horror titles`);
-        resolve(horrorDatabase);
       } catch (error) {
         console.error('Scaredy Cat: Failed to load horror database', error);
-        // Fallback minimal database
-        horrorDatabase = {
-          titles: [],
-          keywords: getDefaultKeywords()
-        };
-        resolve(horrorDatabase);
-      } finally {
-        isLoading = false;
+        horrorDatabase = { titles: [], keywords: getDefaultKeywords() };
       }
-    });
+      compiledIndex = ScaredyCatScoring.compile(horrorDatabase);
+      computePageSignal();
+      return horrorDatabase;
+    })();
 
     return loadPromise;
   }
@@ -89,252 +88,70 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Set the sensitivity level
+   * Score the page itself (title + URL + first heading) once, so quiet
+   * elements on horror-heavy pages can be routed to the image classifier.
    */
+  function computePageSignal() {
+    try {
+      const h1 = document.querySelector('h1');
+      const pageContext = [
+        document.title || '',
+        window.location.pathname.replace(/[-_\/]/g, ' '),
+        h1 ? (h1.textContent || '').slice(0, 200) : ''
+      ].join(' ');
+      const result = ScaredyCatScoring.analyzeText(pageContext, compiledIndex, {
+        threshold: getThreshold(),
+        pageHasHorrorSignal: false
+      });
+      pageHasHorrorSignal = result.titleMatched || result.keywordScore >= 30;
+    } catch (e) {
+      pageHasHorrorSignal = false;
+    }
+  }
+
   function setSensitivity(level) {
-    if (SENSITIVITY_THRESHOLDS[level]) {
+    if (ScaredyCatScoring.SENSITIVITY_THRESHOLDS[level] && level !== currentSensitivity) {
       currentSensitivity = level;
+      memo.clear(); // results embed threshold-dependent bands
     }
   }
 
-  /**
-   * Get the current threshold based on sensitivity
-   */
   function getThreshold() {
-    return SENSITIVITY_THRESHOLDS[currentSensitivity];
+    return ScaredyCatScoring.SENSITIVITY_THRESHOLDS[currentSensitivity];
   }
 
-  /**
-   * Normalize text for comparison
-   * Removes special characters, extra spaces, and converts to lowercase
-   */
-  function normalizeText(text) {
-    if (!text) return '';
-    return text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  /**
-   * Extract text numbers from strings (e.g., "twenty eight" -> "28")
-   */
-  function normalizeNumbers(text) {
-    const numberWords = {
-      'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
-      'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
-      'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
-      'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
-      'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
-      'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
-      'eighty': '80', 'ninety': '90', 'hundred': '100'
-    };
-
-    let result = text.toLowerCase();
-
-    // Handle compound numbers like "twenty eight"
-    result = result.replace(/twenty\s*(\w+)/g, (match, p1) => {
-      const ones = numberWords[p1];
-      if (ones && parseInt(ones) < 10) {
-        return (20 + parseInt(ones)).toString();
-      }
-      return match;
-    });
-
-    // Replace individual number words
-    for (const [word, num] of Object.entries(numberWords)) {
-      result = result.replace(new RegExp(`\\b${word}\\b`, 'g'), num);
-    }
-
-    return result;
-  }
-
-  /**
-   * Calculate Levenshtein distance for fuzzy matching
-   */
-  function levenshteinDistance(str1, str2) {
-    const m = str1.length;
-    const n = str2.length;
-
-    if (m === 0) return n;
-    if (n === 0) return m;
-
-    const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-
-    for (let i = 0; i <= m; i++) dp[i][0] = i;
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
-        dp[i][j] = Math.min(
-          dp[i - 1][j] + 1,
-          dp[i][j - 1] + 1,
-          dp[i - 1][j - 1] + cost
-        );
-      }
-    }
-
-    return dp[m][n];
-  }
-
-  /**
-   * Calculate similarity ratio between two strings
-   */
-  function similarity(str1, str2) {
-    const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
-
-    if (longer.length === 0) return 1.0;
-
-    const distance = levenshteinDistance(longer, shorter);
-    return (longer.length - distance) / longer.length;
-  }
-
-  // Known non-horror titles/franchises that contain words similar to horror titles
-  // These should never trigger a match
-  const NON_HORROR_PATTERNS = [
-    /lord of the rings/i,
-    /lotr/i,
-    /rings of power/i,
-    /fellowship of the ring/i,
-    /return of the king/i,
-    /two towers/i,
-    /the hobbit/i,
-    /middle earth/i,
-    /no other (choice|way|option)/i,
-    /each other/i,
-    /one another/i,
-    /wedding ring/i,
-    /engagement ring/i,
-    /boxing ring/i,
-    /ring finger/i,
-    /tree ring/i,
-    /phone ring/i,
-    /door bell/i,
-    /saturn.*ring/i,
-    /olympic ring/i,
-    /fall season/i,
-    /fall collection/i,
-    /fall fashion/i,
-    /fall preview/i,
-    /fall tv/i,
-    /free fall/i,
-    /niagara falls/i,
-    /autumn/i,
-    // Tech/business content patterns
-    /ai (employee|assistant|agent|tool|platform|startup|company)/i,
-    /\b(saas|startup|ceo|cfo|cto|founder)\b/i,
-    /taking.*(by storm|off|over)/i,
-    /getting started with/i,
-    /how (it|this) (actually )?works/i,
-    /worth (watching|reading|trying)/i,
-    /linkedin\.com/i,
-    /lnkd\.in/i
+  // Media-focused sites that need lower thresholds
+  const MEDIA_SITE_PATTERNS = [
+    /rottentomatoes\.com/i,
+    /imdb\.com/i,
+    /themoviedb\.org/i,
+    /letterboxd\.com/i,
+    /justwatch\.com/i,
+    /netflix\.com/i,
+    /hulu\.com/i,
+    /disneyplus\.com/i,
+    /hbomax\.com/i,
+    /max\.com/i,
+    /amazon\.com.*video/i,
+    /primevideo\.com/i,
+    /peacocktv\.com/i,
+    /paramountplus\.com/i,
+    /apple\.com.*tv/i,
+    /tv\.apple\.com/i,
+    /vudu\.com/i,
+    /fandango\.com/i,
+    /youtube\.com/i,
+    /shudder\.com/i,
+    /amc\.com/i,
+    /fxnetworks\.com/i
   ];
 
-  /**
-   * Check if text matches a known non-horror pattern
-   */
-  function isNonHorrorContent(text) {
-    return NON_HORROR_PATTERNS.some(pattern => pattern.test(text));
-  }
-
-  /**
-   * Check if text contains a horror title (exact or fuzzy match)
-   */
-  function checkTitleMatch(text, titles) {
-    const normalizedText = normalizeText(text);
-    const normalizedWithNumbers = normalizeNumbers(normalizedText);
-
-    // Skip if this matches known non-horror content
-    if (isNonHorrorContent(text)) {
-      return { matched: false, score: 0, title: null, reason: 'Non-horror content detected' };
+  let _isMediaSiteCached = null;
+  function isMediaSiteCached() {
+    if (_isMediaSiteCached === null) {
+      _isMediaSiteCached = MEDIA_SITE_PATTERNS.some(p => p.test(window.location.hostname));
     }
-
-    let bestMatch = { matched: false, score: 0, title: null };
-
-    for (const entry of titles) {
-      const titleNormalized = normalizeText(entry.title);
-      const titleWithNumbers = normalizeNumbers(titleNormalized);
-
-      // Check main title
-      // For very short titles (4 chars or less like "It", "Us", "Ma", "Old", "Run"),
-      // only match via variations to avoid false positives on common words
-      const skipMainTitle = titleNormalized.length <= 4;
-
-      const variations = [
-        ...(skipMainTitle ? [] : [titleNormalized, titleWithNumbers, titleNormalized.replace(/\s/g, '')]),
-        ...(entry.variations || []).map(v => normalizeText(v))
-      ];
-
-      for (const variant of variations) {
-        // For short titles (less than 8 chars), require word boundary match to avoid false positives
-        // e.g., "ring" shouldn't match "lord of the rings", "other" shouldn't match "no other choice"
-        const needsWordBoundary = variant.length < 8;
-
-        let matched = false;
-        if (needsWordBoundary) {
-          // Use word boundary regex for short titles
-          const wordBoundaryRegex = new RegExp(`\\b${variant}\\b`);
-          matched = wordBoundaryRegex.test(normalizedText) || wordBoundaryRegex.test(normalizedWithNumbers);
-        } else {
-          // Substring match for longer titles
-          matched = normalizedText.includes(variant) || normalizedWithNumbers.includes(variant);
-        }
-
-        if (matched) {
-          const score = Math.min(100, 50 + (variant.length * 2));
-          if (score > bestMatch.score) {
-            bestMatch = { matched: true, score, title: entry.title };
-          }
-        }
-
-        // Fuzzy match for longer titles (3+ words)
-        if (variant.split(' ').length >= 2 && variant.length >= 8) {
-          const sim = similarity(variant, normalizedText);
-          if (sim > 0.8) {
-            const score = Math.floor(sim * 80);
-            if (score > bestMatch.score) {
-              bestMatch = { matched: true, score, title: entry.title };
-            }
-          }
-        }
-      }
-    }
-
-    return bestMatch;
-  }
-
-  /**
-   * Calculate keyword-based horror score
-   */
-  function calculateKeywordScore(text, keywords) {
-    const normalizedText = normalizeText(text);
-    let totalScore = 0;
-    let matchedKeywords = [];
-
-    for (const { keyword, weight } of keywords) {
-      const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-      const matches = normalizedText.match(regex);
-      if (matches) {
-        totalScore += weight * Math.min(matches.length, 3); // Cap at 3x
-        matchedKeywords.push(keyword);
-      }
-    }
-
-    // Boost for multiple keyword matches
-    if (matchedKeywords.length >= 3) {
-      totalScore = Math.floor(totalScore * 1.3);
-    } else if (matchedKeywords.length >= 2) {
-      totalScore = Math.floor(totalScore * 1.15);
-    }
-
-    return {
-      score: Math.min(totalScore, 100),
-      keywords: matchedKeywords
-    };
+    return _isMediaSiteCached;
   }
 
   /**
@@ -392,53 +209,47 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Main analysis function - analyze an element for horror content
+   * Main analysis function. Synchronous once the database is loaded
+   * (callers `await` it, which passes plain values through unchanged).
    */
-  async function analyzeElement(element) {
-    // Ensure database is loaded
-    await loadDatabase();
+  function analyzeElement(element) {
+    if (!compiledIndex) {
+      // Database not loaded yet; treat as no-signal ambiguous.
+      return {
+        isHorror: false, confidence: 0, reasons: ['Database not loaded'],
+        band: BANDS.AMBIGUOUS, isHorrorTextOnly: false, threshold: getThreshold()
+      };
+    }
 
     const context = extractTextContext(element);
-
-    if (!context || context.trim().length < 3) {
-      return { isHorror: false, confidence: 0, reason: 'No text context' };
-    }
-
-    // Check against known horror titles
-    const titleMatch = checkTitleMatch(context, horrorDatabase.titles);
-
-    // Calculate keyword score
-    const keywordResult = calculateKeywordScore(context, horrorDatabase.keywords);
-
-    // Combine scores
-    let finalScore = 0;
-    let reasons = [];
-
-    if (titleMatch.matched) {
-      finalScore = Math.max(finalScore, titleMatch.score);
-      reasons.push(`Matched title: "${titleMatch.title}"`);
-    }
-
-    if (keywordResult.score > 0) {
-      // If we have both title and keyword matches, boost the score
-      if (titleMatch.matched) {
-        finalScore = Math.min(100, finalScore + Math.floor(keywordResult.score * 0.3));
-      } else {
-        finalScore = Math.max(finalScore, keywordResult.score);
-      }
-      if (keywordResult.keywords.length > 0) {
-        reasons.push(`Keywords: ${keywordResult.keywords.join(', ')}`);
-      }
-    }
-
     const threshold = getThreshold();
+    const memoKey = context;
+
+    let result = memo.get(memoKey);
+    if (result === undefined) {
+      result = ScaredyCatScoring.analyzeText(context, compiledIndex, {
+        threshold,
+        pageHasHorrorSignal: pageHasHorrorSignal || isMediaSiteCached()
+      });
+      if (memo.size >= MEMO_LIMIT) {
+        memo.delete(memo.keys().next().value); // drop oldest entry
+      }
+      memo.set(memoKey, result);
+    }
 
     return {
-      isHorror: finalScore >= threshold,
-      confidence: finalScore,
+      // `isHorror` keeps its legacy meaning (text-only verdict) so existing
+      // callers and the ML-unavailable fallback behave like before.
+      isHorror: result.isHorrorTextOnly,
+      confidence: result.confidence,
       threshold,
-      reasons,
-      context: context.slice(0, 200) // Return truncated context for debugging
+      reasons: result.reasons,
+      context: result.context,
+      band: result.band,
+      isHorrorTextOnly: result.isHorrorTextOnly,
+      titleMatched: result.titleMatched,
+      titleScore: result.titleScore,
+      keywordScore: result.keywordScore
     };
   }
 
@@ -490,66 +301,14 @@ const ScaredyCatDetector = (function () {
     /moz-extension:/i
   ];
 
-  /**
-   * Check if URL is from a trusted source
-   */
   function isTrustedSource(src) {
     if (!src) return false;
     return TRUSTED_SOURCES.some(pattern => pattern.test(src));
   }
 
-  /**
-   * Check if a URL looks like a logo or icon
-   */
   function isLikelyLogo(src) {
     if (!src) return false;
     return LOGO_WHITELIST_PATTERNS.some(pattern => pattern.test(src));
-  }
-
-  // Media-focused sites that need lower thresholds
-  const MEDIA_SITE_PATTERNS = [
-    /rottentomatoes\.com/i,
-    /imdb\.com/i,
-    /themoviedb\.org/i,
-    /letterboxd\.com/i,
-    /justwatch\.com/i,
-    /netflix\.com/i,
-    /hulu\.com/i,
-    /disneyplus\.com/i,
-    /hbomax\.com/i,
-    /max\.com/i,
-    /amazon\.com.*video/i,
-    /primevideo\.com/i,
-    /peacocktv\.com/i,
-    /paramountplus\.com/i,
-    /apple\.com.*tv/i,
-    /tv\.apple\.com/i,
-    /vudu\.com/i,
-    /fandango\.com/i,
-    /youtube\.com/i,
-    /shudder\.com/i,
-    /amc\.com/i,
-    /fxnetworks\.com/i
-  ];
-
-  /**
-   * Check if current site is a media-focused site (needs smaller thresholds)
-   */
-  function isMediaSite() {
-    const hostname = window.location.hostname;
-    return MEDIA_SITE_PATTERNS.some(pattern => pattern.test(hostname));
-  }
-
-  /**
-   * Check if an element should be analyzed (size check, visibility, etc.)
-   */
-// Cache media site check
-  let _isMediaSiteCached = null;
-  function isMediaSiteCached() {
-    if (_isMediaSiteCached === null) {
-      _isMediaSiteCached = isMediaSite();
-    }
-    return _isMediaSiteCached;
   }
 
   function shouldAnalyzeElement(element) {
@@ -574,9 +333,9 @@ const ScaredyCatDetector = (function () {
       return false;
     }
 
-    // Skip logos based on src
+    // Skip logos and trusted sources based on src
     const src = element.src || '';
-    if (src && /logo|icon|sprite|avatar|badge/i.test(src)) {
+    if (src && (/logo|icon|sprite|avatar|badge/i.test(src) || isTrustedSource(src))) {
       return false;
     }
 
@@ -596,32 +355,33 @@ const ScaredyCatDetector = (function () {
    */
   function debugElement(element) {
     const context = extractTextContext(element);
-    const titleMatch = checkTitleMatch(context, horrorDatabase?.titles || []);
-    const keywordResult = calculateKeywordScore(context, horrorDatabase?.keywords || []);
+    const result = analyzeElement(element);
 
     console.log('Scaredy Cat Debug:', {
       element: element.tagName,
       src: element.src || element.style?.backgroundImage || 'N/A',
       contextLength: context.length,
       context: context.slice(0, 500),
-      titleMatch,
-      keywordResult,
+      result,
       threshold: getThreshold()
     });
 
-    return { context, titleMatch, keywordResult };
+    return { context, result };
   }
 
   // Public API
   return {
+    BANDS,
     loadDatabase,
     analyzeElement,
     shouldAnalyzeElement,
     setSensitivity,
     getThreshold,
     extractTextContext,
-    normalizeText,
+    normalizeText: ScaredyCatScoring.normalizeText,
     isAllowed,
+    isLikelyLogo,
+    isMediaSite: isMediaSiteCached,
     debugElement
   };
 })();

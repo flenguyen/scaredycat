@@ -120,7 +120,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       const li = document.createElement('li');
       li.className = 'blocked-item';
 
-      const reason = item.reasons?.[0] || 'Horror content detected';
+      let reason = item.reasons?.[0];
+      if (!reason && item.src) {
+        try {
+          reason = decodeURIComponent(new URL(item.src).pathname.split('/').pop() || '');
+        } catch (e) { /* fall through */ }
+      }
+      reason = reason || 'Horror content detected';
       const confidence = item.confidence || 0;
 
       li.innerHTML = `
@@ -136,11 +142,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Add click handlers for allow buttons
     blockedList.querySelectorAll('.allow-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        // TODO: Implement allow functionality
-        console.log('Allow item:', btn.dataset.id);
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const response = await chrome.tabs.sendMessage(currentTab.id, {
+            type: 'ALLOW_ITEM',
+            id: btn.dataset.id
+          });
+          if (response?.success) {
+            await refreshPageStats();
+          } else {
+            btn.disabled = false;
+          }
+        } catch (e) {
+          btn.disabled = false;
+        }
       });
     });
+  }
+
+  /**
+   * Re-query the content script and re-render the blocked list
+   */
+  async function refreshPageStats() {
+    try {
+      const stats = await chrome.tabs.sendMessage(currentTab.id, { type: 'GET_PAGE_STATS' });
+      if (stats?.success) {
+        updatePageStats(stats);
+      }
+    } catch (e) {
+      // Content script might not be loaded
+    }
   }
 
   /**
@@ -259,10 +291,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
-    // Show all button
+    // Show all button: session-only reveal of everything blocked on the page
     showAllBtn.addEventListener('click', async () => {
-      // TODO: Implement show all functionality
-      console.log('Show all clicked');
+      try {
+        await chrome.tabs.sendMessage(currentTab.id, { type: 'SHOW_ALL_PAGE' });
+        await refreshPageStats();
+      } catch (e) {
+        // Content script might not be loaded
+      }
     });
   }
 

@@ -5,12 +5,17 @@ A Chrome extension that protects you from horror-related content while browsing.
 ## Features
 
 - **Automatic Detection**: Scans images and video thumbnails on any webpage
-- **Smart Detection**: Uses text analysis and a comprehensive horror database (500+ titles)
+- **Hybrid Detection**: Fast text analysis (600+ title database, 200+ keywords) routes
+  uncertain cases to an **on-device image classifier** (MobileCLIP via WebGPU/WASM) that
+  looks at the actual pixels — catching horror images with innocent text, and vetoing
+  false positives where scary *words* sit over harmless images
 - **Blur Protection**: Blurs detected horror content with a friendly overlay
-- **Easy Controls**: Toggle protection on/off, adjust sensitivity, manage allowlists
+- **Easy Controls**: Toggle protection on/off, adjust sensitivity, allow individual
+  items, reveal everything on a page
 - **Dynamic Content Support**: Works with infinite scroll and dynamically loaded content
 - **Site-Specific Settings**: Disable on specific websites
-- **Privacy-First**: All processing happens locally, no data sent to external servers
+- **Privacy-First**: All processing happens locally — the ML model is bundled with the
+  extension and no data is ever sent anywhere
 
 ## Installation
 
@@ -63,27 +68,42 @@ When horror content is detected, you'll see:
 
 ## How Detection Works
 
-Scaredy Cat uses a multi-layered approach to detect horror content:
+Every image/video gets a text score first (title + keyword matching, fuzzy matching for
+typos, all precompiled into fast indexes), which lands it in one of three bands:
 
-1. **Text Analysis**
-   - Image alt text and title attributes
-   - Surrounding text and headings
-   - URL and filename analysis
-   - Link text pointing to images
+1. **Definite horror** — strong title match → blurred instantly, no ML latency
+2. **Ambiguous** — keyword-only signal, weak/fuzzy title match, or no text at all on a
+   horror-adjacent page or media site → the image's pixels are scored by the bundled
+   MobileCLIP model in an offscreen document (WebGPU when available, WASM otherwise).
+   Image evidence ≥70 blocks on its own; ≤25 vetoes a keyword-only text block.
+   Title matches are never vetoed (horror posters often look innocuous).
+3. **Likely safe** — revealed, zero ML cost
 
-2. **Horror Database**
-   - 500+ known horror movies, TV shows, and games
-   - Includes variations and alternate spellings
-   - Updated regularly
+Image verdicts are cached in IndexedDB (keyed by URL + model version), so repeat
+browsing costs nothing. Text scoring is memoized per page. Viewport-visible elements
+are scanned first; offscreen elements wait for idle time.
 
-3. **Keyword Scoring**
-   - Horror-related keywords with weighted scores
-   - Multiple keyword matches increase confidence
-   - Context-aware scoring
+### Dev setup (image classifier + eval)
 
-4. **Fuzzy Matching**
-   - Handles typos and variations
-   - "28 Years Later" matches "28yearslater" or "Twenty Eight Years Later"
+Text detection works out of the box. The ML model files are fetched once:
+
+```bash
+npm install
+npm run setup:model          # MobileCLIP-S0 vision tower (~46MB) + vendor transformers.js
+npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.json
+npm run eval                 # text-layer quality metrics + legacy parity + benchmark
+```
+
+Detection tuning = editing the prompt list in `eval/precompute-prompts.mjs` and
+re-running `precompute:prompts` — no retraining, no code changes. End-to-end pipeline
+test (requires Chrome for Testing — regular Chrome no longer supports --load-extension):
+
+```bash
+npx @puppeteer/browsers install chrome@stable --path /tmp/sc-chrome
+npm install --no-save puppeteer-core
+SC_CHROME_BIN=<path-to-chrome-for-testing-binary> node eval/browser-smoke.mjs
+SC_CHROME_BIN=<path-to-chrome-for-testing-binary> node eval/browser-smoke2.mjs
+```
 
 ## Testing
 
@@ -131,27 +151,38 @@ The extension should NOT blur:
 
 ```
 scaredycat/
-├── manifest.json          # Extension configuration
-├── background.js          # Service worker for state management
+├── manifest.json              # Extension configuration (MV3)
+├── background.js              # Service worker: state, messaging, ML routing
+├── background/
+│   ├── ml-router.js          # Batches/dedupes classification requests, offscreen lifecycle
+│   └── verdict-cache.js      # IndexedDB cache of image scores (URL + model version)
 ├── content/
-│   ├── content.js        # Main content script
-│   ├── detector.js       # Horror detection logic
-│   ├── blocker.js        # Blur overlay UI
-│   └── observer.js       # MutationObserver for dynamic content
+│   ├── scoring-core.js       # Pure text-scoring engine (also used by the eval harness)
+│   ├── detector.js           # DOM context extraction, bands, memoization
+│   ├── ml-bridge.js          # Sends ambiguous images for classification, combines verdicts
+│   ├── blocker.js            # Blur overlay UI
+│   ├── observer.js           # MutationObserver for dynamic content
+│   ├── early-init.js         # Pre-hides hero content on media sites
+│   └── content.js            # Main coordinator
+├── offscreen/
+│   ├── offscreen.html        # Offscreen document hosting the classifier
+│   └── classifier.js         # MobileCLIP vision tower (WebGPU/WASM), prompt scoring
 ├── data/
-│   └── horror-database.json  # Horror titles and keywords
-├── popup/
-│   ├── popup.html        # Extension popup UI
-│   ├── popup.js          # Popup interactions
-│   └── popup.css         # Popup styling
-├── icons/
-│   ├── icon16.png        # Toolbar icon
-│   ├── icon48.png        # Extension page icon
-│   └── icon128.png       # Chrome Web Store icon
-├── styles/
-│   └── blur-overlay.css  # Content blur styles
-└── scripts/
-    └── generate-icons.js # Icon generation script
+│   ├── horror-database.json  # Horror titles and keywords
+│   └── prompt-embeddings.json # Precomputed zero-shot prompt embeddings
+├── models/                    # MobileCLIP-S0 ONNX files (npm run setup:model)
+├── vendor/                    # transformers.js + ONNX runtime WASM (npm run setup:model)
+├── eval/
+│   ├── run-eval.mjs          # Quality metrics, legacy parity, benchmark
+│   ├── corpus.json           # Labeled test contexts (curated + generated)
+│   ├── legacy-core.mjs       # Pre-refactor scorer (parity baseline — do not edit)
+│   ├── precompute-prompts.mjs # Prompt ensemble -> embeddings
+│   ├── image-classifier.mjs  # Node-side classifier (same files as the extension)
+│   ├── ab-test.mjs           # Score real images from Wikipedia (prompt tuning aid)
+│   └── browser-smoke*.mjs    # End-to-end tests in Chrome for Testing
+├── popup/                     # Extension popup UI
+├── icons/                     # Extension icons
+└── styles/                    # Blur overlay styles
 ```
 
 ## Development
