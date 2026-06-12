@@ -380,7 +380,7 @@ const ScaredyCatScoring = (function () {
       // a question for the image classifier.
       return {
         confidence: 0, reasons: ['No text context'], context: '',
-        titleScore: 0, titleMatched: false, keywordScore: 0,
+        titleScore: 0, titleMatched: false, matchedTitle: null, keywordScore: 0,
         band: BANDS.AMBIGUOUS,
         isHorrorTextOnly: false
       };
@@ -436,6 +436,9 @@ const ScaredyCatScoring = (function () {
       context: trimmed.slice(0, 200),
       titleScore: titleMatch.score,
       titleMatched: titleMatch.matched,
+      // Canonical database title, so downstream consumers (allowlist,
+      // synopsis lookup) don't have to parse it back out of `reasons`.
+      matchedTitle: titleMatch.matched ? titleMatch.title : null,
       keywordScore: keywordResult.score,
       band,
       isHorrorTextOnly

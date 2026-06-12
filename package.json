@@ -10,7 +10,9 @@
     "bench": "node eval/run-eval.mjs --bench",
     "setup:model": "node eval/setup-model.mjs",
     "precompute:prompts": "node eval/precompute-prompts.mjs",
-    "smoke": "node eval/browser-smoke.mjs && node eval/browser-smoke2.mjs"
+    "lint:synopses": "node eval/lint-synopses.mjs",
+    "smoke": "node eval/browser-smoke.mjs && node eval/browser-smoke2.mjs && node eval/browser-smoke-overlay.mjs",
+    "smoke:overlay": "node eval/browser-smoke-overlay.mjs"
   },
   "devDependencies": {
     "@huggingface/transformers": "^3.0.0"

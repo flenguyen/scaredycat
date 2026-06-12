@@ -16,6 +16,14 @@ const ScaredyCatDetector = (function () {
 
   // Page-level horror signal, computed once per page after DB load.
   let pageHasHorrorSignal = false;
+  // Canonical title matched by the page itself (title/URL/h1), if any.
+  // Synthetic blocks (videos covered on a horror page) inherit it for
+  // synopsis lookup since they carry no element-level context.
+  let pageMatchedTitle = null;
+
+  // Synopsis lookups, built once at DB load.
+  let titleInfo = null; // normalized title -> { title, year, synopsis }
+  let fallbackSynopses = [];
 
   // Memoized analysis results: normalized context -> raw scoring result.
   // Card grids repeat near-identical contexts constantly.
@@ -42,6 +50,20 @@ const ScaredyCatDetector = (function () {
         horrorDatabase = { titles: [], keywords: getDefaultKeywords() };
       }
       compiledIndex = ScaredyCatScoring.compile(horrorDatabase);
+      titleInfo = new Map();
+      for (const entry of horrorDatabase.titles || []) {
+        const key = ScaredyCatScoring.normalizeText(entry.title);
+        // Duplicate titles exist (Halloween 1978/2018): keep whichever
+        // entry has a synopsis, otherwise first-in wins.
+        const existing = titleInfo.get(key);
+        if (existing && (existing.synopsis || !entry.synopsis)) continue;
+        titleInfo.set(key, {
+          title: entry.title,
+          year: entry.year || null,
+          synopsis: entry.synopsis || null
+        });
+      }
+      fallbackSynopses = horrorDatabase.fallbackSynopses || [];
       computePageSignal();
       return horrorDatabase;
     })();
@@ -104,9 +126,36 @@ const ScaredyCatDetector = (function () {
         pageHasHorrorSignal: false
       });
       pageHasHorrorSignal = result.titleMatched || result.keywordScore >= 30;
+      pageMatchedTitle = result.matchedTitle || null;
     } catch (e) {
       pageHasHorrorSignal = false;
+      pageMatchedTitle = null;
     }
+  }
+
+  /**
+   * Look up bundled info (year, satirical synopsis) for a canonical title.
+   */
+  function getTitleInfo(canonicalTitle) {
+    if (!titleInfo || !canonicalTitle) return null;
+    return titleInfo.get(ScaredyCatScoring.normalizeText(canonicalTitle)) || null;
+  }
+
+  /**
+   * Deterministically pick a generic satirical synopsis for blocks without
+   * a recognized title. Same seed -> same line, so re-renders and SPA
+   * re-blocks don't reshuffle the joke.
+   */
+  function pickFallbackSynopsis(seed) {
+    if (!fallbackSynopses.length) return null;
+    // FNV-1a 32-bit
+    let hash = 0x811c9dc5;
+    const str = String(seed || '');
+    for (let i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193);
+    }
+    return fallbackSynopses[(hash >>> 0) % fallbackSynopses.length];
   }
 
   function setSensitivity(level) {
@@ -248,6 +297,7 @@ const ScaredyCatDetector = (function () {
       band: result.band,
       isHorrorTextOnly: result.isHorrorTextOnly,
       titleMatched: result.titleMatched,
+      matchedTitle: result.matchedTitle || null,
       titleScore: result.titleScore,
       keywordScore: result.keywordScore
     };
@@ -385,6 +435,9 @@ const ScaredyCatDetector = (function () {
     // Page-level signal only (not the media-site shortcut): used to lower
     // the image-alone block bar on pages that are themselves horror-themed.
     hasPageHorrorSignal: () => pageHasHorrorSignal,
+    getPageMatchedTitle: () => pageMatchedTitle,
+    getTitleInfo,
+    pickFallbackSynopsis,
     debugElement
   };
 })();

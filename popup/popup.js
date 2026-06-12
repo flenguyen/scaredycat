@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const li = document.createElement('li');
       li.className = 'blocked-item';
 
-      let reason = item.reasons?.[0];
+      let reason = item.title || item.reasons?.[0];
       if (!reason && item.src) {
         try {
           reason = decodeURIComponent(new URL(item.src).pathname.split('/').pop() || '');

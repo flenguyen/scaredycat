@@ -6,7 +6,10 @@
  * overlay scales fluidly with the blocked element via container-query
  * units (cqmin = 1% of the container's smaller dimension), clamped to
  * sane minimums/maximums. Discrete @container tiers only change LAYOUT:
- *  - <= 200px wide ......... button label shortens to "Show"
+ *  - >= 360x220 ............. full card: heading, subtext, both pills,
+ *                             confirm flow (gate mirrored in blocker.js)
+ *  - default (medium) ....... compact card: emoji + label + Show + "?" pill
+ *  - <= 200px wide .......... button label shortens to "Show"
  *  - <= 120px either axis ... card chrome drops away (emoji + pill only)
  *  - <= 130px tall .......... stack rotates horizontal for banners
  */
@@ -20,6 +23,13 @@
   background: #14141e; /* Solid dark background as fallback */
   container-type: size;
   container-name: scaredycat;
+
+  /* Design tokens (shared with the landing-page card design) */
+  --sc-cream: #f7f1e5;
+  --sc-ink: #2a2440;
+  --sc-ink-soft: rgba(42, 36, 64, 0.72);
+  --sc-serif: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  --sc-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
 /* Blurred element */
@@ -59,21 +69,30 @@ iframe.scaredycat-blurred {
   pointer-events: none;
 }
 
-/* Message container — all dimensions fluid in the container's scale */
+/* Message container — all dimensions fluid in the container's scale.
+   The overlay lives in the host page's DOM, so the card carries explicit
+   resets against page CSS bleeding in. */
 .scaredycat-message {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: clamp(4px, 3.5cqmin, 14px);
   padding: clamp(8px, 6cqmin, 26px) clamp(10px, 7cqmin, 32px);
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: clamp(8px, 4cqmin, 18px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: var(--sc-cream);
+  border-radius: clamp(8px, 5cqmin, 24px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
   max-width: 92%;
   max-height: 92%;
   box-sizing: border-box;
   text-align: center;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: var(--sc-sans);
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
+}
+
+.scaredycat-message * {
+  box-sizing: border-box;
 }
 
 /* Cat emoji icon */
@@ -82,44 +101,193 @@ iframe.scaredycat-blurred {
   line-height: 1;
 }
 
-/* Warning text */
+/* Full-card heading + subtext — hidden until the large tier */
+.scaredycat-heading {
+  display: none;
+  margin: 0;
+  font-size: clamp(15px, 6cqmin, 26px);
+  font-weight: 700;
+  color: var(--sc-ink);
+  line-height: 1.2;
+}
+
+.scaredycat-subtext {
+  display: none;
+  margin: 0;
+  font-size: clamp(11px, 4cqmin, 16px);
+  font-weight: 400;
+  color: var(--sc-ink-soft);
+  line-height: 1.4;
+}
+
+/* Compact label (medium tier and below) */
 .scaredycat-text {
   font-size: clamp(11px, 6.5cqmin, 19px);
   font-weight: 600;
-  color: #333;
+  color: var(--sc-ink);
   margin: 0;
   line-height: 1.25;
 }
 
-/* Show anyway button */
-.scaredycat-show-btn {
+/* Button row */
+.scaredycat-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: clamp(5px, 3cqmin, 12px);
+  max-width: 100%;
+}
+
+/* Pill buttons */
+.scaredycat-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: clamp(4px, 3cqmin, 12px) clamp(8px, 6cqmin, 26px);
   font-size: clamp(10px, 5.5cqmin, 16px);
-  font-weight: 500;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border: none;
-  border-radius: clamp(5px, 2.5cqmin, 10px);
+  font-weight: 600;
+  font-family: var(--sc-sans);
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-transform: none;
+  border-radius: 999px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
   max-width: 100%;
 }
 
-.scaredycat-show-btn:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+.scaredycat-btn--primary {
+  background: var(--sc-ink);
+  color: var(--sc-cream);
+  border: none;
 }
 
-.scaredycat-show-btn:active {
+.scaredycat-btn--primary:hover {
+  background: #3a3158;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(42, 36, 64, 0.35);
+}
+
+.scaredycat-btn--secondary {
+  background: transparent;
+  color: var(--sc-ink);
+  border: 1.5px solid rgba(42, 36, 64, 0.45);
+}
+
+.scaredycat-btn--secondary:hover {
+  border-color: var(--sc-ink);
+  transform: translateY(-1px);
+}
+
+.scaredycat-btn:active {
   transform: translateY(0);
+}
+
+.scaredycat-btn:focus-visible {
+  outline: 2px solid var(--sc-ink);
+  outline-offset: 2px;
+}
+
+/* "Just tell me what happens" — full pill only on the large tier */
+.scaredycat-spoil-btn {
+  display: none;
+}
+
+/* "?" synopsis affordance for medium tiles (poster grids) */
+.scaredycat-help-btn {
+  width: clamp(20px, 9cqmin, 30px);
+  height: clamp(20px, 9cqmin, 30px);
+  padding: 0;
+  border-radius: 50%;
+  font-size: clamp(11px, 5cqmin, 15px);
+  flex: none;
 }
 
 /* Two button labels; the short one swaps in on narrow tiles */
 .scaredycat-btn-short {
   display: none;
+}
+
+/* ---- Tier: large tiles (players, heroes) — the full landing-page card ---- */
+@container scaredycat ((min-width: 360px) and (min-height: 220px)) {
+  .scaredycat-heading,
+  .scaredycat-subtext {
+    display: block;
+  }
+
+  .scaredycat-spoil-btn {
+    display: inline-flex;
+  }
+
+  .scaredycat-text,
+  .scaredycat-help-btn {
+    display: none;
+  }
+
+  .scaredycat-message {
+    gap: clamp(8px, 3cqmin, 16px);
+    padding: clamp(18px, 6cqmin, 36px) clamp(22px, 7cqmin, 44px);
+  }
+
+  .scaredycat-icon {
+    font-size: clamp(34px, 12cqmin, 56px);
+  }
+
+  .scaredycat-actions {
+    margin-top: clamp(2px, 1.5cqmin, 8px);
+  }
+}
+
+/* ---- Synopsis state: roomier, left-aligned, serif editorial voice ---- */
+.scaredycat-overlay[data-state="synopsis"] .scaredycat-message {
+  align-items: flex-start;
+  text-align: left;
+  max-width: min(640px, 94cqw);
+  max-height: 92cqh;
+  overflow-y: auto;
+  gap: clamp(6px, 3cqmin, 14px);
+}
+
+.scaredycat-syn-title {
+  margin: 0;
+  font-family: var(--sc-serif);
+  font-weight: 700;
+  font-size: clamp(15px, 7cqmin, 28px);
+  line-height: 1.15;
+  color: var(--sc-ink);
+}
+
+.scaredycat-syn-meta {
+  font-weight: 400;
+  font-size: 0.78em;
+  color: var(--sc-ink-soft);
+}
+
+.scaredycat-syn-body {
+  margin: 0;
+  font-family: var(--sc-serif);
+  font-size: clamp(12px, 4.5cqmin, 17px);
+  line-height: 1.55;
+  color: var(--sc-ink);
+  max-width: 60ch;
+}
+
+.scaredycat-badge {
+  display: inline-block;
+  padding: clamp(3px, 2cqmin, 8px) clamp(8px, 4cqmin, 14px);
+  border-radius: 999px;
+  background: rgba(64, 145, 88, 0.14);
+  color: #2f6b45;
+  font-size: clamp(10px, 4cqmin, 14px);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.scaredycat-overlay[data-state="synopsis"] .scaredycat-actions {
+  justify-content: flex-start;
 }
 
 /* ---- Tier: narrow tiles — shorten the button label ---- */
@@ -142,13 +310,19 @@ iframe.scaredycat-blurred {
     gap: clamp(3px, 4cqmin, 8px);
   }
 
-  .scaredycat-text {
+  .scaredycat-text,
+  .scaredycat-help-btn {
     display: none;
   }
 
   .scaredycat-icon {
     font-size: clamp(16px, 26cqmin, 40px);
     filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+  }
+
+  .scaredycat-btn--secondary {
+    background: var(--sc-cream);
+    border-color: transparent;
   }
 
   .scaredycat-btn-full {
@@ -177,9 +351,15 @@ iframe.scaredycat-blurred {
     white-space: nowrap;
   }
 
-  .scaredycat-show-btn {
+  .scaredycat-btn {
     font-size: clamp(10px, 20cqh, 14px);
     padding: clamp(3px, 8cqh, 8px) clamp(8px, 4cqw, 16px);
+  }
+
+  .scaredycat-help-btn {
+    width: clamp(18px, 30cqh, 26px);
+    height: clamp(18px, 30cqh, 26px);
+    padding: 0;
   }
 }
 
@@ -226,17 +406,8 @@ iframe.scaredycat-blurred {
   animation: scaredycat-appear 0.3s ease-out;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .scaredycat-message {
-    background: rgba(30, 30, 30, 0.95);
-    color: #fff;
-  }
-
-  .scaredycat-text {
-    color: #eee;
-  }
-}
+/* The card stays cream in dark mode by design — the dark overlay backdrop
+   provides the contrast, and the cream card is the brand. */
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
@@ -248,8 +419,12 @@ iframe.scaredycat-blurred {
     border: 2px solid #000;
   }
 
-  .scaredycat-show-btn {
+  .scaredycat-btn--primary {
     border: 2px solid #fff;
+  }
+
+  .scaredycat-btn--secondary {
+    border: 2px solid var(--sc-ink);
   }
 }
 
@@ -265,6 +440,10 @@ iframe.scaredycat-blurred {
   }
 
   .scaredycat-overlay.scaredycat-fade-out {
+    transition: none;
+  }
+
+  .scaredycat-btn {
     transition: none;
   }
 }

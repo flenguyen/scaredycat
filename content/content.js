@@ -139,12 +139,8 @@
     const items = [];
     const src = data.element?.src || data.element?.poster || '';
     if (src) items.push(src);
-    const titleReason = (data.analysisResult?.reasons || [])
-      .find(r => r.startsWith('Matched title:'));
-    if (titleReason) {
-      const title = titleReason.match(/"(.+)"/)?.[1];
-      if (title) items.push(ScaredyCatDetector.normalizeText(title));
-    }
+    const title = data.analysisResult?.matchedTitle;
+    if (title) items.push(ScaredyCatDetector.normalizeText(title));
 
     for (const item of items) {
       chrome.runtime.sendMessage({ type: 'ADD_TO_ALLOWLIST', item }).catch(() => {});
@@ -254,10 +250,8 @@
    * Whether the analysis result matches an allowlisted title.
    */
   function isAllowedByTitle(result, allowedItems) {
-    if (!allowedItems?.length || !result.titleMatched) return false;
-    const titleReason = (result.reasons || []).find(r => r.startsWith('Matched title:'));
-    const title = titleReason?.match(/"(.+)"/)?.[1];
-    return !!title && allowedItems.includes(ScaredyCatDetector.normalizeText(title));
+    if (!allowedItems?.length || !result.matchedTitle) return false;
+    return allowedItems.includes(ScaredyCatDetector.normalizeText(result.matchedTitle));
   }
 
   function scanOne(element) {

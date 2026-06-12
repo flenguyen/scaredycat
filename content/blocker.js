@@ -38,6 +38,168 @@ const ScaredyCatBlocker = (function () {
     });
   }
 
+  // ---- Card rendering ----------------------------------------------------
+  // Card states: 'blocked' | 'confirm' | 'synopsis'. "Revealed" is the
+  // absence of an overlay (revealElement removes it).
+
+  // Must match the large @container tier in styles/blur-overlay.css.
+  const LARGE_TIER = { width: 360, height: 220 };
+
+  function isLargeTier(wrapper) {
+    return wrapper.offsetWidth >= LARGE_TIER.width &&
+      wrapper.offsetHeight >= LARGE_TIER.height;
+  }
+
+  function makeText(tag, className, text) {
+    const el = document.createElement(tag);
+    el.className = className;
+    el.textContent = text;
+    return el;
+  }
+
+  function makeButton(label, className, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.textContent = label;
+    btn.addEventListener('click', (e) => {
+      // Cards often sit inside <a> wrappers: never let clicks through.
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+
+  /**
+   * Resolve the satirical synopsis for a block, once, at block time.
+   * Stored on the entry so re-renders never reshuffle the joke.
+   */
+  function resolveSynopsis(element, analysisResult) {
+    const detector = window.ScaredyCatDetector;
+    if (!detector || !detector.getTitleInfo) return null;
+    // Synthetic blocks (videos covered on a horror page) carry no element
+    // context; the page-level matched title is usually the right movie.
+    const title = analysisResult?.matchedTitle ||
+      (detector.getPageMatchedTitle && detector.getPageMatchedTitle());
+    if (title) {
+      const info = detector.getTitleInfo(title);
+      if (info && info.synopsis) {
+        return { kind: 'title', title: info.title, year: info.year, text: info.synopsis };
+      }
+    }
+    const seed = analysisResult?.context || element.src || element.poster || '';
+    const text = detector.pickFallbackSynopsis && detector.pickFallbackSynopsis(seed);
+    return text ? { kind: 'generic', text } : null;
+  }
+
+  /**
+   * Build the card for the current state. The blocked card renders both the
+   * full (heading/subtext) and compact ("Content hidden") elements; container
+   * queries in blur-overlay.css decide which set is visible per size tier.
+   */
+  function renderCard(data) {
+    const { overlay } = data;
+    overlay.dataset.state = data.cardState;
+    // On the overlay (which persists across state swaps), not the message
+    // (which is rebuilt): live regions only announce changes within them.
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.textContent = '';
+
+    const message = document.createElement('div');
+    message.className = 'scaredycat-message';
+
+    if (data.cardState === 'confirm') {
+      message.appendChild(makeText('span', 'scaredycat-icon', '🙀'));
+      message.appendChild(makeText('p', 'scaredycat-heading', 'You sure? Be honest.'));
+      message.appendChild(makeText('p', 'scaredycat-subtext', 'Statistically, you are not.'));
+      const actions = document.createElement('div');
+      actions.className = 'scaredycat-actions';
+      actions.appendChild(makeButton('Yes. Show it.', 'scaredycat-btn scaredycat-btn--secondary', () => {
+        revealElement(data.element, data.wrapper);
+      }));
+      actions.appendChild(makeButton('No. Tell me what happens.', 'scaredycat-btn scaredycat-btn--primary', () => {
+        setCardState(data, 'synopsis');
+      }));
+      message.appendChild(actions);
+    } else if (data.cardState === 'synopsis' && data.synopsisInfo) {
+      const info = data.synopsisInfo;
+      message.classList.add('scaredycat-message--synopsis');
+      const title = makeText('p', 'scaredycat-syn-title', info.kind === 'title' ? info.title : "Here's the gist.");
+      if (info.kind === 'title' && info.year) {
+        const noun = data.element.tagName === 'IMG' ? 'poster' : 'trailer';
+        title.appendChild(makeText('span', 'scaredycat-syn-meta', ` (${info.year}, ${noun})`));
+      }
+      message.appendChild(title);
+      message.appendChild(makeText('p', 'scaredycat-syn-body', info.text));
+      const actions = document.createElement('div');
+      actions.className = 'scaredycat-actions';
+      actions.appendChild(makeText('span', 'scaredycat-badge', '✅ Spoiled safely'));
+      actions.appendChild(makeButton('← Back to the blur', 'scaredycat-btn scaredycat-btn--primary', () => {
+        setCardState(data, 'blocked');
+      }));
+      message.appendChild(actions);
+    } else {
+      message.appendChild(makeText('span', 'scaredycat-icon', '🙀'));
+      message.appendChild(makeText('p', 'scaredycat-heading', 'Horror content detected'));
+      message.appendChild(makeText('p', 'scaredycat-subtext', "Blurred before it reached your eyes. You're welcome."));
+      message.appendChild(makeText('span', 'scaredycat-text', 'Content hidden'));
+
+      const actions = document.createElement('div');
+      actions.className = 'scaredycat-actions';
+
+      const showBtn = makeButton('', 'scaredycat-btn scaredycat-btn--secondary scaredycat-show-btn', () => {
+        // The guilt-trip confirmation only fits (and only lands) on large
+        // tiles, and only the first time around.
+        if (data.synopsisInfo && !data.everRevealed && isLargeTier(data.wrapper)) {
+          setCardState(data, 'confirm');
+        } else {
+          revealElement(data.element, data.wrapper);
+        }
+      });
+      showBtn.title = 'Show anyway';
+      showBtn.appendChild(makeText('span', 'scaredycat-btn-full', 'Show anyway'));
+      showBtn.appendChild(makeText('span', 'scaredycat-btn-short', 'Show'));
+      actions.appendChild(showBtn);
+
+      if (data.synopsisInfo) {
+        actions.appendChild(makeButton('Just tell me what happens', 'scaredycat-btn scaredycat-btn--primary scaredycat-spoil-btn', () => {
+          setCardState(data, 'synopsis');
+        }));
+        const helpBtn = makeButton('?', 'scaredycat-btn scaredycat-btn--primary scaredycat-help-btn', () => {
+          setCardState(data, 'synopsis');
+        });
+        helpBtn.setAttribute('aria-label', 'Just tell me what happens');
+        helpBtn.title = 'Just tell me what happens';
+        actions.appendChild(helpBtn);
+      }
+      message.appendChild(actions);
+    }
+
+    overlay.appendChild(message);
+  }
+
+  /** Transition the card and move focus into the new state. */
+  function setCardState(data, state) {
+    if (!data.wrapper || !data.wrapper.isConnected) return;
+    data.cardState = state;
+    renderCard(data);
+    // Synopsis: focus "Back to the blur" so escape stays one keypress away.
+    const focusTarget = state === 'synopsis'
+      ? data.overlay.querySelector('.scaredycat-btn--primary')
+      : data.overlay.querySelector('.scaredycat-btn');
+    if (focusTarget) focusTarget.focus({ preventScroll: true });
+  }
+
+  function attachEscapeHandler(overlay, data) {
+    overlay.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && data.cardState !== 'blocked') {
+        e.stopPropagation();
+        setCardState(data, 'blocked');
+      }
+    });
+  }
+
   /**
    * Create a blur overlay for an element
    */
@@ -73,31 +235,28 @@ const ScaredyCatBlocker = (function () {
     wrapper.style.height = element.offsetHeight + 'px';
     wrapper.style.display = originalDisplay === 'inline' ? 'inline-block' : originalDisplay;
 
-    // Create the blur overlay
+    // Create the blur overlay and its tracking entry; the card itself is
+    // built by the shared renderer (same path as re-hiding).
     const overlay = document.createElement('div');
     overlay.className = 'scaredycat-overlay';
 
-    // Create the message container
-    const message = document.createElement('div');
-    message.className = 'scaredycat-message';
-    message.innerHTML = `
-      <span class="scaredycat-icon">🙀</span>
-      <span class="scaredycat-text">Content hidden</span>
-      <button class="scaredycat-show-btn" type="button" title="Show anyway">
-        <span class="scaredycat-btn-full">Show anyway</span>
-        <span class="scaredycat-btn-short">Show</span>
-      </button>
-    `;
+    const data = {
+      element,
+      wrapper,
+      overlay,
+      analysisResult,
+      cardState: 'blocked',
+      synopsisInfo: resolveSynopsis(element, analysisResult),
+      everRevealed: false,
+      timestamp: Date.now(),
+      wasPlaying: false,
+      wasMuted: false,
+      originalSrc: null,
+      stoppedIframes: []
+    };
 
-    // Add click handler to show button
-    const showBtn = message.querySelector('.scaredycat-show-btn');
-    showBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      revealElement(element, wrapper);
-    });
-
-    overlay.appendChild(message);
+    attachEscapeHandler(overlay, data);
+    renderCard(data);
 
     // Insert wrapper before element
     element.parentNode.insertBefore(wrapper, element);
@@ -110,21 +269,16 @@ const ScaredyCatBlocker = (function () {
     element.classList.add('scaredycat-blurred');
 
     // Handle video elements - pause and mute them
-    let wasPlaying = false;
-    let wasMuted = false;
-    let originalSrc = null;
-    let stoppedIframes = [];
-
     if (element.tagName === 'VIDEO') {
-      wasPlaying = isVideoPlaying(element);
-      wasMuted = element.muted;
+      data.wasPlaying = isVideoPlaying(element);
+      data.wasMuted = element.muted;
       pauseVideo(element);
     }
 
     // Handle iframe elements - blank the src to stop playback
     if (element.tagName === 'IFRAME') {
-      originalSrc = element.src;
-      element.setAttribute('data-scaredycat-original-src', originalSrc);
+      data.originalSrc = element.src;
+      element.setAttribute('data-scaredycat-original-src', data.originalSrc);
       element.src = 'about:blank';
     }
 
@@ -167,7 +321,7 @@ const ScaredyCatBlocker = (function () {
           const iframeSrc = iframe.src;
           iframe.setAttribute('data-scaredycat-original-src', iframeSrc);
           iframe.src = 'about:blank';
-          stoppedIframes.push(iframe);
+          data.stoppedIframes.push(iframe);
         }
       });
     }
@@ -184,16 +338,7 @@ const ScaredyCatBlocker = (function () {
     // Store reference for stats and management
     const id = generateId();
     wrapper.setAttribute('data-scaredycat-id', id);
-    blockedElements.set(id, {
-      element,
-      wrapper,
-      analysisResult,
-      timestamp: Date.now(),
-      wasPlaying,
-      wasMuted,
-      originalSrc,
-      stoppedIframes
-    });
+    blockedElements.set(id, data);
 
     // Notify background about blocked content
     try {
@@ -314,6 +459,8 @@ const ScaredyCatBlocker = (function () {
     // Update stored data
     if (data) {
       data.revealed = true;
+      // Once they've seen it, re-confirming on every re-reveal is nagging.
+      data.everRevealed = true;
     }
   }
 
@@ -369,23 +516,21 @@ const ScaredyCatBlocker = (function () {
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => pauseVideo(v));
 
-    // Re-create overlay
+    // Re-create overlay through the shared renderer
     const overlay = document.createElement('div');
     overlay.className = 'scaredycat-overlay';
-    overlay.innerHTML = `
-      <div class="scaredycat-message">
-        <span class="scaredycat-icon">🙀</span>
-        <span class="scaredycat-text">Content hidden</span>
-        <button class="scaredycat-show-btn" type="button">Show anyway</button>
-      </div>
-    `;
 
-    const showBtn = overlay.querySelector('.scaredycat-show-btn');
-    showBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      revealElement(element, wrapper);
-    });
+    const data = blockedElements.get(id) || {
+      element,
+      wrapper,
+      analysisResult: null,
+      synopsisInfo: resolveSynopsis(element, null),
+      everRevealed: true
+    };
+    data.overlay = overlay;
+    data.cardState = 'blocked';
+    attachEscapeHandler(overlay, data);
+    renderCard(data);
 
     wrapper.appendChild(overlay);
 
@@ -472,6 +617,7 @@ const ScaredyCatBlocker = (function () {
         confidence: data.analysisResult?.confidence || 0,
         reasons: data.analysisResult?.reasons || [],
         context: data.analysisResult?.context || '',
+        title: data.analysisResult?.matchedTitle || null,
         src: data.element?.src || data.element?.poster || ''
       });
     });
