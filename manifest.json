@@ -55,7 +55,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["data/horror-database.json"],
+      "resources": ["data/horror-database.json", "styles/blur-overlay.css"],
       "matches": ["<all_urls>"]
     }
   ]

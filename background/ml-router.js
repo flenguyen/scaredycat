@@ -31,13 +31,44 @@ const ScaredyCatMLRouter = (function () {
     return contexts.length > 0;
   }
 
-  async function ensureOffscreen() {
-    if (await hasOffscreenDocument()) return;
-    await chrome.offscreen.createDocument({
-      url: OFFSCREEN_URL,
-      reasons: ['WORKERS'],
-      justification: 'Runs the local on-device image classifier (WASM/WebGPU) for horror content detection. No data leaves the device.'
-    });
+  // Serialized: concurrent flushes must not race createDocument ("Only a
+  // single offscreen document may be created" otherwise kills one batch).
+  let offscreenReady = null;
+  function ensureOffscreen() {
+    if (!offscreenReady) {
+      offscreenReady = (async () => {
+        if (await hasOffscreenDocument()) return;
+        try {
+          await chrome.offscreen.createDocument({
+            url: OFFSCREEN_URL,
+            reasons: ['WORKERS'],
+            justification: 'Runs the local on-device image classifier (WASM/WebGPU) for horror content detection. No data leaves the device.'
+          });
+        } catch (e) {
+          if (!String(e?.message || e).includes('single offscreen')) throw e;
+        }
+      })().catch(e => {
+        offscreenReady = null; // allow retry on the next batch
+        throw e;
+      });
+    }
+    return offscreenReady;
+  }
+
+  /**
+   * Send a batch to the offscreen document, retrying briefly if its message
+   * listener isn't registered yet (module-load race on first creation).
+   */
+  async function sendBatch(message) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await chrome.runtime.sendMessage(message);
+      } catch (e) {
+        const transient = String(e?.message || e).includes('Receiving end does not exist');
+        if (!transient || attempt >= 4) throw e;
+        await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+      }
+    }
   }
 
   function scheduleTeardown() {
@@ -48,6 +79,7 @@ const ScaredyCatMLRouter = (function () {
       try {
         if (await hasOffscreenDocument()) await chrome.offscreen.closeDocument();
       } catch (e) { /* already gone */ }
+      offscreenReady = null;
     }, IDLE_TEARDOWN_MS);
   }
 
@@ -92,7 +124,7 @@ const ScaredyCatMLRouter = (function () {
     try {
       await ensureOffscreen();
       scheduleTeardown();
-      const response = await chrome.runtime.sendMessage({
+      const response = await sendBatch({
         target: 'sc-offscreen',
         type: 'CLASSIFY_BATCH',
         urls: batch.map(item => item.url)

@@ -8,6 +8,36 @@ const ScaredyCatBlocker = (function () {
   let blockedElements = new Map();
   let revealedElements = new Set();
 
+  // Page stylesheets don't cross shadow boundaries: when we blur an element
+  // living inside a shadow root (e.g. Rotten Tomatoes' rt-img components),
+  // the overlay styles must be adopted into that root explicitly.
+  const styledShadowRoots = new WeakSet();
+  let overlayCssPromise = null;
+
+  function ensureStylesFor(element) {
+    const root = element.getRootNode();
+    if (!(root instanceof ShadowRoot) || styledShadowRoots.has(root)) return;
+    styledShadowRoots.add(root);
+    if (!overlayCssPromise) {
+      overlayCssPromise = fetch(chrome.runtime.getURL('styles/blur-overlay.css'))
+        .then(r => r.text())
+        .catch(() => '');
+    }
+    overlayCssPromise.then(css => {
+      if (!css) return;
+      try {
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync(css);
+        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+      } catch (e) {
+        // Constructable stylesheets unavailable: fall back to a <style> node.
+        const style = document.createElement('style');
+        style.textContent = css;
+        root.appendChild(style);
+      }
+    });
+  }
+
   /**
    * Create a blur overlay for an element
    */
@@ -19,6 +49,8 @@ const ScaredyCatBlocker = (function () {
       console.warn('Scaredy Cat: Element has no parent, cannot wrap');
       return null;
     }
+
+    ensureStylesFor(element);
 
     // Check if already wrapped
     if (element.closest('.scaredycat-wrapper')) {
@@ -392,12 +424,14 @@ const ScaredyCatBlocker = (function () {
     // Stop video monitoring
     stopVideoMonitor();
 
-    const wrappers = document.querySelectorAll('.scaredycat-wrapper');
-    wrappers.forEach(wrapper => {
+    // Iterate the tracking map, not document.querySelectorAll — wrappers
+    // inside shadow roots are invisible to document-level queries.
+    [...blockedElements.values()].forEach(data => {
+      if (data.element) removeBlur(data.element);
+    });
+    document.querySelectorAll('.scaredycat-wrapper').forEach(wrapper => {
       const element = wrapper.querySelector('img, video, [data-scaredycat-processed]');
-      if (element) {
-        removeBlur(element);
-      }
+      if (element) removeBlur(element);
     });
     blockedElements.clear();
     revealedElements.clear();

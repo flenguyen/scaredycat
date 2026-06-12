@@ -72,9 +72,10 @@
     }
 
     // Start scanning and observing
-    performInitialScan();
     ScaredyCatObserver.init(scanElements);
     ScaredyCatObserver.startObserving();
+    performInitialScan();
+    scheduleShadowSweeps();
 
     // Listen for messages
     chrome.runtime.onMessage.addListener(handleMessage);
@@ -115,9 +116,7 @@
         break;
       case 'RESCAN_PAGE':
         if (isEnabled) {
-          document.querySelectorAll('[data-scaredycat-processed]').forEach(el => {
-            el.removeAttribute('data-scaredycat-processed');
-          });
+          clearProcessedDeep(document);
           performInitialScan();
         }
         sendResponse({ success: true });
@@ -160,6 +159,24 @@
   }
 
   /**
+   * Collect media elements from a root INCLUDING open shadow roots — sites
+   * like Rotten Tomatoes render nearly all imagery inside web components,
+   * invisible to plain document.querySelectorAll. Discovered shadow roots
+   * are also registered with the mutation observer.
+   */
+  function collectMediaDeep(root, out = []) {
+    root.querySelectorAll('img:not([data-scaredycat-processed]), video:not([data-scaredycat-processed]), iframe:not([data-scaredycat-processed])')
+      .forEach(el => out.push(el));
+    root.querySelectorAll('*').forEach(el => {
+      if (el.shadowRoot) {
+        ScaredyCatObserver.observeRoot(el.shadowRoot);
+        collectMediaDeep(el.shadowRoot, out);
+      }
+    });
+    return out;
+  }
+
+  /**
    * Initial scan - keep it fast
    */
   function performInitialScan() {
@@ -171,16 +188,37 @@
       scanElements(Array.from(earlyHidden));
     }
 
-    // Scan standard media elements
-    const media = document.querySelectorAll(
-      'img:not([data-scaredycat-processed]), ' +
-      'video:not([data-scaredycat-processed]), ' +
-      'iframe:not([data-scaredycat-processed])'
-    );
-
+    const media = collectMediaDeep(document);
     if (media.length > 0) {
-      scanElements(Array.from(media));
+      scanElements(media);
     }
+  }
+
+  /** Clear processed markers everywhere, including inside shadow roots. */
+  function clearProcessedDeep(root) {
+    root.querySelectorAll('[data-scaredycat-processed]').forEach(el => {
+      if (el.getAttribute('data-scaredycat-processed') !== 'blocked') {
+        el.removeAttribute('data-scaredycat-processed');
+      }
+    });
+    root.querySelectorAll('*').forEach(el => {
+      if (el.shadowRoot) clearProcessedDeep(el.shadowRoot);
+    });
+  }
+
+  /**
+   * Custom elements often attach their shadow roots after our first pass and
+   * shadow-root attachment fires no mutation. A couple of cheap delayed
+   * sweeps catch late-rendering component trees.
+   */
+  function scheduleShadowSweeps() {
+    [2000, 6000].forEach(delay => {
+      setTimeout(() => {
+        if (!isEnabled) return;
+        const media = collectMediaDeep(document);
+        if (media.length > 0) scanElements(media);
+      }, delay);
+    });
   }
 
   /**
@@ -241,6 +279,10 @@
       const result = ScaredyCatDetector.analyzeElement(element);
       const BANDS = ScaredyCatDetector.BANDS;
 
+      // Verbose-level trace for debugging band routing (hidden by default;
+      // enable "Verbose" in the DevTools console level filter to see it).
+      console.debug(`Scaredy Cat: band=${result.band} score=${result.confidence} ${(src || '(no src)').slice(0, 80)}`);
+
       // Allowlist by matched title ("allow The Exorcist everywhere")
       if (isAllowedByTitle(result, settings.allowedItems)) {
         element.setAttribute('data-scaredycat-processed', 'allowed');
@@ -288,6 +330,7 @@
 
     ScaredyCatMLBridge.classifyUrl(url).then((imageScore) => {
       if (!element.isConnected) return;
+      console.debug(`Scaredy Cat: image score=${imageScore === null ? 'n/a' : Math.round(imageScore)} ${url.slice(0, 80)}`);
       const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore);
       applyVerdict(element, textResult, verdict);
     }).catch(() => {
