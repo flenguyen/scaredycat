@@ -83,7 +83,10 @@ const ScaredyCatBlocker = (function () {
     message.innerHTML = `
       <span class="scaredycat-icon">🙀</span>
       <span class="scaredycat-text">Horror content hidden</span>
-      <button class="scaredycat-show-btn" type="button">Show anyway</button>
+      <button class="scaredycat-show-btn" type="button" title="Show anyway">
+        <span class="scaredycat-btn-full">Show anyway</span>
+        <span class="scaredycat-btn-short">Show</span>
+      </button>
     `;
 
     // Add click handler to show button

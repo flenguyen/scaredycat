@@ -14,10 +14,28 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   sensitivity: 'medium', // 'low' (80+), 'medium' (60+), 'high' (40+)
   disabledSites: [],
-  allowedItems: [], // Specific URLs or titles user chose to show
-  blockedCount: 0,
-  totalBlockedAllTime: 0
+  allowedItems: [] // Specific URLs or titles user chose to show
 };
+
+// Stats live in chrome.storage.local, not sync: they change on every blocked
+// element, and sync's MAX_WRITE_OPERATIONS_PER_MINUTE quota (120/min) is easy
+// to exceed on image-heavy pages.
+async function getStats() {
+  const { stats } = await chrome.storage.local.get('stats');
+  return stats || { totalBlockedAllTime: 0 };
+}
+
+// Serialize increments so concurrent messages don't lose counts.
+let statsWriteChain = Promise.resolve();
+function incrementBlocked() {
+  statsWriteChain = statsWriteChain.then(async () => {
+    const stats = await getStats();
+    stats.totalBlockedAllTime = (stats.totalBlockedAllTime || 0) + 1;
+    await chrome.storage.local.set({ stats });
+    return stats.totalBlockedAllTime;
+  });
+  return statsWriteChain;
+}
 
 // Initialize extension on install
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -28,6 +46,18 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     // Merge new default settings with existing ones
     const { settings } = await chrome.storage.sync.get('settings');
     const mergedSettings = { ...DEFAULT_SETTINGS, ...settings };
+
+    // Migrate the all-time counter out of synced settings (it used to live
+    // there and blew through sync's write quota).
+    const { stats } = await chrome.storage.local.get('stats');
+    if (!stats && mergedSettings.totalBlockedAllTime) {
+      await chrome.storage.local.set({
+        stats: { totalBlockedAllTime: mergedSettings.totalBlockedAllTime }
+      });
+    }
+    delete mergedSettings.totalBlockedAllTime;
+    delete mergedSettings.blockedCount;
+
     await chrome.storage.sync.set({ settings: mergedSettings });
     console.log('Scaredy Cat updated!');
   }
@@ -46,6 +76,17 @@ async function handleMessage(message, sender) {
   // Classification requests are hot-path: skip the settings read.
   if (message.type === 'CLASSIFY_IMAGE') {
     return ScaredyCatMLRouter.handleClassifyRequest(message.url);
+  }
+
+  // Stats messages hit storage.local only — no settings read needed.
+  if (message.type === 'INCREMENT_BLOCKED') {
+    const totalBlocked = await incrementBlocked();
+    return { success: true, totalBlocked };
+  }
+  if (message.type === 'GET_PAGE_STATS') {
+    // Per-page stats are handled by the content script; we track global here.
+    const stats = await getStats();
+    return { success: true, totalBlockedAllTime: stats.totalBlockedAllTime || 0 };
   }
 
   const { settings } = await chrome.storage.sync.get('settings');
@@ -93,20 +134,6 @@ async function handleMessage(message, sender) {
         settings: { ...settings, allowedItems: filteredItems }
       });
       return { success: true };
-
-    case 'INCREMENT_BLOCKED':
-      const newCount = (settings.totalBlockedAllTime || 0) + 1;
-      await chrome.storage.sync.set({
-        settings: { ...settings, totalBlockedAllTime: newCount }
-      });
-      return { success: true, totalBlocked: newCount };
-
-    case 'GET_PAGE_STATS':
-      // This is handled by content script, but we track global stats here
-      return {
-        success: true,
-        totalBlockedAllTime: settings.totalBlockedAllTime || 0
-      };
 
     default:
       return { success: false, error: 'Unknown message type' };

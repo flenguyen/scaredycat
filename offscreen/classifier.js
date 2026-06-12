@@ -19,6 +19,11 @@ env.allowLocalModels = true; // the web build defaults this to false
 env.useBrowserCache = false; // Cache API rejects chrome-extension:// URLs
 env.localModelPath = chrome.runtime.getURL('models/');
 env.backends.onnx.wasm.wasmPaths = chrome.runtime.getURL('vendor/');
+// ORT logs "Some nodes were not assigned to the preferred execution
+// providers" warnings at session creation, and Chrome lists every console
+// warning as an extension error. Errors only.
+env.backends.onnx.logLevel = 'error';
+const SESSION_OPTIONS = { logSeverityLevel: 3 }; // 3 = error
 
 let loadPromise = null;
 let processor = null;
@@ -38,13 +43,13 @@ async function loadModel() {
     const device = ('gpu' in navigator) ? 'webgpu' : 'wasm';
     try {
       visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, {
-        dtype: 'fp32', device
+        dtype: 'fp32', device, session_options: SESSION_OPTIONS
       });
     } catch (e) {
       if (device === 'webgpu') {
         console.warn('Scaredy Cat: WebGPU load failed, retrying on WASM', e);
         visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, {
-          dtype: 'fp32', device: 'wasm'
+          dtype: 'fp32', device: 'wasm', session_options: SESSION_OPTIONS
         });
       } else {
         throw e;
