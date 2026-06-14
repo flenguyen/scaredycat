@@ -13,8 +13,37 @@ const ScaredyCatBlocker = (function () {
   // the overlay styles must be adopted into that root explicitly.
   const styledShadowRoots = new WeakSet();
   let overlayCssPromise = null;
+  let brandFontsInjected = false;
+
+  // @font-face only registers at document level (it is ignored inside
+  // shadow-adopted stylesheets), so the brand fonts are injected once per
+  // document — and only on pages that actually block something, keeping
+  // unaffected pages at zero font cost. System stacks in blur-overlay.css
+  // cover pages whose CSP blocks chrome-extension:// font fetches.
+  const BRAND_FONTS = [
+    { family: 'Bricolage Grotesque', style: 'normal', weight: '700 800', file: 'fonts/BricolageGrotesque.woff2' },
+    { family: 'Inter', style: 'normal', weight: '400 700', file: 'fonts/Inter.woff2' },
+    { family: 'Fraunces', style: 'normal', weight: '400 700', file: 'fonts/Fraunces.woff2' },
+    { family: 'Fraunces', style: 'italic', weight: '400 700', file: 'fonts/Fraunces-Italic.woff2' },
+  ];
+
+  function ensureBrandFonts() {
+    if (brandFontsInjected || !document.head) return;
+    brandFontsInjected = true;
+    const style = document.createElement('style');
+    style.setAttribute('data-scaredycat-fonts', 'true');
+    style.textContent = BRAND_FONTS.map(f => `@font-face {
+  font-family: '${f.family}';
+  font-style: ${f.style};
+  font-weight: ${f.weight};
+  font-display: swap;
+  src: url('${chrome.runtime.getURL(f.file)}') format('woff2');
+}`).join('\n');
+    document.head.appendChild(style);
+  }
 
   function ensureStylesFor(element) {
+    ensureBrandFonts();
     const root = element.getRootNode();
     if (!(root instanceof ShadowRoot) || styledShadowRoots.has(root)) return;
     styledShadowRoots.add(root);

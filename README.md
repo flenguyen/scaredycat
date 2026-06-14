@@ -187,6 +187,8 @@ scaredycat/
 
 ## Development
 
+> **Designing UI?** Every surface follows the canonical design system in [DESIGN.md](DESIGN.md) — tokens, type, components, and rules. Start there before touching any CSS.
+
 ### Making Changes
 
 1. Edit the relevant files
