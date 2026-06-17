@@ -27,6 +27,17 @@ const ScaredyCatBlocker = (function () {
     { family: 'Fraunces', style: 'italic', weight: '400 700', file: 'fonts/Fraunces-Italic.woff2' },
   ];
 
+  // Page-wide media spillover (covering videos/iframes that were NOT themselves
+  // judged horror) is only appropriate on a genuine horror page — a dedicated
+  // title/trailer page whose document.title or URL matches a horror title with
+  // definite strength. On social feeds (LinkedIn, etc.) this is always false,
+  // so each post's media is judged on its own and unrelated videos are never
+  // blanketed. Mirrors the strict signal used to lower the image block bar.
+  function isHorrorPage() {
+    const detector = window.ScaredyCatDetector;
+    return !!(detector && detector.hasPageHorrorSignal && detector.hasPageHorrorSignal());
+  }
+
   function ensureBrandFonts() {
     if (brandFontsInjected || !document.head) return;
     brandFontsInjected = true;
@@ -315,8 +326,11 @@ const ScaredyCatBlocker = (function () {
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => pauseVideo(v));
 
-    // IMPORTANT: Find and stop ALL videos/iframes near the blocked element
-    // Search multiple levels up to find the media container
+    // Find and stop ALL videos/iframes near the blocked element by walking up
+    // to the surrounding media container. This intentionally reaches broad
+    // containers (section/article/main), so it only runs on a genuine horror
+    // page — on a social feed `main` is the whole feed and this would blank
+    // every unrelated post's media.
     const containerSelectors = [
       '[class*="player"]', '[class*="video"]', '[class*="trailer"]', '[class*="media"]',
       '[class*="hero"]', '[class*="slate"]', '[data-testid*="video"]', '[data-testid*="hero"]',
@@ -324,14 +338,16 @@ const ScaredyCatBlocker = (function () {
     ];
 
     let container = null;
-    for (const selector of containerSelectors) {
-      container = element.closest(selector);
-      if (container) break;
-    }
+    if (isHorrorPage()) {
+      for (const selector of containerSelectors) {
+        container = element.closest(selector);
+        if (container) break;
+      }
 
-    // Fallback: go up 5 levels in the DOM
-    if (!container) {
-      container = element.parentElement?.parentElement?.parentElement?.parentElement?.parentElement;
+      // Fallback: go up 5 levels in the DOM
+      if (!container) {
+        container = element.parentElement?.parentElement?.parentElement?.parentElement?.parentElement;
+      }
     }
 
     if (container) {
@@ -355,9 +371,11 @@ const ScaredyCatBlocker = (function () {
       });
     }
 
-    // For ANY horror content, aggressively stop all videos on the page
-    // This catches cases where the video player is in a completely different DOM location
-    if (analysisResult?.isHorror) {
+    // On a genuine horror page, aggressively stop all videos on the page —
+    // the player may live in a completely different DOM location than the
+    // matched element. This is gated on the page-level signal so a single
+    // block in a social feed never blankets unrelated posts' videos.
+    if (analysisResult?.isHorror && isHorrorPage()) {
       stopAllPageVideos();
 
       // Also set up ongoing monitoring since videos may load/play after blocking
