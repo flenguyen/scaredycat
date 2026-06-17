@@ -32,6 +32,15 @@ const ScaredyCatMLBridge = (function () {
   // short-title collisions; moody horror posters (Nun 51, Insidious 59)
   // must not veto weak-but-real text signals.
   const IMAGE_VETO_SCORE = 40;
+  // On a listing explicitly filtered to the Horror genre, the site has already
+  // categorized every card as horror. The classifier is no longer the arbiter
+  // of "is this horror"; it only needs to veto images that clearly AREN'T a
+  // horror poster (site chrome, banners, a stray non-horror still). So the bar
+  // drops to just above the veto line: anything not "clearly not horror"
+  // blocks. This catches the modern/minimalist horror posters that score 0-64
+  // and slipped through the 65 bar on these pages, while still letting an
+  // obvious non-poster image (very low score) reveal.
+  const IMAGE_BLOCK_SCORE_GENRE_LISTING = IMAGE_VETO_SCORE + 1;
   // Without image evidence (no pixels, fetch failed, ML unavailable), text
   // alone must be this strong to block. Weak short-title collisions
   // ("Freaky Friday" ~ "Freaky" = 62) stay below; keyword-stacked horror
@@ -98,9 +107,11 @@ const ScaredyCatMLBridge = (function () {
 
     reasons.push(`Image classifier: ${Math.round(imageScore)}%`);
 
-    const blockScore = opts.pageHasHorrorSignal
-      ? IMAGE_BLOCK_SCORE_HORROR_PAGE
-      : (textResult.confidence === 0 ? IMAGE_ONLY_BLOCK_SCORE : IMAGE_BLOCK_SCORE);
+    const blockScore = opts.isHorrorGenreListing
+      ? IMAGE_BLOCK_SCORE_GENRE_LISTING
+      : opts.pageHasHorrorSignal
+        ? IMAGE_BLOCK_SCORE_HORROR_PAGE
+        : (textResult.confidence === 0 ? IMAGE_ONLY_BLOCK_SCORE : IMAGE_BLOCK_SCORE);
     if (imageScore >= blockScore) {
       return {
         isHorror: true,

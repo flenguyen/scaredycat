@@ -16,6 +16,15 @@ const ScaredyCatDetector = (function () {
 
   // Page-level horror signal, computed once per page after DB load.
   let pageHasHorrorSignal = false;
+  // Stronger, narrower signal: the page is a listing/browse view explicitly
+  // filtered to the Horror genre (URL genre token / TMDB id, or an active
+  // "Horror" filter chip). On such a page the site itself has categorized
+  // EVERY card as horror, so a poster need not independently look scary to
+  // block — the burden of proof shifts off the image classifier. Distinct
+  // from pageHasHorrorSignal, which also fires on detail pages and keyword
+  // stacks where that stronger assumption would be wrong. Sticky-on, same
+  // as pageHasHorrorSignal.
+  let pageIsHorrorGenreListing = false;
   // Canonical title matched by the page itself (title/URL/h1), if any.
   // Synthetic blocks (videos covered on a horror page) inherit it for
   // synopsis lookup since they carry no element-level context.
@@ -139,12 +148,14 @@ const ScaredyCatDetector = (function () {
       ].join(' ');
       const opts = { threshold: getThreshold(), scanQuietElements: false };
       const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
+      const isGenreListing = pageIsHorrorListing();
       const signalNow =
         (pageResult.titleMatched && pageResult.titleScore >= 85) ||
         pageResult.keywordScore >= 30 ||
         pageDeclaresHorrorGenre() ||
-        pageIsHorrorListing();
+        isGenreListing;
       if (signalNow) pageHasHorrorSignal = true;
+      if (isGenreListing) pageIsHorrorGenreListing = true;
 
       const h1 = document.querySelector('h1');
       const fullContext = [
@@ -559,6 +570,10 @@ const ScaredyCatDetector = (function () {
     // Page-level signal only (not the media-site shortcut): used to lower
     // the image-alone block bar on pages that are themselves horror-themed.
     hasPageHorrorSignal: () => pageHasHorrorSignal,
+    // True when the page is a listing explicitly filtered to the Horror genre.
+    // Stronger than hasPageHorrorSignal: every card is horror by the site's own
+    // categorization, so the image classifier's bar drops further still.
+    isHorrorGenreListing: () => pageIsHorrorGenreListing,
     // Re-evaluate the page signal against the current (hydrated) DOM. Safe to
     // call repeatedly; the signal is sticky-on. Returns true only on the
     // transition false -> true, so the caller can re-judge elements it already
