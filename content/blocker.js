@@ -679,6 +679,19 @@ const ScaredyCatBlocker = (function () {
   }
 
   /**
+   * Get the still-connected wrapper elements for all blocked items. Used by the
+   * YouTube preview guard to test whether the shared hover player overlaps a
+   * blocked thumbnail.
+   */
+  function getBlockedWrappers() {
+    const wrappers = [];
+    blockedElements.forEach((data) => {
+      if (data.wrapper && data.wrapper.isConnected) wrappers.push(data.wrapper);
+    });
+    return wrappers;
+  }
+
+  /**
    * Reveal everything blocked on this page (session-only; the allowlist
    * is untouched and a rescan will block again)
    */
@@ -804,6 +817,7 @@ const ScaredyCatBlocker = (function () {
     getBlockedCount,
     getBlockedItems,
     getBlockedData,
+    getBlockedWrappers,
     isBlocked
   };
 })();

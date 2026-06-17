@@ -77,6 +77,10 @@
     performInitialScan();
     scheduleShadowSweeps();
 
+    // Suppress YouTube's shared hover-preview player over blocked thumbnails
+    // (no-op off YouTube).
+    window.ScaredyCatYouTubeGuard?.init();
+
     // Listen for messages
     chrome.runtime.onMessage.addListener(handleMessage);
 
@@ -95,6 +99,9 @@
         if (!isEnabled) {
           ScaredyCatBlocker.removeAllBlurs();
           ScaredyCatObserver.stopObserving();
+          window.ScaredyCatYouTubeGuard?.stop();
+        } else {
+          window.ScaredyCatYouTubeGuard?.init();
         }
         sendResponse({ success: true });
         break;

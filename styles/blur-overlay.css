@@ -513,3 +513,12 @@ picture.scaredycat-blurred img {
 .scaredycat-wrapper {
   isolation: isolate;
 }
+
+/* YouTube hover-preview suppressed over a blocked thumbnail. Hidden via
+   visibility (not display) so YouTube can still reposition it and the guard
+   can recompute overlap when it moves to the next thumbnail. */
+ytd-video-preview.scaredycat-preview-suppressed,
+.scaredycat-preview-suppressed {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}

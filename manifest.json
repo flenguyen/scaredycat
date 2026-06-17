@@ -39,6 +39,7 @@
         "content/blocker.js",
         "content/observer.js",
         "content/ml-bridge.js",
+        "content/youtube-preview-guard.js",
         "content/content.js"
       ],
       "css": ["styles/blur-overlay.css"],
