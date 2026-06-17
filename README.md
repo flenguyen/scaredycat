@@ -79,6 +79,28 @@ typos, all precompiled into fast indexes), which lands it in one of three bands:
    Title matches are never vetoed (horror posters often look innocuous).
 3. **Likely safe** — revealed, zero ML cost
 
+### Page-level signals
+
+Beyond per-element text, the page itself is scored once. A strong title match in
+`document.title`/URL, a keyword stack, **or an explicit "Horror" genre declaration on a
+single-title detail page** raises a page horror signal. This handles movies too new to be
+in the title database (where the title and synopsis give no usable text signal): the genre
+line is read from JSON-LD/Open Graph metadata or the visible genre line near the page's
+`<h1>`. When the signal is set, no-text posters on the page route to the image classifier
+and the image-block bar drops (76 → 65), so every poster/thumbnail on the page is judged
+consistently instead of catching only some. The genre check is deliberately scoped to
+one-title pages so a homepage carousel listing one horror movie doesn't lower the bar for
+every poster on the page.
+
+The same page signal also fires on **browse/listing pages filtered to Horror** (e.g. a
+catalog showing `/genre/horror`, `/browse/movie/horror`, or `?genre=27` — TMDB's horror
+id), where the entire grid is intended to be horror but most cards are poster-only and
+escape the per-element text layer. This is detected from generic, site-agnostic cues — the
+URL's genre path/query and any active filter chip naming Horror — rather than a hardcoded
+list of sites, so it generalizes across Cineby's mirror domains and any other TMDB-powered
+front-end. Genre-string and URL logic lives in `content/genre-signal.js` and is covered by
+`npm run eval:genre`.
+
 Image verdicts are cached in IndexedDB (keyed by URL + model version), so repeat
 browsing costs nothing. Text scoring is memoized per page. Viewport-visible elements
 are scanned first; offscreen elements wait for idle time.
@@ -158,7 +180,8 @@ scaredycat/
 │   └── verdict-cache.js      # IndexedDB cache of image scores (URL + model version)
 ├── content/
 │   ├── scoring-core.js       # Pure text-scoring engine (also used by the eval harness)
-│   ├── detector.js           # DOM context extraction, bands, memoization
+│   ├── genre-signal.js       # Pure genre-declaration predicates (shared with eval)
+│   ├── detector.js           # DOM context extraction, bands, memoization, page genre signal
 │   ├── ml-bridge.js          # Sends ambiguous images for classification, combines verdicts
 │   ├── blocker.js            # Blur overlay UI
 │   ├── observer.js           # MutationObserver for dynamic content

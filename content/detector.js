@@ -117,11 +117,20 @@ const ScaredyCatDetector = (function () {
    *   carousel listing one horror title must not put every poster on the
    *   page under the lowered bar — and requires a definite-strength title
    *   match. A partial collision ("Freaky Friday" ~ "Freaky") page title
-   *   does not qualify; a dedicated horror title page still does.
+   *   does not qualify; a dedicated horror title page still does. An explicit
+   *   "Horror" genre label on a single-title detail page also qualifies — this
+   *   catches movies too new to be in the title database (where the title and
+   *   keywords give no signal) without depending on the static dataset.
    *
    * - pageMatchedTitle only feeds synopsis lookup for synthetic blocks, so
    *   it keeps the wider title + URL + h1 context.
    */
+  // Recomputed on every scan sweep, not just once at init: SPA media sites
+  // (Rotten Tomatoes, IMDb) hydrate the title/genre/JSON-LD client-side, well
+  // after our document_end init runs, so the genre line and listing filters
+  // simply aren't in the DOM on the first pass. The signal is STICKY — once
+  // any pass confirms horror it stays on, so a later re-render that drops the
+  // genre node can't silently un-block a page mid-session.
   function computePageSignal() {
     try {
       const titleUrlContext = [
@@ -130,9 +139,12 @@ const ScaredyCatDetector = (function () {
       ].join(' ');
       const opts = { threshold: getThreshold(), scanQuietElements: false };
       const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
-      pageHasHorrorSignal =
+      const signalNow =
         (pageResult.titleMatched && pageResult.titleScore >= 85) ||
-        pageResult.keywordScore >= 30;
+        pageResult.keywordScore >= 30 ||
+        pageDeclaresHorrorGenre() ||
+        pageIsHorrorListing();
+      if (signalNow) pageHasHorrorSignal = true;
 
       const h1 = document.querySelector('h1');
       const fullContext = [
@@ -140,11 +152,107 @@ const ScaredyCatDetector = (function () {
         h1 ? (h1.textContent || '').slice(0, 200) : ''
       ].join(' ');
       const fullResult = ScaredyCatScoring.analyzeText(fullContext, compiledIndex, opts);
-      pageMatchedTitle = fullResult.matchedTitle || pageResult.matchedTitle || null;
+      pageMatchedTitle = fullResult.matchedTitle || pageResult.matchedTitle || pageMatchedTitle || null;
     } catch (e) {
-      pageHasHorrorSignal = false;
-      pageMatchedTitle = null;
+      // Leave any previously-confirmed signal untouched.
     }
+  }
+
+  /**
+   * Detect an explicit "Horror" genre declaration on a single-title detail
+   * page. Checks structured metadata first (JSON-LD / Open Graph), then the
+   * visible genre line near the page's H1. Deliberately conservative: scoped
+   * to one-title pages so homepage carousels listing a horror movie among
+   * many don't put every poster under the lowered image bar. The genre-string
+   * predicates live in genre-signal.js so they're testable offline.
+   */
+  function pageDeclaresHorrorGenre() {
+    try {
+      // Structured metadata: schema.org Movie/TVSeries `genre`.
+      for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
+        let data;
+        try {
+          data = JSON.parse(node.textContent || '');
+        } catch (e) {
+          continue;
+        }
+        if (ScaredyCatGenre.jsonLdDeclaresHorror(data)) return true;
+      }
+
+      // Open Graph / video meta tags some media sites emit.
+      for (const meta of document.querySelectorAll(
+        'meta[property="video:genre"], meta[property="og:video:genre"], meta[name="genre"]'
+      )) {
+        if (ScaredyCatGenre.genreListIsHorror(meta.getAttribute('content'))) return true;
+      }
+
+      // Visible genre line near the H1. Single-title detail pages render the
+      // genre next to the title; scope the scan to the H1's container so a
+      // "Horror" link elsewhere on the page (sidebar, nav) doesn't qualify.
+      const h1 = document.querySelector('h1');
+      if (h1) {
+        const scope = h1.closest('section, header, [class*="hero"], [data-qa], [data-testid]')
+          || h1.parentElement;
+        if (scope) {
+          // Look at compact text nodes only (the genre line), not the whole
+          // synopsis blob.
+          for (const el of scope.querySelectorAll('p, span, div, a, li')) {
+            if (el.querySelector('p, span, div, a, li')) continue; // leaf-ish only
+            if (ScaredyCatGenre.textLooksLikeHorrorGenre(el.textContent || '')) return true;
+          }
+        }
+      }
+    } catch (e) {
+      // Fall through to false on any DOM/parse error.
+    }
+    return false;
+  }
+
+  /**
+   * Detect a browse/listing page filtered to the Horror genre (the whole grid
+   * is horror), as opposed to a single-title detail page. This is the case
+   * pageDeclaresHorrorGenre deliberately excludes: there, a lone horror title
+   * among a homepage carousel must NOT lower the bar for every poster; here,
+   * the user has explicitly filtered to Horror so every card on the page is
+   * meant to be horror, and the lowered image bar is exactly what catches the
+   * poster-only cards the per-element text layer can't recognize.
+   *
+   * Site-agnostic by design: it reads the genre filter off the URL (path token
+   * or genre query param / TMDB genre id) and off active filter UI (selected
+   * chip, aria-current breadcrumb), never off a hostname. The string logic
+   * lives in genre-signal.js so it's testable offline.
+   */
+  function pageIsHorrorListing() {
+    try {
+      if (ScaredyCatGenre.urlLooksLikeHorrorListing(window.location.href)) {
+        return true;
+      }
+
+      // Active filter UI: a selected/current control naming Horror. Generic
+      // state attributes only — no per-site class names. Scope to controls
+      // that look like filters (links/buttons/options/tabs) so an active nav
+      // item elsewhere doesn't qualify.
+      const activeSelectors = [
+        '[aria-pressed="true"]',
+        '[aria-current]',
+        '[aria-selected="true"]',
+        '.active',
+        '.selected',
+        '[data-active="true"]',
+        '[data-selected="true"]'
+      ].map(s => `a${s}, button${s}, li${s}, [role="tab"]${s}, [role="option"]${s}`).join(', ');
+
+      const labels = [];
+      for (const el of document.querySelectorAll(activeSelectors)) {
+        if (el.querySelector('a, button, li')) continue; // leaf-ish only
+        const text = (el.textContent || '').trim();
+        if (text) labels.push(text);
+      }
+      if (ScaredyCatGenre.activeFiltersDeclareHorror(labels)) return true;
+    } catch (e) {
+      // Fall through to false on any DOM/parse error.
+    }
+    return false;
   }
 
   /**
@@ -451,6 +559,16 @@ const ScaredyCatDetector = (function () {
     // Page-level signal only (not the media-site shortcut): used to lower
     // the image-alone block bar on pages that are themselves horror-themed.
     hasPageHorrorSignal: () => pageHasHorrorSignal,
+    // Re-evaluate the page signal against the current (hydrated) DOM. Safe to
+    // call repeatedly; the signal is sticky-on. Returns true only on the
+    // transition false -> true, so the caller can re-judge elements it already
+    // marked safe under the old (higher) image bar. Called before each scan.
+    refreshPageSignal: () => {
+      if (!compiledIndex) return false;
+      const before = pageHasHorrorSignal;
+      computePageSignal();
+      return !before && pageHasHorrorSignal;
+    },
     getPageMatchedTitle: () => pageMatchedTitle,
     getTitleInfo,
     pickFallbackSynopsis,

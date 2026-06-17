@@ -5,7 +5,8 @@
   "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
   "type": "module",
   "scripts": {
-    "eval": "node eval/run-eval.mjs",
+    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs",
+    "eval:genre": "node eval/genre-signal-eval.mjs",
     "eval:combined": "node eval/combined-eval.mjs",
     "eval:image": "node eval/run-eval.mjs --image",
     "bench": "node eval/run-eval.mjs --bench",

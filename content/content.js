@@ -178,6 +178,10 @@
   function performInitialScan() {
     if (!isEnabled || !isInitialized) return;
 
+    // SPA media sites hydrate title/genre/JSON-LD after init, so re-evaluate
+    // the page-level horror signal against the current DOM before scoring.
+    if (ScaredyCatDetector.refreshPageSignal()) clearSafeProcessedDeep(document);
+
     // Scan early-hidden elements first (media sites only)
     const earlyHidden = document.querySelectorAll('[data-scaredycat-early-hidden]');
     if (earlyHidden.length > 0) {
@@ -203,6 +207,22 @@
   }
 
   /**
+   * Clear only 'safe' markers (leave blocked/allowed/pending/skip intact) so
+   * those elements get re-judged. Used when the page horror signal turns on
+   * after the first pass: the lowered image bar may now block posters that
+   * were revealed under the higher neutral-page bar. Image verdicts are cached
+   * in IndexedDB, so re-judging is a cache hit — no re-download or re-inference.
+   */
+  function clearSafeProcessedDeep(root) {
+    root.querySelectorAll('[data-scaredycat-processed="safe"]').forEach(el => {
+      el.removeAttribute('data-scaredycat-processed');
+    });
+    root.querySelectorAll('*').forEach(el => {
+      if (el.shadowRoot) clearSafeProcessedDeep(el.shadowRoot);
+    });
+  }
+
+  /**
    * Custom elements often attach their shadow roots after our first pass and
    * shadow-root attachment fires no mutation. A couple of cheap delayed
    * sweeps catch late-rendering component trees.
@@ -211,6 +231,10 @@
     [2000, 6000].forEach(delay => {
       setTimeout(() => {
         if (!isEnabled) return;
+        // The genre line / listing filter may only now be in the DOM. If it
+        // just flipped the page signal on, re-judge elements already marked
+        // safe under the old (higher) image bar.
+        if (ScaredyCatDetector.refreshPageSignal()) clearSafeProcessedDeep(document);
         const media = collectMediaDeep(document);
         if (media.length > 0) scanElements(media);
       }, delay);
