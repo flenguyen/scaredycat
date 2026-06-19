@@ -25,14 +25,9 @@ const ScaredyCatDetector = (function () {
   // stacks where that stronger assumption would be wrong. Sticky-on, same
   // as pageHasHorrorSignal.
   let pageIsHorrorGenreListing = false;
-  // Canonical title matched by the page itself (title/URL/h1), if any.
-  // Synthetic blocks (videos covered on a horror page) inherit it for
-  // synopsis lookup since they carry no element-level context.
-  let pageMatchedTitle = null;
 
   // Synopsis lookups, built once at DB load.
   let titleInfo = null; // normalized title -> { title, year, synopsis }
-  let fallbackSynopses = [];
 
   // Memoized analysis results: normalized context -> raw scoring result.
   // Card grids repeat near-identical contexts constantly.
@@ -72,7 +67,6 @@ const ScaredyCatDetector = (function () {
           synopsis: entry.synopsis || null
         });
       }
-      fallbackSynopses = horrorDatabase.fallbackSynopses || [];
       computePageSignal();
       return horrorDatabase;
     })();
@@ -119,20 +113,15 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Score the page itself once. Two signals with different stakes:
-   *
-   * - pageHasHorrorSignal lowers the image block bar for the WHOLE page
-   *   (ml-bridge), so it reads only document.title + URL — a homepage h1
-   *   carousel listing one horror title must not put every poster on the
-   *   page under the lowered bar — and requires a definite-strength title
-   *   match. A partial collision ("Freaky Friday" ~ "Freaky") page title
-   *   does not qualify; a dedicated horror title page still does. An explicit
-   *   "Horror" genre label on a single-title detail page also qualifies — this
-   *   catches movies too new to be in the title database (where the title and
-   *   keywords give no signal) without depending on the static dataset.
-   *
-   * - pageMatchedTitle only feeds synopsis lookup for synthetic blocks, so
-   *   it keeps the wider title + URL + h1 context.
+   * Score the page itself once. pageHasHorrorSignal lowers the image block bar
+   * for the WHOLE page (ml-bridge), so it reads only document.title + URL — a
+   * homepage h1 carousel listing one horror title must not put every poster on
+   * the page under the lowered bar — and requires a definite-strength title
+   * match. A partial collision ("Freaky Friday" ~ "Freaky") page title does not
+   * qualify; a dedicated horror title page still does. An explicit "Horror"
+   * genre label on a single-title detail page also qualifies — this catches
+   * movies too new to be in the title database (where the title and keywords
+   * give no signal) without depending on the static dataset.
    */
   // Recomputed on every scan sweep, not just once at init: SPA media sites
   // (Rotten Tomatoes, IMDb) hydrate the title/genre/JSON-LD client-side, well
@@ -156,14 +145,6 @@ const ScaredyCatDetector = (function () {
         isGenreListing;
       if (signalNow) pageHasHorrorSignal = true;
       if (isGenreListing) pageIsHorrorGenreListing = true;
-
-      const h1 = document.querySelector('h1');
-      const fullContext = [
-        titleUrlContext,
-        h1 ? (h1.textContent || '').slice(0, 200) : ''
-      ].join(' ');
-      const fullResult = ScaredyCatScoring.analyzeText(fullContext, compiledIndex, opts);
-      pageMatchedTitle = fullResult.matchedTitle || pageResult.matchedTitle || pageMatchedTitle || null;
     } catch (e) {
       // Leave any previously-confirmed signal untouched.
     }
@@ -272,23 +253,6 @@ const ScaredyCatDetector = (function () {
   function getTitleInfo(canonicalTitle) {
     if (!titleInfo || !canonicalTitle) return null;
     return titleInfo.get(ScaredyCatScoring.normalizeText(canonicalTitle)) || null;
-  }
-
-  /**
-   * Deterministically pick a generic satirical synopsis for blocks without
-   * a recognized title. Same seed -> same line, so re-renders and SPA
-   * re-blocks don't reshuffle the joke.
-   */
-  function pickFallbackSynopsis(seed) {
-    if (!fallbackSynopses.length) return null;
-    // FNV-1a 32-bit
-    let hash = 0x811c9dc5;
-    const str = String(seed || '');
-    for (let i = 0; i < str.length; i++) {
-      hash ^= str.charCodeAt(i);
-      hash = Math.imul(hash, 0x01000193);
-    }
-    return fallbackSynopses[(hash >>> 0) % fallbackSynopses.length];
   }
 
   function setSensitivity(level) {
@@ -584,9 +548,7 @@ const ScaredyCatDetector = (function () {
       computePageSignal();
       return !before && pageHasHorrorSignal;
     },
-    getPageMatchedTitle: () => pageMatchedTitle,
     getTitleInfo,
-    pickFallbackSynopsis,
     debugElement
   };
 })();

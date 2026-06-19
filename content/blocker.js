@@ -118,19 +118,20 @@ const ScaredyCatBlocker = (function () {
   function resolveSynopsis(element, analysisResult) {
     const detector = window.ScaredyCatDetector;
     if (!detector || !detector.getTitleInfo) return null;
-    // Synthetic blocks (videos covered on a horror page) carry no element
-    // context; the page-level matched title is usually the right movie.
-    const title = analysisResult?.matchedTitle ||
-      (detector.getPageMatchedTitle && detector.getPageMatchedTitle());
-    if (title) {
-      const info = detector.getTitleInfo(title);
-      if (info && info.synopsis) {
-        return { kind: 'title', title: info.title, year: info.year, text: info.synopsis };
-      }
+    // Only blocks tied to a recognized title get a synopsis (and therefore the
+    // "Just tell me what happens" affordance). General horror with no identified
+    // movie/show — a blog article about the genre, a video essay on horror, a
+    // genre-listing poster — has nothing specific to spoil, so it just stays
+    // blurred. We key strictly on THIS element's own title match: a page that
+    // merely names one movie must not attach that movie's synopsis to unrelated
+    // horror imagery on it.
+    const title = analysisResult?.matchedTitle;
+    if (!title) return null;
+    const info = detector.getTitleInfo(title);
+    if (info && info.synopsis) {
+      return { kind: 'title', title: info.title, year: info.year, text: info.synopsis };
     }
-    const seed = analysisResult?.context || element.src || element.poster || '';
-    const text = detector.pickFallbackSynopsis && detector.pickFallbackSynopsis(seed);
-    return text ? { kind: 'generic', text } : null;
+    return null;
   }
 
   /**
@@ -165,8 +166,8 @@ const ScaredyCatBlocker = (function () {
     } else if (data.cardState === 'synopsis' && data.synopsisInfo) {
       const info = data.synopsisInfo;
       message.classList.add('scaredycat-message--synopsis');
-      const title = makeText('p', 'scaredycat-syn-title', info.kind === 'title' ? info.title : "Here's the gist.");
-      if (info.kind === 'title' && info.year) {
+      const title = makeText('p', 'scaredycat-syn-title', info.title);
+      if (info.year) {
         const noun = data.element.tagName === 'IMG' ? 'poster' : 'trailer';
         title.appendChild(makeText('span', 'scaredycat-syn-meta', ` (${info.year}, ${noun})`));
       }
