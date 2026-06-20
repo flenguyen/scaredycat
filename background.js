@@ -4,7 +4,7 @@
  * image classification requests to the offscreen ML document.
  */
 
-importScripts('background/verdict-cache.js', 'background/ml-router.js');
+importScripts('background/verdict-cache.js', 'background/ml-router.js', 'background/db-updater.js');
 
 // Trim the verdict cache when the worker spins up.
 ScaredyCatVerdictCache.prune();

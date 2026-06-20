@@ -12,7 +12,8 @@
     "storage",
     "activeTab",
     "offscreen",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"

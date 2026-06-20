@@ -44,15 +44,7 @@ const ScaredyCatDetector = (function () {
     if (loadPromise) return loadPromise;
 
     loadPromise = (async () => {
-      try {
-        const url = chrome.runtime.getURL('data/horror-database.json');
-        const response = await fetch(url);
-        horrorDatabase = await response.json();
-        console.log(`Scaredy Cat: Loaded ${horrorDatabase.titles.length} horror titles`);
-      } catch (error) {
-        console.error('Scaredy Cat: Failed to load horror database', error);
-        horrorDatabase = { titles: [], keywords: getDefaultKeywords() };
-      }
+      horrorDatabase = await resolveDatabase();
       compiledIndex = ScaredyCatScoring.compile(horrorDatabase);
       titleInfo = new Map();
       for (const entry of horrorDatabase.titles || []) {
@@ -72,6 +64,68 @@ const ScaredyCatDetector = (function () {
     })();
 
     return loadPromise;
+  }
+
+  /**
+   * Pick the database to compile. The bundled file is the guaranteed-present
+   * floor; the background worker may have cached a newer remote copy in
+   * chrome.storage.local (see background/db-updater.js). Prefer the cached copy
+   * only when it's at least as new as the bundled one, so a fresh Web Store
+   * release shipping a newer bundled DB always wins until the next refresh.
+   * Any failure degrades to the bundled file, then to an empty fallback.
+   */
+  async function resolveDatabase() {
+    let bundled = null;
+    try {
+      const response = await fetch(chrome.runtime.getURL('data/horror-database.json'));
+      bundled = await response.json();
+    } catch (error) {
+      bundled = null;
+    }
+
+    let cached = null;
+    try {
+      const stored = await chrome.storage.local.get('horrorDatabase');
+      if (isValidDatabase(stored.horrorDatabase)) cached = stored.horrorDatabase;
+    } catch (error) {
+      cached = null; // storage unavailable
+    }
+
+    if (cached && (!bundled || compareDbVersion(cached, bundled) >= 0)) {
+      console.log(`Scaredy Cat: Loaded ${cached.titles.length} horror titles (remote v${cached.version})`);
+      return cached;
+    }
+    if (isValidDatabase(bundled)) {
+      console.log(`Scaredy Cat: Loaded ${bundled.titles.length} horror titles (bundled v${bundled.version})`);
+      return bundled;
+    }
+    console.error('Scaredy Cat: Failed to load horror database');
+    return { titles: [], keywords: getDefaultKeywords() };
+  }
+
+  function isValidDatabase(db) {
+    return !!db
+      && Array.isArray(db.titles) && db.titles.length > 0
+      && typeof db.version === 'string';
+  }
+
+  /** Compare two databases by semver `version`, tie-broken by `lastUpdated`. */
+  function compareDbVersion(a, b) {
+    const va = parseVersion(a.version);
+    const vb = parseVersion(b.version);
+    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
+      const d = (va[i] || 0) - (vb[i] || 0);
+      if (d) return d < 0 ? -1 : 1;
+    }
+    const la = a.lastUpdated || '';
+    const lb = b.lastUpdated || '';
+    if (la < lb) return -1;
+    if (la > lb) return 1;
+    return 0;
+  }
+
+  function parseVersion(v) {
+    return String(v || '').split('.').map(n => parseInt(n, 10) || 0);
   }
 
   /**

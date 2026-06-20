@@ -1,6 +1,6 @@
 {
-  "version": "1.3.0",
-  "lastUpdated": "2026-06-12",
+  "version": "1.3.1",
+  "lastUpdated": "2026-06-20",
   "safeTitlesNote": "Known non-horror titles that lexically contain a horror title variant or keyword. Matches become suppression spans in scoring-core (longest-match-wins). Every entry must genuinely collide — eval/lint-database.mjs rejects dead weight and entries that equal a horror title. Deliberately blocked mild-spooky titles (Hocus Pocus, Scary Movie, Wicked, Ghostbusters) must NOT be listed here.",
   "safeTitles": [
     "Freaky Friday",
