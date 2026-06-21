@@ -107,7 +107,13 @@ const ScaredyCatMLBridge = (function () {
 
     reasons.push(`Image classifier: ${Math.round(imageScore)}%`);
 
-    const blockScore = opts.isHorrorGenreListing
+    // A horror-filtered listing AND a detail page whose structured metadata
+    // authoritatively tags the title as horror both get the lowest bar: the
+    // site's own data model asserts horror, so the classifier only needs to
+    // veto images that clearly AREN'T a horror poster. This catches the
+    // modern/minimalist posters that score 41-64 and slip the 65 detail-page
+    // bar (e.g. Leviticus' poster ~50).
+    const blockScore = (opts.isHorrorGenreListing || opts.authoritativeHorrorGenre)
       ? IMAGE_BLOCK_SCORE_GENRE_LISTING
       : opts.pageHasHorrorSignal
         ? IMAGE_BLOCK_SCORE_HORROR_PAGE

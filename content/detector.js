@@ -25,6 +25,13 @@ const ScaredyCatDetector = (function () {
   // stacks where that stronger assumption would be wrong. Sticky-on, same
   // as pageHasHorrorSignal.
   let pageIsHorrorGenreListing = false;
+  // Authoritative single-title signal: the page's STRUCTURED metadata (JSON-LD /
+  // og:video:genre) describes exactly one media item and tags it Horror — a
+  // detail page the site itself categorizes as horror. As trustworthy as a
+  // genre-filtered listing (the site's own data model asserts it), so it earns
+  // the same lowered image bar, unlike the softer pageHasHorrorSignal (which
+  // also fires on visible-text genre lines and keyword stacks). Sticky-on.
+  let pageHasStructuredHorrorGenre = false;
 
   // Synopsis lookups, built once at DB load.
   let titleInfo = null; // normalized title -> { title, year, synopsis }
@@ -192,29 +199,34 @@ const ScaredyCatDetector = (function () {
       const opts = { threshold: getThreshold(), scanQuietElements: false };
       const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
       const isGenreListing = pageIsHorrorListing();
+      const structured = readStructuredHorrorGenre();
+      const declaresHorrorGenre = structured.any || visibleGenreLineDeclaresHorror();
       const signalNow =
         (pageResult.titleMatched && pageResult.titleScore >= 85) ||
         pageResult.keywordScore >= 30 ||
-        pageDeclaresHorrorGenre() ||
+        declaresHorrorGenre ||
         isGenreListing;
       if (signalNow) pageHasHorrorSignal = true;
       if (isGenreListing) pageIsHorrorGenreListing = true;
+      if (structured.authoritative) pageHasStructuredHorrorGenre = true;
     } catch (e) {
       // Leave any previously-confirmed signal untouched.
     }
   }
 
   /**
-   * Detect an explicit "Horror" genre declaration on a single-title detail
-   * page. Checks structured metadata first (JSON-LD / Open Graph), then the
-   * visible genre line near the page's H1. Deliberately conservative: scoped
-   * to one-title pages so homepage carousels listing a horror movie among
-   * many don't put every poster under the lowered image bar. The genre-string
-   * predicates live in genre-signal.js so they're testable offline.
+   * Read STRUCTURED genre metadata (schema.org JSON-LD, og:video:genre). Returns
+   * { any, authoritative }: `any` is true if any media item is tagged Horror
+   * (a soft page signal); `authoritative` is true only when the page's
+   * structured data names exactly one media item and it's horror, or a
+   * page-level video-genre meta says so — a single-title detail page the site
+   * itself categorizes as horror. The string/shape predicates live in
+   * genre-signal.js so they're testable offline.
    */
-  function pageDeclaresHorrorGenre() {
+  function readStructuredHorrorGenre() {
+    const result = { any: false, authoritative: false };
     try {
-      // Structured metadata: schema.org Movie/TVSeries `genre`.
+      const media = [];
       for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
         let data;
         try {
@@ -222,31 +234,45 @@ const ScaredyCatDetector = (function () {
         } catch (e) {
           continue;
         }
-        if (ScaredyCatGenre.jsonLdDeclaresHorror(data)) return true;
+        for (const item of ScaredyCatGenre.mediaItemsFromJsonLd(data)) media.push(item);
       }
+      if (media.some(it => ScaredyCatGenre.genreListIsHorror(it.genre))) result.any = true;
+      if (ScaredyCatGenre.isSingleHorrorMediaPage(media)) result.authoritative = true;
 
-      // Open Graph / video meta tags some media sites emit.
+      // Open Graph / video meta tags some media sites emit. These are page-level
+      // singletons describing the page's primary title, so a horror value is
+      // authoritative on its own.
       for (const meta of document.querySelectorAll(
         'meta[property="video:genre"], meta[property="og:video:genre"], meta[name="genre"]'
       )) {
-        if (ScaredyCatGenre.genreListIsHorror(meta.getAttribute('content'))) return true;
-      }
-
-      // Visible genre line near the H1. Single-title detail pages render the
-      // genre next to the title; scope the scan to the H1's container so a
-      // "Horror" link elsewhere on the page (sidebar, nav) doesn't qualify.
-      const h1 = document.querySelector('h1');
-      if (h1) {
-        const scope = h1.closest('section, header, [class*="hero"], [data-qa], [data-testid]')
-          || h1.parentElement;
-        if (scope) {
-          // Look at compact text nodes only (the genre line), not the whole
-          // synopsis blob.
-          for (const el of scope.querySelectorAll('p, span, div, a, li')) {
-            if (el.querySelector('p, span, div, a, li')) continue; // leaf-ish only
-            if (ScaredyCatGenre.textLooksLikeHorrorGenre(el.textContent || '')) return true;
-          }
+        if (ScaredyCatGenre.genreListIsHorror(meta.getAttribute('content'))) {
+          result.any = true;
+          result.authoritative = true;
         }
+      }
+    } catch (e) {
+      // Fall through to the default (no signal) on any DOM/parse error.
+    }
+    return result;
+  }
+
+  /**
+   * Soft signal: a visible genre line near the page's H1 names Horror. Scoped to
+   * the H1's container so a "Horror" link elsewhere (sidebar, nav) doesn't
+   * qualify, and held to the genre-line shape in genre-signal.js so a synopsis
+   * paragraph doesn't. Scans every text leaf (including web components such as
+   * <rt-text>), not just p/span/div/a/li.
+   */
+  function visibleGenreLineDeclaresHorror() {
+    try {
+      const h1 = document.querySelector('h1');
+      if (!h1) return false;
+      const scope = h1.closest('section, header, [class*="hero"], [data-qa], [data-testid]')
+        || h1.parentElement;
+      if (!scope) return false;
+      for (const el of scope.querySelectorAll('*')) {
+        if (el.children.length) continue; // text leaves only
+        if (ScaredyCatGenre.textLooksLikeHorrorGenre(el.textContent || '')) return true;
       }
     } catch (e) {
       // Fall through to false on any DOM/parse error.
@@ -256,9 +282,9 @@ const ScaredyCatDetector = (function () {
 
   /**
    * Detect a browse/listing page filtered to the Horror genre (the whole grid
-   * is horror), as opposed to a single-title detail page. This is the case
-   * pageDeclaresHorrorGenre deliberately excludes: there, a lone horror title
-   * among a homepage carousel must NOT lower the bar for every poster; here,
+   * is horror), as opposed to a single-title detail page. Complements the
+   * structured/visible genre signals: there, a lone horror title among a
+   * homepage carousel must NOT lower the bar for every poster; here,
    * the user has explicitly filtered to Horror so every card on the page is
    * meant to be horror, and the lowered image bar is exactly what catches the
    * poster-only cards the per-element text layer can't recognize.
@@ -592,6 +618,9 @@ const ScaredyCatDetector = (function () {
     // Stronger than hasPageHorrorSignal: every card is horror by the site's own
     // categorization, so the image classifier's bar drops further still.
     isHorrorGenreListing: () => pageIsHorrorGenreListing,
+    // True when the page's STRUCTURED metadata authoritatively tags this single
+    // title as horror — earns the same lowered image bar as a genre listing.
+    hasStructuredHorrorGenre: () => pageHasStructuredHorrorGenre,
     // Re-evaluate the page signal against the current (hydrated) DOM. Safe to
     // call repeatedly; the signal is sticky-on. Returns true only on the
     // transition false -> true, so the caller can re-judge elements it already

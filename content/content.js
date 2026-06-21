@@ -356,7 +356,8 @@
       console.debug(`Scaredy Cat: image score=${imageScore === null ? 'n/a' : Math.round(imageScore)} ${url.slice(0, 80)}`);
       const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore, {
         pageHasHorrorSignal: ScaredyCatDetector.hasPageHorrorSignal(),
-        isHorrorGenreListing: ScaredyCatDetector.isHorrorGenreListing()
+        isHorrorGenreListing: ScaredyCatDetector.isHorrorGenreListing(),
+        authoritativeHorrorGenre: ScaredyCatDetector.hasStructuredHorrorGenre()
       });
       applyVerdict(element, textResult, verdict);
     }).catch(() => {

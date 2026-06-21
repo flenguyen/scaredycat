@@ -28,11 +28,13 @@ const Genre = loadGenreSignal();
 // --- Visible genre-line text: should/shouldn't flag horror ----------------
 const TEXT_CASES = [
   // Real genre lines from movie detail pages -> horror signal.
-  { text: 'Horror/LGBTQ+/Sci-Fi/Romance', expect: true, note: 'Leviticus genre line' },
+  { text: 'Horror/LGBTQ+/Sci-Fi/Romance', expect: true, note: 'Leviticus genre line (slashes)' },
+  { text: 'Horror LGBTQ+ Sci-Fi Romance', expect: true, note: 'Leviticus genre chip row (no punctuation)' },
   { text: 'Horror/Mystery & Thriller', expect: true, note: 'Deep Water genre line' },
   { text: 'Horror', expect: true, note: 'bare single genre' },
   { text: 'Drama, Horror', expect: true, note: 'two-genre list' },
   { text: 'Comedy, Horror, Thriller', expect: true, note: 'three-genre list' },
+  { text: 'Horror Thriller Mystery Drama', expect: true, note: 'space-separated genre chips, all known' },
 
   // Look-alikes that must NOT flag.
   { text: 'Comedy/Drama/Romance', expect: false, note: 'non-horror genre line' },
@@ -47,7 +49,44 @@ const TEXT_CASES = [
     expect: false,
     note: 'sentence with horror but no genre-list shape'
   },
+  {
+    text: 'Horror strikes a small town family',
+    expect: false,
+    note: 'prose: starts with Horror but has non-genre words'
+  },
   { text: '', expect: false, note: 'empty' },
+];
+
+// --- Authoritative single-title structured detection -----------------------
+// mediaItemsFromJsonLd + isSingleHorrorMediaPage gate the lowered image bar to
+// real single-title detail pages (not multi-item carousels/listings).
+const SINGLE_PAGE_CASES = [
+  {
+    data: { '@type': 'Movie', name: 'Leviticus', genre: ['Horror', 'LGBTQ+', 'Sci-Fi', 'Romance'] },
+    expect: true, note: 'single horror Movie -> authoritative'
+  },
+  {
+    data: { '@context': 'x', '@graph': [{ '@type': 'Movie', genre: 'Horror' }] },
+    expect: true, note: 'single horror Movie nested under @graph'
+  },
+  {
+    data: [
+      { '@type': 'BreadcrumbList' },
+      { '@type': 'Movie', name: 'Leviticus', genre: ['Horror'] }
+    ],
+    expect: true, note: 'one media item + non-media siblings -> authoritative'
+  },
+  {
+    data: [
+      { '@type': 'Movie', name: 'A', genre: ['Horror'] },
+      { '@type': 'Movie', name: 'B', genre: ['Comedy'] }
+    ],
+    expect: false, note: 'two media items (carousel/listing) -> NOT authoritative'
+  },
+  {
+    data: { '@type': 'Movie', name: 'The Notebook', genre: ['Romance'] },
+    expect: false, note: 'single non-horror Movie -> not authoritative'
+  },
 ];
 
 // --- JSON-LD structured metadata -------------------------------------------
@@ -126,6 +165,12 @@ for (const c of JSONLD_CASES) {
   const got = Genre.jsonLdDeclaresHorror(c.data);
   if (got === c.expect) pass++;
   else { fail++; failures.push(`JSONLD[${c.note}] expected ${c.expect}, got ${got}`); }
+}
+
+for (const c of SINGLE_PAGE_CASES) {
+  const got = Genre.isSingleHorrorMediaPage(Genre.mediaItemsFromJsonLd(c.data));
+  if (got === c.expect) pass++;
+  else { fail++; failures.push(`SINGLE[${c.note}] expected ${c.expect}, got ${got}`); }
 }
 
 for (const c of URL_CASES) {

@@ -15,6 +15,21 @@ const ScaredyCatGenre = (function () {
   // "Horror, Mystery & Thriller") or a bare single genre.
   const SEPARATOR_RE = /[\/,•·|]|&|\band\b/i;
 
+  // Known genre tokens. Used to recognize a genre-chip ROW rendered with no
+  // punctuation between chips ("Horror LGBTQ+ Sci-Fi Romance") — common when a
+  // site lays out each genre as its own element/web-component. We accept such a
+  // line as a genre line only when EVERY token is a known genre word, so a prose
+  // sentence that merely contains "horror" can't slip through. Single words that
+  // make up multi-word genres ("science fiction") are included individually.
+  const GENRE_WORDS = new Set([
+    'horror', 'action', 'adventure', 'animation', 'anime', 'biography', 'comedy',
+    'crime', 'documentary', 'drama', 'family', 'fantasy', 'history', 'holiday',
+    'indie', 'kids', 'lgbtq', 'lgbtq+', 'music', 'musical', 'mystery', 'news',
+    'noir', 'reality', 'romance', 'science', 'fiction', 'sci-fi', 'scifi', 'short',
+    'sport', 'sports', 'standup', 'stand-up', 'superhero', 'supernatural',
+    'suspense', 'teen', 'thriller', 'variety', 'war', 'western'
+  ]);
+
   // TMDB's genre id for Horror. Many catalog sites (Cineby and its mirror
   // domains, and any other TMDB-powered front-end) filter listings with the
   // raw id rather than the word, e.g. `/movies?genre=27` or `?genres=27,53`.
@@ -96,8 +111,16 @@ const ScaredyCatGenre = (function () {
     const trimmed = text.trim();
     if (trimmed.length === 0 || trimmed.length > 120) return false;
     if (!HORROR_RE.test(trimmed)) return false;
-    const words = trimmed.split(/\s+/).length;
-    return words <= 8 && (SEPARATOR_RE.test(trimmed) || words <= 3);
+    const words = trimmed.split(/\s+/);
+    if (words.length > 8) return false;
+    // Punctuated list ("Horror, Mystery & Thriller") or a bare 1-3 word genre.
+    if (SEPARATOR_RE.test(trimmed) || words.length <= 3) return true;
+    // Space-separated genre-chip row: accept only when every token is a known
+    // genre word, so prose ("Horror strikes a small town") can't qualify.
+    return words.every(w => {
+      const t = w.toLowerCase().replace(/[^a-z+-]/g, '');
+      return t === '' || GENRE_WORDS.has(t) || GENRE_WORDS.has(t.replace(/\+$/, ''));
+    });
   }
 
   /** Does any genre string in a list name Horror? (structured metadata) */
@@ -115,16 +138,44 @@ const ScaredyCatGenre = (function () {
   }
 
   /**
+   * Flatten parsed JSON-LD (object, array, or nested under @graph) into a flat
+   * list of objects, so callers don't have to care which shape a site emits.
+   */
+  function collectJsonLdItems(data) {
+    const out = [];
+    const visit = (d) => {
+      if (!d || typeof d !== 'object') return;
+      if (Array.isArray(d)) { d.forEach(visit); return; }
+      out.push(d);
+      if (Array.isArray(d['@graph'])) d['@graph'].forEach(visit);
+    };
+    visit(data);
+    return out;
+  }
+
+  /** Media-type items (Movie/TVSeries/...) declared in one parsed JSON-LD blob. */
+  function mediaItemsFromJsonLd(data) {
+    return collectJsonLdItems(data).filter(it => isMediaType(it['@type']));
+  }
+
+  /**
    * Given parsed JSON-LD (object or array), does it declare a Horror-genre
    * media item?
    */
   function jsonLdDeclaresHorror(data) {
-    const items = Array.isArray(data) ? data : [data];
-    for (const item of items) {
-      if (!item || typeof item !== 'object') continue;
-      if (isMediaType(item['@type']) && genreListIsHorror(item.genre)) return true;
-    }
-    return false;
+    return mediaItemsFromJsonLd(data).some(it => genreListIsHorror(it.genre));
+  }
+
+  /**
+   * Authoritative single-title signal: the page's structured data describes
+   * EXACTLY ONE media item and it's tagged Horror. That's a detail page the
+   * site itself categorizes as horror — as strong a signal as a horror-filtered
+   * listing, and distinct from a homepage/carousel that carries many items
+   * (where one horror entry must not lower the bar for every poster).
+   */
+  function isSingleHorrorMediaPage(mediaItems) {
+    if (!Array.isArray(mediaItems) || mediaItems.length !== 1) return false;
+    return genreListIsHorror(mediaItems[0].genre);
   }
 
   return {
@@ -132,6 +183,8 @@ const ScaredyCatGenre = (function () {
     genreListIsHorror,
     isMediaType,
     jsonLdDeclaresHorror,
+    mediaItemsFromJsonLd,
+    isSingleHorrorMediaPage,
     urlLooksLikeHorrorListing,
     activeFiltersDeclareHorror
   };
