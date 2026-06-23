@@ -45,6 +45,13 @@ const SENSITIVITIES = Scoring.SENSITIVITY_THRESHOLDS;
  * strong keyword signal.
  */
 function computePageSignal(page, threshold) {
+  // Social/professional feeds suppress the page-level signal entirely
+  // (detector.js computePageSignal early-returns on SOCIAL_FEED_PATTERNS), even
+  // when a soft DOM signal would otherwise fire. `forceSignal` models such a
+  // soft signal (a stray JSON-LD horror item / h1-adjacent genre line) that the
+  // title+URL check here can't see, so the gate is meaningfully exercised.
+  if (page.socialFeed) return false;
+  if (page.forceSignal) return true;
   const result = Scoring.analyzeText(page.titleUrl, compiled, {
     threshold,
     pageHasHorrorSignal: false,

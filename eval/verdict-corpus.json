@@ -4,7 +4,8 @@
     "neutral": { "titleUrl": "Example streaming site movies and shows", "h1": "Trending today" },
     "rtHome": { "titleUrl": "Rotten Tomatoes: Movies | TV Shows | Movie Trailers | Reviews", "h1": "Movies in Theaters Scary Movie The Conjuring Last Rites" },
     "horrorListicle": { "titleUrl": "Best horror movies of 2026 ranked", "h1": "Our favorites this year" },
-    "horrorTitlePage": { "titleUrl": "The Conjuring: Last Rites - Movie Reviews m the conjuring last rites", "h1": "The Conjuring: Last Rites" }
+    "horrorTitlePage": { "titleUrl": "The Conjuring: Last Rites - Movie Reviews m the conjuring last rites", "h1": "The Conjuring: Last Rites" },
+    "linkedinFeed": { "titleUrl": "Feed | LinkedIn linkedin com feed", "h1": "Feed", "socialFeed": true, "forceSignal": true }
   },
   "entries": [
     { "id": "v-freaky-null", "label": "safe", "context": "Freaky Friday trailer Lindsay Lohan Jamie Lee Curtis", "imageScore": null, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "substring collision, no image evidence" },
@@ -34,6 +35,10 @@
     { "id": "v-smile-cast-49", "label": "horror", "context": "Smile Sosie Bacon trailer", "imageScore": 49, "page": "neutral", "mediaSite": true, "expectBlock": false, "gate": false, "note": "ACCEPTED TRADEOFF: partial title (cast-name neighbor) + mid image no longer blocks; realistic cards carry a slug occurrence (see v-nun-rtcard-51)" },
     { "id": "v-devil-real-null", "label": "horror", "context": "Watch Devil (2010) official trailer HD", "imageScore": null, "page": "neutral", "mediaSite": true, "expectBlock": false, "gate": false, "note": "pre-existing behavior: 66 < UNVERIFIED_BLOCK_SCORE 80 without pixels" },
     { "id": "v-singlekw-high", "label": "safe", "context": "zombie run 5k charity event zombie costumes", "imageScore": 50, "page": "neutral", "mediaSite": false, "sensitivity": "high", "expectBlock": false, "gate": true, "note": "repeated single keyword at high sensitivity must not block without positive image" },
-    { "id": "v-ai-scary-50", "label": "safe", "context": "This new AI agent is scary good at writing code", "imageScore": 50, "page": "neutral", "mediaSite": false, "sensitivity": "high", "expectBlock": false, "gate": true, "note": "colloquial 'scary' at high sensitivity" }
+    { "id": "v-ai-scary-50", "label": "safe", "context": "This new AI agent is scary good at writing code", "imageScore": 50, "page": "neutral", "mediaSite": false, "sensitivity": "high", "expectBlock": false, "gate": true, "note": "colloquial 'scary' at high sensitivity" },
+
+    { "id": "v-linkedin-article-dark", "label": "safe", "context": "Agentic Humans Navid Nathoo", "imageScore": 80, "page": "linkedinFeed", "mediaSite": false, "expectBlock": false, "gate": true, "note": "REGRESSION: zero-text-signal LinkedIn article-card thumbnail. A soft DOM signal (forceSignal) would flip the sticky page signal on and blur this dark image at the lowered 65 bar; the social-feed gate suppresses the page signal so it stays per-element-only and reveals" },
+    { "id": "v-linkedin-article-dark-83", "label": "safe", "context": "Building in public the founder mindset", "imageScore": 83, "page": "linkedinFeed", "mediaSite": false, "expectBlock": false, "gate": true, "note": "stress: even an image above the 80 image-only bar must not block on a social feed without per-element text evidence" },
+    { "id": "v-linkedin-named-horror", "label": "horror", "context": "The Conjuring Last Rites official trailer new line cinema", "imageScore": null, "page": "linkedinFeed", "mediaSite": false, "expectBlock": true, "gate": true, "note": "the gate suppresses only the page signal: a genuinely NAMED horror title shared on a feed still blocks via the definite per-element path" }
   ]
 }

@@ -191,6 +191,13 @@ const ScaredyCatDetector = (function () {
   // any pass confirms horror it stays on, so a later re-render that drops the
   // genre node can't silently un-block a page mid-session.
   function computePageSignal() {
+    // Social feeds never earn a page-level horror signal (see
+    // SOCIAL_FEED_PATTERNS): the soft DOM signals it reads — stray JSON-LD media
+    // items, h1-adjacent genre lines, listing-shaped URLs — all misfire on a
+    // sprawling feed and would put every dark post thumbnail under the lowered,
+    // image-only block bar. Leaving every sticky flag off keeps blocking on
+    // these domains strictly per-element (title match or text + positive image).
+    if (isSocialFeedCached()) return;
     try {
       const titleUrlContext = [
         document.title || '',
@@ -378,6 +385,38 @@ const ScaredyCatDetector = (function () {
       _isMediaSiteCached = MEDIA_SITE_PATTERNS.some(p => p.test(window.location.hostname));
     }
     return _isMediaSiteCached;
+  }
+
+  // Social/professional feeds. The page-level horror signal (and the whole
+  // quiet-element / lowered-image-bar machinery it gates) is built for media
+  // CATALOG sites — pages whose primary purpose is one title or a genre-filtered
+  // grid. On an infinite social feed those soft signals misfire constantly: a
+  // single shared horror post, a stray JSON-LD media item, or an h1-adjacent
+  // text leaf flips the sticky page signal on, and from then on every dark,
+  // abstract post thumbnail (a LinkedIn article card, a profile banner) gets
+  // sent to the image classifier and blurred image-only. Genuinely shared
+  // horror still blocks here through the per-element text path (a named title,
+  // or strong keywords + a positive image) — only the page-signal shortcut,
+  // which carries no per-post evidence, is suppressed.
+  const SOCIAL_FEED_PATTERNS = [
+    /(^|\.)linkedin\.com$/i,
+    /(^|\.)lnkd\.in$/i,
+    /(^|\.)facebook\.com$/i,
+    /(^|\.)fb\.com$/i,
+    /(^|\.)instagram\.com$/i,
+    /(^|\.)threads\.net$/i,
+    /(^|\.)twitter\.com$/i,
+    /(^|\.)x\.com$/i,
+    /(^|\.)mastodon\.social$/i,
+    /(^|\.)bsky\.app$/i
+  ];
+
+  let _isSocialFeedCached = null;
+  function isSocialFeedCached() {
+    if (_isSocialFeedCached === null) {
+      _isSocialFeedCached = SOCIAL_FEED_PATTERNS.some(p => p.test(window.location.hostname));
+    }
+    return _isSocialFeedCached;
   }
 
   /**
@@ -611,6 +650,9 @@ const ScaredyCatDetector = (function () {
     isAllowed,
     isLikelyLogo,
     isMediaSite: isMediaSiteCached,
+    // True on social/professional feeds where the page-level horror signal is
+    // suppressed (blocking stays strictly per-element).
+    isSocialFeed: isSocialFeedCached,
     // Page-level signal only (not the media-site shortcut): used to lower
     // the image-alone block bar on pages that are themselves horror-themed.
     hasPageHorrorSignal: () => pageHasHorrorSignal,
