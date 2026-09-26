@@ -649,7 +649,8 @@
       const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore, {
         pageHasHorrorSignal: ScaredyCatDetector.hasPageHorrorSignal(),
         isHorrorGenreListing: ScaredyCatDetector.isHorrorGenreListing(),
-        authoritativeHorrorGenre: ScaredyCatDetector.hasStructuredHorrorGenre()
+        authoritativeHorrorGenre: ScaredyCatDetector.hasStructuredHorrorGenre(),
+        authoritativeNonHorrorGenre: ScaredyCatDetector.hasStructuredNonHorrorGenre()
       });
       applyVerdict(element, textResult, verdict);
     }).catch(() => {

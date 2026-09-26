@@ -178,6 +178,27 @@ const ScaredyCatGenre = (function () {
     return genreListIsHorror(mediaItems[0].genre);
   }
 
+  // Genres whose stills routinely look scary even when the site doesn't call
+  // the title Horror. A page tagged Thriller gets no negative signal.
+  const SCARY_ADJACENT_RE = /\b(?:horror|thriller)\b/i;
+
+  /**
+   * Authoritative single-title NON-horror signal: the page's structured data
+   * describes exactly one media item, it carries a genre list, and nothing in
+   * it is Horror or Thriller — a detail page the site itself files under
+   * Drama/Romance/Comedy/etc. On such a page a film still that merely looks
+   * dramatic (a close-up face, a dim hallway) must not be blocked on pixels
+   * alone. Untagged items give no signal either way.
+   */
+  function isSingleNonHorrorMediaPage(mediaItems) {
+    if (!Array.isArray(mediaItems) || mediaItems.length !== 1) return false;
+    const genre = mediaItems[0].genre;
+    if (genre == null) return false;
+    const genres = (Array.isArray(genre) ? genre : [genre]).map(g => String(g).trim()).filter(Boolean);
+    if (genres.length === 0) return false;
+    return !genres.some(g => SCARY_ADJACENT_RE.test(g));
+  }
+
   return {
     textLooksLikeHorrorGenre,
     genreListIsHorror,
@@ -185,6 +206,7 @@ const ScaredyCatGenre = (function () {
     jsonLdDeclaresHorror,
     mediaItemsFromJsonLd,
     isSingleHorrorMediaPage,
+    isSingleNonHorrorMediaPage,
     urlLooksLikeHorrorListing,
     activeFiltersDeclareHorror
   };

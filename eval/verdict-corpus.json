@@ -5,7 +5,9 @@
     "rtHome": { "titleUrl": "Rotten Tomatoes: Movies | TV Shows | Movie Trailers | Reviews", "h1": "Movies in Theaters Scary Movie The Conjuring Last Rites" },
     "horrorListicle": { "titleUrl": "Best horror movies of 2026 ranked", "h1": "Our favorites this year" },
     "horrorTitlePage": { "titleUrl": "The Conjuring: Last Rites - Movie Reviews m the conjuring last rites", "h1": "The Conjuring: Last Rites" },
-    "linkedinFeed": { "titleUrl": "Feed | LinkedIn linkedin com feed", "h1": "Feed", "socialFeed": true, "forceSignal": true }
+    "linkedinFeed": { "titleUrl": "Feed | LinkedIn linkedin com feed", "h1": "Feed", "socialFeed": true, "forceSignal": true },
+    "dramaTitlePage": { "titleUrl": "Forrest Gump (1994) - IMDb title tt0109830", "h1": "Forrest Gump", "nonHorrorGenre": true },
+    "dramaTaggedHorrorTitlePage": { "titleUrl": "The Conjuring: Last Rites - Movie Reviews m the conjuring last rites", "h1": "The Conjuring: Last Rites", "nonHorrorGenre": true }
   },
   "entries": [
     { "id": "v-freaky-null", "label": "safe", "context": "Freaky Friday trailer Lindsay Lohan Jamie Lee Curtis", "imageScore": null, "page": "rtHome", "mediaSite": true, "expectBlock": false, "gate": true, "note": "substring collision, no image evidence" },
@@ -48,6 +50,13 @@
     {"id":"v-fd-haunted-house-30","label":"safe","context":"Haunted house kids party decorations DIY","imageScore":30,"page":"neutral","mediaSite":false,"expectBlock":false,"gate":true,"note":"generic phrase + soft keyword; veto"},
     {"id":"v-fd-exorcist-files-30","label":"safe","context":"The Exorcist Files podcast episode 12","imageScore":30,"page":"neutral","mediaSite":false,"expectBlock":false,"gate":true,"note":"flagged title as a fragment of another name stays AMBIGUOUS and gets vetoed"},
     {"id":"v-fd-exorcist-def","label":"horror","context":"The Exorcist (1973) 4K restoration poster","imageScore":30,"page":"neutral","mediaSite":false,"expectBlock":true,"gate":true,"note":"curated fast-track: DEFINITE at 74 points; a low image score cannot veto it"},
-    {"id":"v-fd-busan-def","label":"horror","context":"Train to Busan zombie thriller review","imageScore":30,"page":"neutral","mediaSite":false,"expectBlock":true,"gate":true,"note":"curated fast-track"}
+    {"id":"v-fd-busan-def","label":"horror","context":"Train to Busan zombie thriller review","imageScore":30,"page":"neutral","mediaSite":false,"expectBlock":true,"gate":true,"note":"curated fast-track"},
+
+    {"id":"v-gump-trailer-95","label":"safe","context":"Trailer 1 for Forrest Gump images M MV5BYzQyMWQ1ODMt V1 QL75 UX500 CR0,47,500,281 .jpg","imageScore":95,"page":"dramaTitlePage","mediaSite":true,"expectBlock":false,"gate":true,"note":"REGRESSION (Sept 2026): live IMDb trailer thumbnail, close-up face read as 95% jump scare. JSON-LD says Drama/Romance: quiet element skips the classifier, image alone cannot block"},
+    {"id":"v-gump-still-97","label":"safe","context":"Forrest Gump images M MV5BOGY0OWRiNDkt V1 QL75 UX500 CR0,47,500,281 .jpg Ultimate Weeper Watchlist: Flow, Gump, Lion, & More","imageScore":97,"page":"dramaTitlePage","mediaSite":true,"expectBlock":false,"gate":true,"note":"REGRESSION: dim hallway still from the same page scored 97"},
+    {"id":"v-gump-rail-conjuring-def","label":"horror","context":"The Conjuring Last Rites official trailer new line cinema","imageScore":null,"page":"dramaTitlePage","mediaSite":true,"expectBlock":true,"gate":true,"note":"the negative signal is image-only: a listed title in the more-like-this rail still blocks via the definite path"},
+    {"id":"v-gump-rail-devil-55","label":"horror","context":"Watch Devil (2010) official trailer HD","imageScore":55,"page":"dramaTitlePage","mediaSite":true,"expectBlock":true,"gate":true,"note":"text-backed ambiguous element keeps the normal bars on a non-horror page"},
+    {"id":"v-gump-rail-kwstack-80","label":"horror","context":"Zombie apocalypse survival horror gameplay gore warning","imageScore":80,"page":"dramaTitlePage","mediaSite":true,"expectBlock":true,"gate":true,"note":"keyword stack + confirming image still blocks on a non-horror page"},
+    {"id":"v-nonhorror-tag-vs-listed-title-74","label":"horror","context":"movie-still-04521.jpg gallery image","imageScore":74,"page":"dramaTaggedHorrorTitlePage","mediaSite":true,"expectBlock":true,"gate":true,"note":"a listed horror title in the page title outranks a non-horror genre tag: the negative signal never sets, the 65 horror-page bar applies"}
   ]
 }

@@ -107,6 +107,22 @@ const ScaredyCatMLBridge = (function () {
 
     reasons.push(`Image classifier: ${Math.round(imageScore)}%`);
 
+    // Negative signal: the page's structured metadata files this single title
+    // under a non-horror genre (Drama, Romance, ...) and nothing else on the
+    // page says horror. With ZERO text evidence the classifier is the only
+    // witness, and on a drama's own stills it is exactly the unreliable one
+    // (Forrest Gump's trailer thumbnail read as 95% "jump scare"). Text-backed
+    // elements (a listed title in the "more like this" rail) keep the normal
+    // bars, so real horror still blocks here.
+    if (opts.authoritativeNonHorrorGenre && textResult.confidence === 0 &&
+        !opts.isHorrorGenreListing && !opts.authoritativeHorrorGenre) {
+      return {
+        isHorror: false,
+        confidence: 0,
+        reasons: [...reasons, 'Non-horror title page: image alone cannot block']
+      };
+    }
+
     // A horror-filtered listing AND a detail page whose structured metadata
     // authoritatively tags the title as horror both get the lowest bar: the
     // site's own data model asserts horror, so the classifier only needs to

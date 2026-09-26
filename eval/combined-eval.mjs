@@ -64,7 +64,10 @@ function computePageSignal(page, threshold) {
 function endToEndVerdict(entry, threshold) {
   const page = corpus.pages[entry.page || 'neutral'];
   const pageSignal = computePageSignal(page, threshold);
-  const scanQuiet = pageSignal || !!entry.mediaSite;
+  // detector.js: the structured non-horror signal holds only while no horror
+  // signal is present, and turns quiet-element scanning off.
+  const nonHorrorPage = !!page.nonHorrorGenre && !pageSignal;
+  const scanQuiet = (pageSignal || !!entry.mediaSite) && !nonHorrorPage;
 
   const text = Scoring.analyzeText(entry.context, compiled, {
     threshold,
@@ -80,7 +83,8 @@ function endToEndVerdict(entry, threshold) {
     return { block: false, via: 'safe-band', text };
   }
   const verdict = Bridge.combineVerdict(text, entry.imageScore ?? null, {
-    pageHasHorrorSignal: pageSignal
+    pageHasHorrorSignal: pageSignal,
+    authoritativeNonHorrorGenre: nonHorrorPage
   });
   return { block: verdict.isHorror, via: 'ml', text, verdict };
 }

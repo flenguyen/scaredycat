@@ -32,6 +32,16 @@ const ScaredyCatDetector = (function () {
   // the same lowered image bar, unlike the softer pageHasHorrorSignal (which
   // also fires on visible-text genre lines and keyword stacks). Sticky-on.
   let pageHasStructuredHorrorGenre = false;
+  // The mirror image: the page's STRUCTURED metadata describes exactly one
+  // media item and files it under genres with no Horror or Thriller in them
+  // (Forrest Gump: Drama, Romance). The site's own data model says this title
+  // is not horror, so a film still that merely looks dramatic (a close-up face,
+  // a dim hallway — the classifier read Forrest Gump's trailer thumbnails as
+  // 95-97% "jump scare") must not be blocked on pixels alone. Quiet elements
+  // skip the classifier entirely and image-only evidence can't block. Set only
+  // while NO horror signal is present, and dropped the moment one appears:
+  // horror evidence always wins.
+  let pageHasStructuredNonHorrorGenre = false;
 
   // Synopsis lookups, built once at DB load.
   let titleInfo = null; // normalized title -> { title, year, synopsis }
@@ -184,7 +194,7 @@ const ScaredyCatDetector = (function () {
     try {
       const isGenreListing = pageIsHorrorGenreListing || pageIsHorrorListing();
       const structured = (pageHasHorrorSignal && pageHasStructuredHorrorGenre)
-        ? { any: true, authoritative: true }
+        ? { any: true, authoritative: true, nonHorror: false }
         : readStructuredHorrorGenre();
 
       let signalNow = isGenreListing || structured.any;
@@ -203,6 +213,16 @@ const ScaredyCatDetector = (function () {
       if (signalNow) pageHasHorrorSignal = true;
       if (isGenreListing) pageIsHorrorGenreListing = true;
       if (structured.authoritative) pageHasStructuredHorrorGenre = true;
+
+      // Negative signal: only while nothing on the page says horror (a listed
+      // title in document.title outranks the site's genre tags — the database
+      // is the product's own opinion). Flipping either way changes how quiet
+      // elements band, and the memo bakes that in, so clear it.
+      const nonHorrorNow = structured.nonHorror && !pageHasHorrorSignal && !isGenreListing;
+      if (nonHorrorNow !== pageHasStructuredNonHorrorGenre) {
+        pageHasStructuredNonHorrorGenre = nonHorrorNow;
+        memo.clear();
+      }
     } catch (e) {
       // Leave any previously-confirmed signal untouched.
     }
@@ -215,15 +235,16 @@ const ScaredyCatDetector = (function () {
 
   /**
    * Read STRUCTURED genre metadata (schema.org JSON-LD, og:video:genre). Returns
-   * { any, authoritative }: `any` is true if any media item is tagged Horror
-   * (a soft page signal); `authoritative` is true only when the page's
-   * structured data names exactly one media item and it's horror, or a
+   * { any, authoritative, nonHorror }: `any` is true if any media item is
+   * tagged Horror (a soft page signal); `authoritative` is true only when the
+   * page's structured data names exactly one media item and it's horror, or a
    * page-level video-genre meta says so — a single-title detail page the site
-   * itself categorizes as horror. The string/shape predicates live in
-   * genre-signal.js so they're testable offline.
+   * itself categorizes as horror. `nonHorror` is the mirror: exactly one media
+   * item, tagged with genres, none of them Horror or Thriller. The string/shape
+   * predicates live in genre-signal.js so they're testable offline.
    */
   function readStructuredHorrorGenre() {
-    const result = { any: false, authoritative: false };
+    const result = { any: false, authoritative: false, nonHorror: false };
     try {
       const media = [];
       for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
@@ -243,6 +264,7 @@ const ScaredyCatDetector = (function () {
       }
       if (media.some(it => ScaredyCatGenre.genreListIsHorror(it.genre))) result.any = true;
       if (ScaredyCatGenre.isSingleHorrorMediaPage(media)) result.authoritative = true;
+      if (ScaredyCatGenre.isSingleNonHorrorMediaPage(media)) result.nonHorror = true;
 
       // Open Graph / video meta tags some media sites emit. These are page-level
       // singletons describing the page's primary title, so a horror value is
@@ -253,6 +275,7 @@ const ScaredyCatDetector = (function () {
         if (ScaredyCatGenre.genreListIsHorror(meta.getAttribute('content'))) {
           result.any = true;
           result.authoritative = true;
+          result.nonHorror = false;
         }
       }
     } catch (e) {
@@ -573,7 +596,11 @@ const ScaredyCatDetector = (function () {
     if (result === undefined) {
       result = ScaredyCatScoring.analyzeText(context, compiledIndex, {
         threshold,
-        scanQuietElements: pageHasHorrorSignal || isMediaSiteCached()
+        // On a page the site files under a non-horror genre, quiet elements
+        // (no text signal at all) are the title's own stills and posters:
+        // they band LIKELY_SAFE instead of costing a classifier round trip
+        // that could only ever produce an image-only false positive.
+        scanQuietElements: (pageHasHorrorSignal || isMediaSiteCached()) && !pageHasStructuredNonHorrorGenre
       });
       if (memo.size >= MEMO_LIMIT) {
         memo.delete(memo.keys().next().value); // drop oldest entry
@@ -747,6 +774,11 @@ const ScaredyCatDetector = (function () {
     // True when the page's STRUCTURED metadata authoritatively tags this single
     // title as horror — earns the same lowered image bar as a genre listing.
     hasStructuredHorrorGenre: () => pageHasStructuredHorrorGenre,
+    // True when the page's STRUCTURED metadata files this single title under
+    // genres with no Horror/Thriller and no other horror signal is present:
+    // image-only evidence can't block here (ml-bridge), quiet elements skip
+    // the classifier.
+    hasStructuredNonHorrorGenre: () => pageHasStructuredNonHorrorGenre,
     // Re-evaluate the page signal against the current (hydrated) DOM. Safe to
     // call repeatedly; the signal is sticky-on. Returns true only on the
     // transition false -> true, so the caller can re-judge elements it already

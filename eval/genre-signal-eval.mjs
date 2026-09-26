@@ -89,6 +89,50 @@ const SINGLE_PAGE_CASES = [
   },
 ];
 
+// --- Authoritative single-title NON-horror detection ------------------------
+// isSingleNonHorrorMediaPage turns image-only blocking off on a detail page the
+// site itself files under a non-horror genre (Forrest Gump: Drama, Romance).
+const NON_HORROR_PAGE_CASES = [
+  {
+    data: { '@type': 'Movie', name: 'Forrest Gump', genre: ['Drama', 'Romance'] },
+    expect: true, note: 'single Drama/Romance Movie -> non-horror page'
+  },
+  {
+    data: { '@type': 'Movie', name: 'The Notebook', genre: 'Romance' },
+    expect: true, note: 'single genre string -> non-horror page'
+  },
+  {
+    data: [
+      { '@type': 'BreadcrumbList' },
+      { '@type': 'TVSeries', name: 'Ted Lasso', genre: ['Comedy', 'Drama', 'Sport'] }
+    ],
+    expect: true, note: 'one media item + non-media siblings -> non-horror page'
+  },
+  {
+    data: { '@type': 'Movie', name: 'Jaws', genre: ['Adventure', 'Thriller'] },
+    expect: false, note: 'Thriller present -> no negative signal'
+  },
+  {
+    data: { '@type': 'Movie', name: 'Rosemary\'s Baby', genre: ['Drama', 'Horror'] },
+    expect: false, note: 'Horror present -> no negative signal'
+  },
+  {
+    data: { '@type': 'Movie', name: 'Untagged' },
+    expect: false, note: 'no genre at all -> no signal either way'
+  },
+  {
+    data: { '@type': 'Movie', name: 'Empty', genre: [] },
+    expect: false, note: 'empty genre list -> no signal either way'
+  },
+  {
+    data: [
+      { '@type': 'Movie', name: 'A', genre: ['Drama'] },
+      { '@type': 'Movie', name: 'B', genre: ['Comedy'] }
+    ],
+    expect: false, note: 'two media items (carousel/listing) -> not a detail page'
+  },
+];
+
 // --- JSON-LD structured metadata -------------------------------------------
 const JSONLD_CASES = [
   {
@@ -171,6 +215,12 @@ for (const c of SINGLE_PAGE_CASES) {
   const got = Genre.isSingleHorrorMediaPage(Genre.mediaItemsFromJsonLd(c.data));
   if (got === c.expect) pass++;
   else { fail++; failures.push(`SINGLE[${c.note}] expected ${c.expect}, got ${got}`); }
+}
+
+for (const c of NON_HORROR_PAGE_CASES) {
+  const got = Genre.isSingleNonHorrorMediaPage(Genre.mediaItemsFromJsonLd(c.data));
+  if (got === c.expect) pass++;
+  else { fail++; failures.push(`NONHOR[${c.note}] expected ${c.expect}, got ${got}`); }
 }
 
 for (const c of URL_CASES) {

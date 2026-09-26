@@ -102,6 +102,17 @@ consistently instead of catching only some. The genre check is deliberately scop
 one-title pages so a homepage carousel listing one horror movie doesn't lower the bar for
 every poster on the page.
 
+The structured metadata also works as a **negative signal**. When a detail page's JSON-LD
+names exactly one media item whose genres contain neither Horror nor Thriller (Forrest
+Gump: Drama, Romance), and nothing else on the page says horror (no listed title in the
+page title, no keyword stack, no genre line), the site's own data model says this title
+is not horror. Quiet elements (no text signal at all) then band as likely safe without a
+classifier round trip, and image-only evidence can never block. Text-backed elements keep
+the normal bars, so a listed horror title in a "more like this" rail still blurs. This is
+what stops the classifier from reading a drama's own trailer thumbnails as a jump scare
+(Forrest Gump's scored 95-97 and were blurred). Any horror signal appearing later drops
+the negative signal; horror evidence always wins.
+
 The same page signal also fires on **browse/listing pages filtered to Horror** (e.g. a
 catalog showing `/genre/horror`, `/browse/movie/horror`, or `?genre=27` — TMDB's horror
 id), where the entire grid is intended to be horror but most cards are poster-only and
