@@ -2,8 +2,9 @@
  * Scaredy Cat - Horror Database Updater
  * Keeps the title list fresh between Chrome Web Store releases by fetching a
  * remotely-hosted copy of horror-database.json on a daily alarm and caching it
- * in chrome.storage.local. The content-script detector prefers this cached copy
- * when it's at least as new as the bundled file (see detector.js resolveDatabase).
+ * in chrome.storage.local, which content scripts read directly. The bundled copy
+ * is seeded into the same key by background.js; a remote copy only replaces
+ * what's stored when it is at least as new (db-version.js decides).
  *
  * All failures are silent: a dead host, offline user, or malformed payload just
  * leaves the last good cache (or the bundled file) in place — detection never
@@ -23,11 +24,7 @@ const ScaredyCatDBUpdater = (function () {
   const ETAG_KEY = 'horrorDatabaseEtag';
   const FETCHED_AT_KEY = 'horrorDatabaseFetchedAt';
 
-  function isValidDatabase(db) {
-    return !!db
-      && Array.isArray(db.titles) && db.titles.length > 0
-      && typeof db.version === 'string';
-  }
+  const { isValidDatabase, compareDbVersion } = ScaredyCatDBVersion;
 
   async function ensureAlarm() {
     try {
@@ -59,6 +56,11 @@ const ScaredyCatDBUpdater = (function () {
         return; // malformed JSON — never poison the cache
       }
       if (!isValidDatabase(db)) return;
+
+      // Never replace a newer stored copy (e.g. a fresh release's bundled DB)
+      // with an older remote one.
+      const { [CACHE_KEY]: stored } = await chrome.storage.local.get(CACHE_KEY);
+      if (isValidDatabase(stored) && compareDbVersion(db, stored) < 0) return;
 
       await chrome.storage.local.set({
         [CACHE_KEY]: db,

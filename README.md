@@ -71,7 +71,12 @@ When horror content is detected, you'll see:
 Every image/video gets a text score first (title + keyword matching, fuzzy matching for
 typos, all precompiled into fast indexes), which lands it in one of three bands:
 
-1. **Definite horror** — strong title match → blurred instantly, no ML latency
+1. **Definite horror** — strong title match → blurred instantly, no ML latency. Long
+   titles qualify by score; shorter distinctive names ("The Exorcist", "Train to Busan")
+   qualify through a curated `definite: true` flag on their database entry (audited by
+   `node eval/run-eval.mjs --definite-report` and `npm run lint:database`; generic
+   phrases like "escape room" or "white noise" are deliberately NOT flagged so the image
+   veto still protects them)
 2. **Ambiguous** — keyword-only signal, weak/fuzzy title match, or no text at all on a
    horror-adjacent page or media site → the image's pixels are scored by the bundled
    MobileCLIP model in an offscreen document (WebGPU when available, WASM otherwise).
@@ -101,9 +106,29 @@ list of sites, so it generalizes across Cineby's mirror domains and any other TM
 front-end. Genre-string and URL logic lives in `content/genre-signal.js` and is covered by
 `npm run eval:genre`.
 
-Image verdicts are cached in IndexedDB (keyed by URL + model version), so repeat
-browsing costs nothing. Text scoring is memoized per page. Viewport-visible elements
-are scanned first; offscreen elements wait for idle time.
+Image verdicts are cached in IndexedDB (keyed by a size-agnostic canonical image key +
+model version, so the same poster at different CDN sizes is one entry), so repeat
+browsing costs nothing. Text scoring is memoized per page.
+
+### Performance model
+
+- **No service-worker round trip on page load**: settings and the horror database are
+  read straight from `chrome.storage` in parallel; the worker seeds the database into
+  storage on install/update and the daily refresh keeps it there.
+- **Viewport gating**: elements near the viewport (one viewport of margin in every
+  direction) are scored right away; everything else waits in an `IntersectionObserver`
+  until it approaches, so a 40-thumbnail YouTube results page costs ~7 classifier
+  requests instead of 40.
+- **Streaming classifier**: the worker talks to the offscreen document over a runtime
+  Port; each image resolves as soon as its own inference finishes (no batch tail), fetch
+  and decode run a few at a time with an 8s timeout, inference is serialized on the one
+  ORT session, and fetch failures are negative-cached for 10 minutes.
+- **Warm model**: media sites and horror pages ask the worker to pre-load the model (and
+  run one dummy inference to compile WebGPU shaders) while the page is still loading. The
+  offscreen document is torn down by a `chrome.alarms` timer after 30 idle minutes.
+- **Measure, don't guess**: `npm run latency` (needs `SC_CHROME_BIN`) loads fixture pages
+  under real media hostnames and reports init→db-ready, time to first blur, classifier
+  requests, verdict latency and script time, cold and warm.
 
 ### Dev setup (image classifier + eval)
 
@@ -111,20 +136,37 @@ Text detection works out of the box. The ML model files are fetched once:
 
 ```bash
 npm install
-npm run setup:model          # MobileCLIP-S0 vision tower (~46MB) + vendor transformers.js
-npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.json
-npm run eval                 # text-layer quality metrics + legacy parity + benchmark
+npm run setup:model          # fp16 MobileCLIP-S0 vision tower (~23MB) into models/,
+                             # fp32 + text tower into eval/.model-cache (dev only),
+                             # transformers.js 4.x + its ORT wasm into vendor/
+npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.{json,bin}
+npm run eval                 # text-layer metrics, genre-signal and image-key tests
+npm run eval:combined        # text + image verdict fixtures
+npm run lint:database        # safeTitles + definite-flag invariants
+npm run pack                 # dist/scaredycat-<version>.zip + size report (~26MB compressed)
 ```
+
+The shipped vision tower is **fp16** (validated against fp32 with
+`eval/fp16-compare.mjs`: every calibration poster within 2 points, no decision-bar
+crossings, works on WebGPU and WASM). It needs the transformers.js 4.x runtime in
+`vendor/`; the 3.x runtime aborted loading fp16 on WebGPU. The vendored ONNX Runtime is
+its **JSPI** wasm build (16.8MB, Chrome 137+ — hence `minimum_chrome_version`), which
+loads ~40% faster than the bundle's default Asyncify build. The shipped
+`data/prompt-embeddings.bin` was computed with the 3.x runtime and is what the
+`ml-bridge.js` bars are calibrated against — if you regenerate it under 4.x, re-check
+calibration (components shift by up to ~0.025).
 
 Detection tuning = editing the prompt list in `eval/precompute-prompts.mjs` and
 re-running `precompute:prompts` — no retraining, no code changes. End-to-end pipeline
-test (requires Chrome for Testing — regular Chrome no longer supports --load-extension):
+tests (require Chrome for Testing — regular Chrome no longer supports --load-extension):
 
 ```bash
 npx @puppeteer/browsers install chrome@stable --path /tmp/sc-chrome
-npm install --no-save puppeteer-core
-SC_CHROME_BIN=<path-to-chrome-for-testing-binary> node eval/browser-smoke.mjs
-SC_CHROME_BIN=<path-to-chrome-for-testing-binary> node eval/browser-smoke2.mjs
+npm install --no-save puppeteer-core sharp
+export SC_CHROME_BIN=<path-to-chrome-for-testing-binary>
+npm run smoke                # blur/veto/overlay end-to-end
+npm run latency              # perf harness (add --live for real IMDb/YouTube pages)
+node eval/fp16-compare.mjs   # fp16 vs fp32 scores (needs fp32 copied into models/ for the run)
 ```
 
 ## Testing
@@ -165,42 +207,53 @@ The extension should NOT blur:
 - Use "Show anyway" to reveal individual items
 
 ### Performance issues
-- The extension processes max 50 images per batch
-- Uses debouncing (200ms) to prevent excessive scanning
-- Skips images smaller than 100x100 pixels
+- Only elements within a viewport of the visible area are scored; the rest wait until
+  they scroll near
+- DOM mutations are batched (150ms, max 500ms wait) before scanning
+- Skips images smaller than 100x100 pixels (60x60 on media sites)
+- Run `npm run latency` to see where time goes on a fixture page set
 
 ## File Structure
 
 ```
 scaredycat/
 ├── manifest.json              # Extension configuration (MV3)
-├── background.js              # Service worker: state, messaging, ML routing
+├── background.js              # Service worker: state, messaging, DB seeding, ML routing
 ├── background/
-│   ├── ml-router.js          # Batches/dedupes classification requests, offscreen lifecycle
-│   └── verdict-cache.js      # IndexedDB cache of image scores (URL + model version)
+│   ├── ml-router.js          # Streams classification requests over a Port, offscreen lifecycle
+│   ├── verdict-cache.js      # Memory + IndexedDB cache of image scores (key + model version)
+│   ├── image-key.js          # Size-agnostic canonical image keys (cache/dedupe)
+│   ├── db-version.js         # Database version compare shared by seeding + refresh
+│   └── db-updater.js         # Daily remote refresh of the title list
 ├── content/
 │   ├── scoring-core.js       # Pure text-scoring engine (also used by the eval harness)
 │   ├── genre-signal.js       # Pure genre-declaration predicates (shared with eval)
 │   ├── detector.js           # DOM context extraction, bands, memoization, page genre signal
 │   ├── ml-bridge.js          # Sends ambiguous images for classification, combines verdicts
 │   ├── blocker.js            # Blur overlay UI
-│   ├── observer.js           # MutationObserver for dynamic content
-│   ├── early-init.js         # Pre-hides hero content on media sites
-│   └── content.js            # Main coordinator
+│   ├── observer.js           # MutationObserver for dynamic content (batched, max-wait)
+│   ├── early-init.js         # Pre-hides hero content + warms the model on media sites
+│   └── content.js            # Main coordinator, viewport gating, perf marks
 ├── offscreen/
 │   ├── offscreen.html        # Offscreen document hosting the classifier
-│   └── classifier.js         # MobileCLIP vision tower (WebGPU/WASM), prompt scoring
+│   └── classifier.js         # MobileCLIP vision tower (WebGPU/WASM), streaming port
 ├── data/
-│   ├── horror-database.json  # Horror titles and keywords
-│   └── prompt-embeddings.json # Precomputed zero-shot prompt embeddings
-├── models/                    # MobileCLIP-S0 ONNX files (npm run setup:model)
-├── vendor/                    # transformers.js + ONNX runtime WASM (npm run setup:model)
+│   ├── horror-database.json  # Horror titles (with curated `definite` flags) and keywords
+│   ├── prompt-embeddings.json # Prompt labels + logit scale
+│   └── prompt-embeddings.bin  # Float32 prompt embeddings
+├── models/                    # fp16 MobileCLIP-S0 vision tower (npm run setup:model)
+├── vendor/                    # transformers.js 4.x + ONNX runtime WASM (npm run setup:model)
+├── scripts/pack.mjs           # Builds the distributable zip, refuses dev files
 ├── eval/
-│   ├── run-eval.mjs          # Quality metrics, legacy parity, benchmark
+│   ├── run-eval.mjs          # Quality metrics, --definite-report audit, benchmark
 │   ├── corpus.json           # Labeled test contexts (curated + generated)
+│   ├── verdict-corpus.json   # Text + image verdict fixtures (combined-eval.mjs)
 │   ├── legacy-core.mjs       # Pre-refactor scorer (parity baseline — do not edit)
 │   ├── precompute-prompts.mjs # Prompt ensemble -> embeddings
-│   ├── image-classifier.mjs  # Node-side classifier (same files as the extension)
+│   ├── image-classifier.mjs  # Node-side classifier (dev model cache)
+│   ├── image-key-test.mjs    # Canonical image key unit test
+│   ├── fp16-compare.mjs      # fp16 vs fp32 in the real extension runtime
+│   ├── browser-latency.mjs   # Perf harness: cold/warm timings on fixture pages
 │   ├── ab-test.mjs           # Score real images from Wikipedia (prompt tuning aid)
 │   └── browser-smoke*.mjs    # End-to-end tests in Chrome for Testing
 ├── popup/                     # Extension popup UI

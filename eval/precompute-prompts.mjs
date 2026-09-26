@@ -1,7 +1,12 @@
 /**
  * Precompute the zero-shot prompt embeddings and write them to
- * data/prompt-embeddings.json. The extension then needs only the CLIP
- * vision tower at runtime (~12MB instead of ~55MB) and never tokenizes.
+ * data/prompt-embeddings.json (labels + logit scale) and
+ * data/prompt-embeddings.bin (Float32 [prompts x dim], L2-normalized). The
+ * extension then needs only the CLIP vision tower at runtime (~46MB fp32
+ * instead of ~90MB with the text tower) and never tokenizes.
+ *
+ * The tokenizer + text tower live in eval/.model-cache (gitignored, fetched by
+ * npm run setup:model); they are dev-only and never shipped.
  *
  * Tuning detection = editing PROMPTS and re-running this script.
  */
@@ -10,10 +15,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env, AutoTokenizer, CLIPTextModelWithProjection } from '@huggingface/transformers';
-import { MODEL_ID, MODEL_VERSION } from './setup-model.mjs';
+import { MODEL_ID, MODEL_VERSION, DEV_MODEL_DIR } from './setup-model.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-env.localModelPath = path.join(ROOT, 'models');
+env.localModelPath = DEV_MODEL_DIR;
 env.allowRemoteModels = false;
 
 // Prompt ensemble. horror prompts vote FOR blocking, safe prompts AGAINST.
@@ -76,23 +81,27 @@ const { text_embeds } = await textModel(inputs);
 
 const [n, dim] = text_embeds.dims;
 const data = text_embeds.data;
-const prompts = PROMPTS.map((p, i) => {
+const floats = new Float32Array(n * dim);
+PROMPTS.forEach((p, i) => {
   const vec = Array.from(data.slice(i * dim, (i + 1) * dim));
   const norm = Math.hypot(...vec);
-  return { label: p.label, text: p.text, embedding: vec.map(v => v / norm) };
+  floats.set(vec.map(v => v / norm), i * dim);
 });
 
-const out = {
+const meta = {
   modelId: MODEL_ID,
   modelVersion: MODEL_VERSION,
   dim,
   logitScale: 100,
-  prompts
+  embeddings: 'prompt-embeddings.bin', // Float32 row-major [prompts x dim], L2-normalized
+  prompts: PROMPTS.map(p => ({ label: p.label, text: p.text }))
 };
 
-const outPath = path.join(ROOT, 'data', 'prompt-embeddings.json');
-fs.writeFileSync(outPath, JSON.stringify(out));
-console.log(`Wrote ${outPath} (${n} prompts, dim=${dim}, ${(fs.statSync(outPath).size / 1e3).toFixed(0)}KB)`);
+const jsonPath = path.join(ROOT, 'data', 'prompt-embeddings.json');
+const binPath = path.join(ROOT, 'data', 'prompt-embeddings.bin');
+fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2) + '\n');
+fs.writeFileSync(binPath, Buffer.from(floats.buffer));
+console.log(`Wrote ${jsonPath} + ${binPath} (${n} prompts, dim=${dim}, ${(fs.statSync(binPath).size / 1e3).toFixed(0)}KB)`);
 // Exit explicitly: onnxruntime-node's teardown otherwise aborts the process
 // with a (harmless) mutex error after all work is done.
 process.exit(0);

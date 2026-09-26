@@ -437,6 +437,160 @@ body {
   color: var(--sc-plum);
 }
 
+/* Per-item actions: "Not horror?" (correction) + "Allow" (preference) */
+.blocked-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.wrong-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: var(--sc-sans);
+  font-weight: 600;
+  background: transparent;
+  border: 1.5px dashed var(--sc-border-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--sc-muted);
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.wrong-btn:hover:not(:disabled) {
+  border-color: var(--sc-plum);
+  color: var(--sc-plum);
+}
+
+.wrong-btn:disabled {
+  border-style: solid;
+  border-color: var(--sc-chip-ink);
+  color: var(--sc-chip-ink);
+  cursor: default;
+}
+
+/* Feedback Section */
+.feedback-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedback-link {
+  align-self: center;
+  font-size: 12px;
+  color: var(--sc-plum);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sc-sans);
+  font-weight: 600;
+}
+
+.feedback-link:hover { text-decoration: underline; }
+
+.feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.feedback-cats {
+  display: flex;
+  gap: 6px;
+}
+
+.feedback-cat {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-family: var(--sc-sans);
+  font-weight: 600;
+  background: var(--sc-page);
+  border: 1.5px solid var(--sc-border);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--sc-body);
+  transition: all 0.2s;
+}
+
+.feedback-cat:hover { background: var(--sc-lavender); }
+
+.feedback-cat.active {
+  background: var(--sc-lavender);
+  border-color: var(--sc-plum);
+  color: var(--sc-plum);
+}
+
+.feedback-text,
+.feedback-email {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: var(--sc-sans);
+  color: var(--sc-body);
+  background: var(--sc-page);
+  border: 1.5px solid var(--sc-border);
+  border-radius: 10px;
+  resize: vertical;
+}
+
+.feedback-text:focus,
+.feedback-email:focus {
+  outline: none;
+  border-color: var(--sc-plum);
+}
+
+.feedback-submit {
+  margin-top: 2px;
+}
+
+.feedback-status {
+  font-size: 11px;
+  color: var(--sc-muted);
+  text-align: center;
+  min-height: 14px;
+}
+
+.feedback-consent-row {
+  padding: 10px;
+  background: var(--sc-lavender);
+  border-radius: 10px;
+}
+
+.feedback-consent-text {
+  font-size: 11px;
+  color: var(--sc-body);
+  margin-bottom: 8px;
+}
+
+.feedback-consent-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.feedback-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+  cursor: pointer;
+}
+
+.feedback-toggle-label {
+  font-size: 11px;
+  color: var(--sc-muted);
+}
+
+.feedback-toggle-row input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--sc-plum);
+  cursor: pointer;
+}
+
 /* Stats Section — success chip */
 .stats-section {
   display: flex;

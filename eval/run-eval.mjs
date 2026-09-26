@@ -6,6 +6,9 @@
  *   npm run bench         # micro-benchmark old vs new scoring throughput
  *   npm run eval:image    # additionally score corpus imageUrl entries with the
  *                         # bundled CLIP model (requires npm run setup:model)
+ *   node eval/run-eval.mjs --definite-report
+ *                         # list every corpus entry whose band changes because of
+ *                         # the curated `definite` flags (fast-track audit)
  *
  * The harness loads the SAME scoring-core.js the extension ships, so numbers
  * here are numbers in production.
@@ -193,8 +196,35 @@ async function imageEval() {
   }
 }
 
+function definiteReport() {
+  const stripped = Scoring.compile({
+    ...database,
+    titles: database.titles.map(({ definite, ...rest }) => rest)
+  });
+  const rows = [];
+  for (const entry of corpus) {
+    const before = Scoring.analyzeText(entry.context, stripped, { threshold: SENSITIVITIES.medium, scanQuietElements: false });
+    const after = Scoring.analyzeText(entry.context, compiled, { threshold: SENSITIVITIES.medium, scanQuietElements: false });
+    if (before.band !== after.band) rows.push({ entry, before, after });
+  }
+  const flagged = database.titles.filter(t => t.definite).length;
+  console.log(`definite-report: ${flagged} flagged titles; ${rows.length} corpus entries change band @ medium`);
+  let bad = 0;
+  for (const { entry, before, after } of rows) {
+    const suspicious = entry.label !== 'horror' || entry.vetoExpected;
+    if (suspicious) bad++;
+    console.log(`  ${suspicious ? '!!' : 'ok'} [${entry.id}] ${before.band} -> ${after.band} (score ${after.confidence}, "${after.matchedTitle}") ${entry.context.slice(0, 60)}`);
+  }
+  if (bad) {
+    console.error(`\n${bad} non-horror / veto-expected entries became DEFINITE — un-flag those titles`);
+    process.exit(1);
+  }
+}
+
 const args = process.argv.slice(2);
-if (args.includes('--bench')) {
+if (args.includes('--definite-report')) {
+  definiteReport();
+} else if (args.includes('--bench')) {
   bench();
 } else if (args.includes('--image')) {
   await imageEval();

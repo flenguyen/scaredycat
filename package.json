@@ -5,7 +5,7 @@
   "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
   "type": "module",
   "scripts": {
-    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs",
+    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs && node eval/image-key-test.mjs",
     "eval:genre": "node eval/genre-signal-eval.mjs",
     "eval:combined": "node eval/combined-eval.mjs",
     "eval:image": "node eval/run-eval.mjs --image",
@@ -15,9 +15,13 @@
     "lint:synopses": "node eval/lint-synopses.mjs",
     "lint:database": "node eval/lint-database.mjs",
     "smoke": "node eval/browser-smoke.mjs && node eval/browser-smoke2.mjs && node eval/browser-smoke-overlay.mjs",
-    "smoke:overlay": "node eval/browser-smoke-overlay.mjs"
+    "smoke:overlay": "node eval/browser-smoke-overlay.mjs",
+    "pack": "node scripts/pack.mjs",
+    "pack:check": "node scripts/pack.mjs --check",
+    "latency": "node eval/browser-latency.mjs",
+    "test:image-key": "node eval/image-key-test.mjs"
   },
   "devDependencies": {
-    "@huggingface/transformers": "^3.0.0"
+    "@huggingface/transformers": "^4.3.0"
   }
 }

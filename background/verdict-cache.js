@@ -1,9 +1,11 @@
 /**
  * Scaredy Cat - Verdict Cache
  * IndexedDB-backed cache of image classification scores, fronted by an
- * in-memory Map. Keyed by SHA-256(image URL) + model version so a model
- * swap invalidates old verdicts. Loaded into the service worker via
- * importScripts.
+ * in-memory Map. The memory tier is keyed by the plain canonical image key so
+ * hits are synchronous (no hashing, no await); the IndexedDB tier is keyed by
+ * SHA-256(key) so browsing URLs are not stored in plaintext. Both include the
+ * model version so a model swap invalidates old verdicts. Loaded into the
+ * service worker via importScripts.
  */
 
 const ScaredyCatVerdictCache = (function () {
@@ -13,8 +15,9 @@ const ScaredyCatVerdictCache = (function () {
   const STORE = 'verdicts';
   const MAX_ENTRIES = 10000;
   const PRUNE_BATCH = 2000;
+  const MEMORY_MAX = 5000;
 
-  const memory = new Map(); // key -> score (session-level)
+  const memory = new Map(); // `${modelVersion}|${key}` -> score (worker lifetime)
   let dbPromise = null;
 
   function openDb() {
@@ -31,38 +34,55 @@ const ScaredyCatVerdictCache = (function () {
     return dbPromise;
   }
 
-  async function hashKey(url, modelVersion) {
-    const data = new TextEncoder().encode(url);
+  function memKey(key, modelVersion) {
+    return `${modelVersion}|${key}`;
+  }
+
+  function remember(mk, score) {
+    if (memory.size >= MEMORY_MAX) memory.delete(memory.keys().next().value);
+    memory.set(mk, score);
+  }
+
+  async function hashKey(key, modelVersion) {
+    const data = new TextEncoder().encode(key);
     const digest = await crypto.subtle.digest('SHA-256', data);
     const hex = [...new Uint8Array(digest)]
       .map(b => b.toString(16).padStart(2, '0')).join('');
     return `${modelVersion}:${hex}`;
   }
 
-  async function get(url, modelVersion) {
-    const key = await hashKey(url, modelVersion);
-    if (memory.has(key)) return memory.get(key);
+  /** Synchronous memory-tier lookup. null on miss. */
+  function getSync(key, modelVersion) {
+    const v = memory.get(memKey(key, modelVersion));
+    return v === undefined ? null : v;
+  }
+
+  /** Memory tier first, then IndexedDB (populating memory on a hit). */
+  async function get(key, modelVersion) {
+    const mk = memKey(key, modelVersion);
+    if (memory.has(mk)) return memory.get(mk);
     try {
+      const idbKey = await hashKey(key, modelVersion);
       const db = await openDb();
       const score = await new Promise((resolve) => {
-        const req = db.transaction(STORE).objectStore(STORE).get(key);
+        const req = db.transaction(STORE).objectStore(STORE).get(idbKey);
         req.onsuccess = () => resolve(req.result ? req.result.score : null);
         req.onerror = () => resolve(null);
       });
-      if (score !== null) memory.set(key, score);
+      if (score !== null) remember(mk, score);
       return score;
     } catch (e) {
       return null;
     }
   }
 
-  async function set(url, modelVersion, score) {
-    const key = await hashKey(url, modelVersion);
-    memory.set(key, score);
+  async function set(key, modelVersion, score) {
+    remember(memKey(key, modelVersion), score);
     try {
+      const idbKey = await hashKey(key, modelVersion);
       const db = await openDb();
       db.transaction(STORE, 'readwrite').objectStore(STORE)
-        .put({ key, score, ts: Date.now() });
+        .put({ key: idbKey, score, ts: Date.now() });
     } catch (e) {
       // Cache write failures are non-fatal.
     }
@@ -96,5 +116,5 @@ const ScaredyCatVerdictCache = (function () {
     }
   }
 
-  return { get, set, prune };
+  return { get, getSync, set, prune };
 })();

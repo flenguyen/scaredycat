@@ -8,6 +8,10 @@
  *     keyword when scored without safeTitles (otherwise it's dead weight),
  *  3. actually suppress — score 0 confidence with the full database.
  *
+ * Every `definite: true` title must have at least one multi-word variant of
+ * 11+ characters (otherwise the flag does nothing), and the flag must not sit
+ * on an entry whose title is also a safeTitle.
+ *
  * Usage: npm run lint:database (nonzero exit on violations)
  */
 
@@ -56,9 +60,26 @@ for (const safeTitle of safeTitles) {
   }
 }
 
+// ---- definite fast-track flags ----
+const FAST_DEFINITE_MIN_VARIANT = 11; // keep in sync with scoring-core.js
+let definiteCount = 0;
+for (const entry of database.titles) {
+  if (entry.definite !== true) continue;
+  definiteCount++;
+  const norm = Scoring.normalizeText(entry.title);
+  const variants = [norm, ...(entry.variations || []).map(v => Scoring.normalizeText(v))];
+  const eligible = variants.filter(v => v.length >= FAST_DEFINITE_MIN_VARIANT && v.includes(' '));
+  if (!eligible.length) {
+    errors.push(`"${entry.title}" (${entry.year}) is flagged definite but has no multi-word variant of ${FAST_DEFINITE_MIN_VARIANT}+ chars — the flag does nothing`);
+  }
+  if (safeTitles.some(s => Scoring.normalizeText(s) === norm)) {
+    errors.push(`"${entry.title}" is flagged definite but is also a safeTitle`);
+  }
+}
+
 if (errors.length) {
   console.error(`lint-database: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log(`lint-database: ${safeTitles.length} safeTitles OK ✓`);
+console.log(`lint-database: ${safeTitles.length} safeTitles OK, ${definiteCount} definite flags OK ✓`);

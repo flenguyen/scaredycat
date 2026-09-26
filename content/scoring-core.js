@@ -27,6 +27,14 @@ const ScaredyCatScoring = (function () {
 
   // Title matches at/above this score are trusted without ML confirmation.
   const DEFINITE_TITLE_SCORE = 85;
+  // Curated fast-track: database entries flagged `definite: true` promote
+  // their multi-word variants of at least this length to DEFINITE on an
+  // exact-bounded match, even when the length-based score is below 85
+  // ("the exorcist" scores 74). Only distinctive names are flagged — a
+  // length rule alone would fast-track "escape room" / "white noise" and the
+  // like, which is exactly what the image veto exists for. See
+  // eval/lint-database.mjs and run-eval --definite-report.
+  const FAST_DEFINITE_MIN_VARIANT = 11;
   // Near-miss window below the block threshold that still gets an ML look.
   const NEAR_MISS_WINDOW = 20;
 
@@ -79,6 +87,11 @@ const ScaredyCatScoring = (function () {
     `\\b(${Object.keys(NUMBER_WORDS).join('|')})\\b`, 'g'
   );
   const COMPOUND_TWENTY_REGEX = /twenty\s*(\w+)/g;
+  // Non-global probe: most contexts contain no number words at all, so the
+  // two replace passes in normalizeNumbers can be skipped outright.
+  const HAS_NUMBER_WORD_REGEX = new RegExp(
+    `\\b(${Object.keys(NUMBER_WORDS).join('|')})\\b`
+  );
 
   // Tokens too common to identify a title candidate.
   const FUZZY_STOPWORDS = new Set([
@@ -122,6 +135,7 @@ const ScaredyCatScoring = (function () {
   }
 
   function normalizeNumbers(text) {
+    if (!text || !HAS_NUMBER_WORD_REGEX.test(text)) return text;
     let result = text;
     result = result.replace(COMPOUND_TWENTY_REGEX, (match, p1) => {
       const ones = NUMBER_WORDS[p1];
@@ -192,6 +206,7 @@ const ScaredyCatScoring = (function () {
     const longVariants = new Map();  // variant -> { title }
     const fuzzyVariants = [];        // [{ variant, title }]
     const fuzzyTokenIndex = new Map(); // token -> [fuzzyVariants index]
+    const definiteVariants = new Set(); // variants that blur without ML on an exact match
 
     for (const entry of titles) {
       const titleNormalized = normalizeText(entry.title);
@@ -218,6 +233,9 @@ const ScaredyCatScoring = (function () {
         const bucket = variant.length < 8 ? shortVariants : longVariants;
         if (!bucket.has(variant)) {
           bucket.set(variant, { title: entry.title });
+        }
+        if (entry.definite === true && variant.length >= FAST_DEFINITE_MIN_VARIANT && variant.includes(' ')) {
+          definiteVariants.add(variant);
         }
 
         // Fuzzy candidates: multi-word, >=8 chars (same gate as before).
@@ -291,6 +309,7 @@ const ScaredyCatScoring = (function () {
       shortRegex, shortVariants,
       longRegex, longVariants,
       fuzzyVariants, fuzzyTokenIndex,
+      definiteVariants,
       safeRegex,
       keywordRegex, keywordWeights, keywordPrefixes
     };
@@ -357,8 +376,9 @@ const ScaredyCatScoring = (function () {
    * Real title cards usually carry at least one cleanly bounded occurrence
    * (alt text, URL slug), so checking all occurrences protects recall.
    */
-  function computeMatchStrength(text, variant, safeSpans) {
+  function computeMatchStrength(text, variant, safeSpans, extraFiller) {
     const re = new RegExp(`\\b${escapeRegex(variant)}\\b`, 'g');
+    const clean = (token) => !isSuspiciousNeighbor(token) || (extraFiller && extraFiller.has(token));
     let m;
     while ((m = re.exec(text)) !== null) {
       const start = m.index;
@@ -369,7 +389,7 @@ const ScaredyCatScoring = (function () {
       const nextSpace = text.indexOf(' ', end + 1);
       const nextToken = end >= text.length ? '' :
         text.slice(end + 1, nextSpace === -1 ? text.length : nextSpace);
-      if (!isSuspiciousNeighbor(prevToken) && !isSuspiciousNeighbor(nextToken)) {
+      if (clean(prevToken) && clean(nextToken)) {
         return 'exact';
       }
     }
@@ -383,10 +403,14 @@ const ScaredyCatScoring = (function () {
 
     let best = { matched: false, score: 0, title: null };
 
+    // The number-normalized form is usually identical to the plain form; a
+    // second pass over the same string can never change `best`, so skip it.
+    // (The long regex has ~1,100 alternatives — this halves per-element cost.)
+    const sameText = normalizedWithNumbers === normalizedText;
     best = collectRegexMatches(compiled.shortRegex, normalizedText, compiled.shortVariants, best, safeSpans);
-    best = collectRegexMatches(compiled.shortRegex, normalizedWithNumbers, compiled.shortVariants, best, safeSpansNum);
+    if (!sameText) best = collectRegexMatches(compiled.shortRegex, normalizedWithNumbers, compiled.shortVariants, best, safeSpansNum);
     best = collectRegexMatches(compiled.longRegex, normalizedText, compiled.longVariants, best, safeSpans);
-    best = collectRegexMatches(compiled.longRegex, normalizedWithNumbers, compiled.longVariants, best, safeSpansNum);
+    if (!sameText) best = collectRegexMatches(compiled.longRegex, normalizedWithNumbers, compiled.longVariants, best, safeSpansNum);
 
     // Fuzzy pass. similarity(variant, fullText) can only exceed 0.8 when the
     // lengths are within 25% of each other, so:
@@ -416,14 +440,20 @@ const ScaredyCatScoring = (function () {
     }
 
     if (best.matched) {
+      const spans = best.text === normalizedWithNumbers ? safeSpansNum : safeSpans;
       best.strength = (best.variant && best.variant.length < STRENGTH_CHECK_MAX_VARIANT)
-        ? computeMatchStrength(
-            best.text, best.variant,
-            best.text === normalizedWithNumbers ? safeSpansNum : safeSpans
-          )
+        ? computeMatchStrength(best.text, best.variant, spans)
         : 'exact';
+      // Curated fast-track: the neighbor check runs regardless of length here,
+      // so "the exorcist files podcast" ("files" is not filler) stays ambiguous.
+      // A horror keyword next to a flagged title ("train to busan zombie") is
+      // confirmation, not a fragment sign, so keywords count as clean here.
+      best.fastDefinite = !!(best.variant &&
+        compiled.definiteVariants && compiled.definiteVariants.has(best.variant) &&
+        computeMatchStrength(best.text, best.variant, spans, compiled.keywordWeights) === 'exact');
     } else {
       best.strength = null;
+      best.fastDefinite = false;
     }
     return best;
   }
@@ -544,7 +574,7 @@ const ScaredyCatScoring = (function () {
     let band;
     let requiresPositiveImage = false;
     if (isHorrorTextOnly && titleMatch.matched && !partialTitle &&
-        titleMatch.score >= DEFINITE_TITLE_SCORE) {
+        (titleMatch.score >= DEFINITE_TITLE_SCORE || titleMatch.fastDefinite)) {
       band = BANDS.DEFINITE_HORROR;
     } else if (isHorrorTextOnly) {
       // Keyword-driven or weak-title block: let the image classifier confirm

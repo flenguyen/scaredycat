@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Scaredy Cat",
   "version": "1.1.0",
+  "minimum_chrome_version": "137",
   "description": "Protects you from horror content while browsing. Because not everyone wants to see scary stuff! 🙀",
   "icons": {
     "16": "icons/icon16.png",
@@ -13,7 +14,8 @@
     "activeTab",
     "offscreen",
     "unlimitedStorage",
-    "alarms"
+    "alarms",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -26,25 +28,68 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/early-init.js"],
-      "css": ["styles/early-block.css"],
+      "matches": [
+        "*://*.imdb.com/*",
+        "*://*.rottentomatoes.com/*",
+        "*://*.themoviedb.org/*",
+        "*://*.letterboxd.com/*",
+        "*://*.shudder.com/*",
+        "*://*.netflix.com/*",
+        "*://*.hulu.com/*",
+        "*://*.disneyplus.com/*",
+        "*://*.hbomax.com/*",
+        "*://*.max.com/*",
+        "*://*.primevideo.com/*",
+        "*://*.fandango.com/*"
+      ],
+      "js": [
+        "content/early-init.js"
+      ],
+      "css": [
+        "styles/early-block.css"
+      ],
       "run_at": "document_start"
     },
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "js": [
         "content/scoring-core.js",
         "content/genre-signal.js",
         "content/detector.js",
+        "content/feedback-ui.js",
         "content/blocker.js",
         "content/observer.js",
         "content/ml-bridge.js",
         "content/youtube-preview-guard.js",
+        "content/picker.js",
         "content/content.js"
       ],
-      "css": ["styles/blur-overlay.css"],
-      "run_at": "document_end"
+      "css": [
+        "styles/blur-overlay.css",
+        "styles/feedback.css"
+      ],
+      "run_at": "document_end",
+      "exclude_matches": [
+        "*://*.loom.com/*",
+        "*://*.loomcdn.com/*",
+        "*://*.zoom.us/*",
+        "*://*.zoom.com/*",
+        "*://meet.google.com/*",
+        "*://teams.microsoft.com/*",
+        "*://teams.live.com/*",
+        "*://*.webex.com/*",
+        "*://*.slack.com/*",
+        "*://*.discord.com/*",
+        "*://*.discordapp.com/*",
+        "*://*.twitch.tv/*",
+        "*://*.whereby.com/*",
+        "*://*.around.co/*",
+        "*://*.screen.so/*",
+        "*://*.cal.com/*",
+        "*://*.calendly.com/*"
+      ]
     }
   ],
   "action": {
@@ -58,8 +103,14 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["data/horror-database.json", "styles/blur-overlay.css", "fonts/*.woff2"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "data/horror-database.json",
+        "styles/blur-overlay.css",
+        "fonts/*.woff2"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

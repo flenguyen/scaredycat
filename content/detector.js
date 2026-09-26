@@ -44,14 +44,17 @@ const ScaredyCatDetector = (function () {
   const BANDS = ScaredyCatScoring.BANDS;
 
   /**
-   * Load the horror database from JSON file and compile it once.
+   * Compile the horror database once. `preloaded` is the copy the caller
+   * already read from chrome.storage.local (content.js reads it in parallel
+   * with settings); when absent we read storage ourselves, and fall back to
+   * the bundled file only if storage has nothing usable.
    */
-  async function loadDatabase() {
+  async function loadDatabase(preloaded) {
     if (compiledIndex) return horrorDatabase;
     if (loadPromise) return loadPromise;
 
     loadPromise = (async () => {
-      horrorDatabase = await resolveDatabase();
+      horrorDatabase = await resolveDatabase(preloaded);
       compiledIndex = ScaredyCatScoring.compile(horrorDatabase);
       titleInfo = new Map();
       for (const entry of horrorDatabase.titles || []) {
@@ -66,7 +69,8 @@ const ScaredyCatDetector = (function () {
           synopsis: entry.synopsis || null
         });
       }
-      computePageSignal();
+      // The page signal is computed by the first scan (content.js calls
+      // refreshPageSignal before scoring), not here — avoids doing it twice.
       return horrorDatabase;
     })();
 
@@ -74,37 +78,30 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Pick the database to compile. The bundled file is the guaranteed-present
-   * floor; the background worker may have cached a newer remote copy in
-   * chrome.storage.local (see background/db-updater.js). Prefer the cached copy
-   * only when it's at least as new as the bundled one, so a fresh Web Store
-   * release shipping a newer bundled DB always wins until the next refresh.
-   * Any failure degrades to the bundled file, then to an empty fallback.
+   * Pick the database to compile. The background worker keeps
+   * chrome.storage.local.horrorDatabase populated with whichever is newer:
+   * the bundled file (seeded on install/update) or the daily remote refresh
+   * (see background/db-updater.js). So the common path is one storage read,
+   * already done by the caller. The bundled file is only fetched when storage
+   * is empty (first run before the seed lands, or storage cleared).
    */
-  async function resolveDatabase() {
-    let bundled = null;
+  async function resolveDatabase(preloaded) {
+    let cached = preloaded;
+    if (cached === undefined) {
+      try {
+        cached = (await chrome.storage.local.get('horrorDatabase')).horrorDatabase;
+      } catch (error) {
+        cached = null; // storage unavailable
+      }
+    }
+    if (isValidDatabase(cached)) return cached;
+
     try {
       const response = await fetch(chrome.runtime.getURL('data/horror-database.json'));
-      bundled = await response.json();
+      const bundled = await response.json();
+      if (isValidDatabase(bundled)) return bundled;
     } catch (error) {
-      bundled = null;
-    }
-
-    let cached = null;
-    try {
-      const stored = await chrome.storage.local.get('horrorDatabase');
-      if (isValidDatabase(stored.horrorDatabase)) cached = stored.horrorDatabase;
-    } catch (error) {
-      cached = null; // storage unavailable
-    }
-
-    if (cached && (!bundled || compareDbVersion(cached, bundled) >= 0)) {
-      console.log(`Scaredy Cat: Loaded ${cached.titles.length} horror titles (remote v${cached.version})`);
-      return cached;
-    }
-    if (isValidDatabase(bundled)) {
-      console.log(`Scaredy Cat: Loaded ${bundled.titles.length} horror titles (bundled v${bundled.version})`);
-      return bundled;
+      // fall through
     }
     console.error('Scaredy Cat: Failed to load horror database');
     return { titles: [], keywords: getDefaultKeywords() };
@@ -114,25 +111,6 @@ const ScaredyCatDetector = (function () {
     return !!db
       && Array.isArray(db.titles) && db.titles.length > 0
       && typeof db.version === 'string';
-  }
-
-  /** Compare two databases by semver `version`, tie-broken by `lastUpdated`. */
-  function compareDbVersion(a, b) {
-    const va = parseVersion(a.version);
-    const vb = parseVersion(b.version);
-    for (let i = 0; i < Math.max(va.length, vb.length); i++) {
-      const d = (va[i] || 0) - (vb[i] || 0);
-      if (d) return d < 0 ? -1 : 1;
-    }
-    const la = a.lastUpdated || '';
-    const lb = b.lastUpdated || '';
-    if (la < lb) return -1;
-    if (la > lb) return 1;
-    return 0;
-  }
-
-  function parseVersion(v) {
-    return String(v || '').split('.').map(n => parseInt(n, 10) || 0);
   }
 
   /**
@@ -198,21 +176,30 @@ const ScaredyCatDetector = (function () {
     // image-only block bar. Leaving every sticky flag off keeps blocking on
     // these domains strictly per-element (title match or text + positive image).
     if (isSocialFeedCached()) return;
+    // Every flag is sticky-on, so each producer below runs only while the
+    // flag(s) it feeds are still off. On a confirmed horror title page the
+    // 2s/6s re-checks then cost one URL/filter-chip look instead of a JSON-LD
+    // reparse and an h1-subtree walk.
+    if (pageHasHorrorSignal && pageIsHorrorGenreListing && pageHasStructuredHorrorGenre) return;
     try {
-      const titleUrlContext = [
-        document.title || '',
-        window.location.pathname.replace(/[-_\/]/g, ' ')
-      ].join(' ');
-      const opts = { threshold: getThreshold(), scanQuietElements: false };
-      const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
-      const isGenreListing = pageIsHorrorListing();
-      const structured = readStructuredHorrorGenre();
-      const declaresHorrorGenre = structured.any || visibleGenreLineDeclaresHorror();
-      const signalNow =
-        (pageResult.titleMatched && pageResult.titleScore >= 85) ||
-        pageResult.keywordScore >= 30 ||
-        declaresHorrorGenre ||
-        isGenreListing;
+      const isGenreListing = pageIsHorrorGenreListing || pageIsHorrorListing();
+      const structured = (pageHasHorrorSignal && pageHasStructuredHorrorGenre)
+        ? { any: true, authoritative: true }
+        : readStructuredHorrorGenre();
+
+      let signalNow = isGenreListing || structured.any;
+      if (!signalNow && !pageHasHorrorSignal) {
+        const titleUrlContext = [
+          document.title || '',
+          window.location.pathname.replace(/[-_\/]/g, ' ')
+        ].join(' ');
+        const opts = { threshold: getThreshold(), scanQuietElements: false };
+        const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
+        signalNow =
+          (pageResult.titleMatched && pageResult.titleScore >= 85) ||
+          pageResult.keywordScore >= 30 ||
+          visibleGenreLineDeclaresHorror();
+      }
       if (signalNow) pageHasHorrorSignal = true;
       if (isGenreListing) pageIsHorrorGenreListing = true;
       if (structured.authoritative) pageHasStructuredHorrorGenre = true;
@@ -220,6 +207,11 @@ const ScaredyCatDetector = (function () {
       // Leave any previously-confirmed signal untouched.
     }
   }
+
+  // JSON-LD blobs on media sites can be tens of KB and the page signal is
+  // re-evaluated several times per page; parse each <script> once and reuse
+  // while its text is unchanged.
+  const jsonLdMemo = new WeakMap(); // script node -> { text, items }
 
   /**
    * Read STRUCTURED genre metadata (schema.org JSON-LD, og:video:genre). Returns
@@ -235,13 +227,19 @@ const ScaredyCatDetector = (function () {
     try {
       const media = [];
       for (const node of document.querySelectorAll('script[type="application/ld+json"]')) {
-        let data;
-        try {
-          data = JSON.parse(node.textContent || '');
-        } catch (e) {
-          continue;
+        const text = node.textContent || '';
+        let entry = jsonLdMemo.get(node);
+        if (!entry || entry.text !== text) {
+          let items = [];
+          try {
+            items = Array.from(ScaredyCatGenre.mediaItemsFromJsonLd(JSON.parse(text)));
+          } catch (e) {
+            items = [];
+          }
+          entry = { text, items };
+          jsonLdMemo.set(node, entry);
         }
-        for (const item of ScaredyCatGenre.mediaItemsFromJsonLd(data)) media.push(item);
+        for (const item of entry.items) media.push(item);
       }
       if (media.some(it => ScaredyCatGenre.genreListIsHorror(it.genre))) result.any = true;
       if (ScaredyCatGenre.isSingleHorrorMediaPage(media)) result.authoritative = true;
@@ -277,7 +275,11 @@ const ScaredyCatDetector = (function () {
       const scope = h1.closest('section, header, [class*="hero"], [data-qa], [data-testid]')
         || h1.parentElement;
       if (!scope) return false;
-      for (const el of scope.querySelectorAll('*')) {
+      // TreeWalker: same element order as querySelectorAll('*') without
+      // materializing a NodeList of the whole hero subtree.
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_ELEMENT);
+      let el;
+      while ((el = walker.nextNode())) {
         if (el.children.length) continue; // text leaves only
         if (ScaredyCatGenre.textLooksLikeHorrorGenre(el.textContent || '')) return true;
       }
@@ -411,6 +413,18 @@ const ScaredyCatDetector = (function () {
     /(^|\.)bsky\.app$/i
   ];
 
+  // YouTube card containers (classic polymer renderers and the newer
+  // lockup view models) and where the title lives inside them.
+  const YT_CARD_SELECTOR = 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, ytd-playlist-video-renderer, ytd-reel-item-renderer, yt-lockup-view-model, ytd-rich-grid-media';
+  const YT_TITLE_SELECTOR = '#video-title, a#video-title-link, h3 a[title], h3 a[aria-label], .yt-lockup-metadata-view-model-wiz__title, [class*="lockup-metadata"] a[aria-label]';
+  let _isYouTubeCached = null;
+  function isYouTubeCached() {
+    if (_isYouTubeCached === null) {
+      _isYouTubeCached = /(^|\.)youtube\.com$/i.test(window.location.hostname);
+    }
+    return _isYouTubeCached;
+  }
+
   let _isSocialFeedCached = null;
   function isSocialFeedCached() {
     if (_isSocialFeedCached === null) {
@@ -458,6 +472,19 @@ const ScaredyCatDetector = (function () {
       const ariaLabel = parent.getAttribute('aria-label');
       if (ariaLabel) parts.push(ariaLabel);
       parent = parent.parentElement;
+    }
+
+    // YouTube thumbnails carry no text of their own (the <a id=thumbnail>
+    // wrapper is empty); the video title sits in a sibling inside the
+    // renderer element. Reading it turns a pixel-only guess into a title
+    // match — instant DEFINITE for named horror trailers, no classifier.
+    if (isYouTubeCached()) {
+      const card = element.closest(YT_CARD_SELECTOR);
+      if (card) {
+        const titleEl = card.querySelector(YT_TITLE_SELECTOR);
+        const text = titleEl && (titleEl.getAttribute('title') || titleEl.getAttribute('aria-label') || titleEl.textContent || '').trim();
+        if (text) parts.push(text.slice(0, 200));
+      }
     }
 
     // On media sites, do minimal extra checks
@@ -579,7 +606,12 @@ const ScaredyCatDetector = (function () {
     return LOGO_WHITELIST_PATTERNS.some(pattern => pattern.test(src));
   }
 
-  function shouldAnalyzeElement(element) {
+  /**
+   * `rect` (optional) is a DOMRect the caller already has (from the
+   * IntersectionObserver entry or its own layout pass): using it avoids a
+   * forced layout via offsetWidth for lazy images with no intrinsic size yet.
+   */
+  function shouldAnalyzeElement(element, rect) {
     const tagName = element.tagName?.toUpperCase();
     if (!tagName) return false;
 
@@ -589,8 +621,8 @@ const ScaredyCatDetector = (function () {
     }
 
     // Size check
-    const width = element.naturalWidth || element.width || element.offsetWidth || 0;
-    const height = element.naturalHeight || element.height || element.offsetHeight || 0;
+    const width = element.naturalWidth || element.width || (rect && rect.width) || element.offsetWidth || 0;
+    const height = element.naturalHeight || element.height || (rect && rect.height) || element.offsetHeight || 0;
     const minSize = isMediaSiteCached() ? 60 : 100;
 
     if (tagName === 'IMG' && (width < minSize || height < minSize)) {

@@ -18,6 +18,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const totalBlocked = document.getElementById('totalBlocked');
   const container = document.querySelector('.popup-container');
 
+  // Feedback section
+  const reportMissedBtn = document.getElementById('reportMissedBtn');
+  const sendFeedbackBtn = document.getElementById('sendFeedbackBtn');
+  const feedbackForm = document.getElementById('feedbackForm');
+  const feedbackText = document.getElementById('feedbackText');
+  const feedbackEmail = document.getElementById('feedbackEmail');
+  const feedbackCats = document.querySelectorAll('.feedback-cat[data-cat]');
+  const feedbackSubmit = document.getElementById('feedbackSubmit');
+  const feedbackStatus = document.getElementById('feedbackStatus');
+  const popupConsentRow = document.getElementById('popupConsentRow');
+  const popupConsentAccept = document.getElementById('popupConsentAccept');
+  const popupConsentDecline = document.getElementById('popupConsentDecline');
+  const feedbackConsentToggle = document.getElementById('feedbackConsentToggle');
+
   // State
   let settings = null;
   let currentTab = null;
@@ -93,6 +107,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Site toggle
     const isSiteDisabled = settings.disabledSites.includes(currentHostname);
     updateSiteToggle(isSiteDisabled);
+
+    // Feedback consent toggle reflects the stored opt-in.
+    if (feedbackConsentToggle) feedbackConsentToggle.checked = !!settings.feedbackConsent;
   }
 
   /**
@@ -134,7 +151,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           <span class="blocked-item-title">${escapeHtml(reason)}</span>
           <span class="blocked-item-confidence">${confidence}% confidence</span>
         </div>
-        <button class="allow-btn" data-id="${item.id}">Allow</button>
+        <div class="blocked-item-actions">
+          <button class="wrong-btn" data-id="${item.id}" title="Tell us this isn't horror">Not horror?</button>
+          <button class="allow-btn" data-id="${item.id}">Allow</button>
+        </div>
       `;
 
       blockedList.appendChild(li);
@@ -154,6 +174,23 @@ document.addEventListener('DOMContentLoaded', async () => {
           } else {
             btn.disabled = false;
           }
+        } catch (e) {
+          btn.disabled = false;
+        }
+      });
+    });
+
+    // "Not horror?" — false-positive signal only; the content side handles
+    // consent + toast and does NOT unblur (that's what "Allow" is for).
+    blockedList.querySelectorAll('.wrong-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          await chrome.tabs.sendMessage(currentTab.id, {
+            type: 'REPORT_FALSE_POSITIVE',
+            id: btn.dataset.id
+          });
+          btn.textContent = 'Thanks';
         } catch (e) {
           btn.disabled = false;
         }
@@ -299,6 +336,127 @@ document.addEventListener('DOMContentLoaded', async () => {
       } catch (e) {
         // Content script might not be loaded
       }
+    });
+
+    setupFeedback();
+  }
+
+  /**
+   * Wire the feedback section: missed-blur picker launcher, the general
+   * feedback form, the inline consent step, and the revocable consent toggle.
+   */
+  function setupFeedback() {
+    let selectedCat = 'bug';
+
+    // Launch the in-page element picker, then close the popup so the user can
+    // click the missed content. Consent is handled in-page by the picker flow.
+    reportMissedBtn?.addEventListener('click', async () => {
+      try {
+        await chrome.tabs.sendMessage(currentTab.id, { type: 'START_PICK_MODE' });
+        window.close();
+      } catch (e) {
+        feedbackStatus.textContent = "Can't pick on this page — try the right-click menu.";
+      }
+    });
+
+    // Expand/collapse the general feedback form.
+    sendFeedbackBtn?.addEventListener('click', () => {
+      const open = feedbackForm.hasAttribute('hidden');
+      if (open) {
+        feedbackForm.removeAttribute('hidden');
+        sendFeedbackBtn.setAttribute('aria-expanded', 'true');
+        feedbackText.focus();
+      } else {
+        feedbackForm.setAttribute('hidden', '');
+        sendFeedbackBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Category chips (single select).
+    feedbackCats.forEach(chip => {
+      chip.addEventListener('click', () => {
+        feedbackCats.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        selectedCat = chip.dataset.cat;
+      });
+    });
+
+    // Revocable consent toggle.
+    feedbackConsentToggle?.addEventListener('change', async () => {
+      const res = await chrome.runtime.sendMessage({
+        type: 'UPDATE_SETTINGS',
+        settings: { feedbackConsent: feedbackConsentToggle.checked }
+      });
+      if (res?.success) settings = res.settings;
+    });
+
+    function buildGeneralReport() {
+      return {
+        type: 'general',
+        title: selectedCat,
+        note: (feedbackText.value || '').slice(0, 2000),
+        contact: (feedbackEmail.value || '').slice(0, 200),
+        pageUrl: currentTab?.url || '',
+        element: {}
+      };
+    }
+
+    async function sendGeneral() {
+      const report = buildGeneralReport();
+      const res = await chrome.runtime.sendMessage({ type: 'SUBMIT_FEEDBACK', report });
+      if (res?.deduped) {
+        feedbackStatus.textContent = 'Already noted — thanks 🙀';
+      } else if (res?.success) {
+        feedbackStatus.textContent = res.queued
+          ? "Saved — we'll send it when you're back online 🙀"
+          : "Thanks! The cat's taking notes 🙀";
+        feedbackText.value = '';
+        feedbackEmail.value = '';
+      } else if (res?.rateLimited) {
+        feedbackStatus.textContent = 'Easy there — give it a moment.';
+      } else {
+        feedbackStatus.textContent = "Couldn't send right now — try again later.";
+      }
+    }
+
+    feedbackForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!feedbackText.value.trim()) {
+        feedbackStatus.textContent = 'Add a quick note first 🙂';
+        feedbackText.focus();
+        return;
+      }
+      // First send needs consent: show the inline step instead of sending.
+      if (!settings?.feedbackConsent) {
+        popupConsentRow.removeAttribute('hidden');
+        feedbackStatus.textContent = '';
+        popupConsentAccept.focus();
+        return;
+      }
+      feedbackSubmit.disabled = true;
+      await sendGeneral();
+      feedbackSubmit.disabled = false;
+    });
+
+    // Inline consent: accept enables sharing and sends; decline backs out.
+    popupConsentAccept?.addEventListener('click', async () => {
+      const res = await chrome.runtime.sendMessage({
+        type: 'UPDATE_SETTINGS',
+        settings: { feedbackConsent: true }
+      });
+      if (res?.success) {
+        settings = res.settings;
+        if (feedbackConsentToggle) feedbackConsentToggle.checked = true;
+      }
+      popupConsentRow.setAttribute('hidden', '');
+      feedbackSubmit.disabled = true;
+      await sendGeneral();
+      feedbackSubmit.disabled = false;
+    });
+
+    popupConsentDecline?.addEventListener('click', () => {
+      popupConsentRow.setAttribute('hidden', '');
+      feedbackStatus.textContent = 'No worries — nothing was sent 🐾';
     });
   }
 

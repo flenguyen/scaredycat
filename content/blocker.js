@@ -13,7 +13,33 @@ const ScaredyCatBlocker = (function () {
   // the overlay styles must be adopted into that root explicitly.
   const styledShadowRoots = new WeakSet();
   let overlayCssPromise = null;
+  let sharedOverlaySheet = null; // one constructed sheet adopted by every shadow root
   let brandFontsInjected = false;
+
+  // Re-entrancy guard for the horror-page video cascade: stopAllPageVideos()
+  // creates overlays, and each of those must not re-run the page-wide scan.
+  let cascading = false;
+
+  // Blocked-count stats are batched per page (one storage write per burst
+  // instead of one per element).
+  let pendingBlockedCount = 0;
+  let statsFlushTimer = null;
+  function flushBlockedStats() {
+    statsFlushTimer = null;
+    if (!pendingBlockedCount) return;
+    const count = pendingBlockedCount;
+    pendingBlockedCount = 0;
+    try {
+      chrome.runtime.sendMessage({ type: 'INCREMENT_BLOCKED', count }).catch(() => {});
+    } catch (e) {
+      // Extension context may be invalidated
+    }
+  }
+  function noteBlocked() {
+    pendingBlockedCount++;
+    if (!statsFlushTimer) statsFlushTimer = setTimeout(flushBlockedStats, 1000);
+  }
+  window.addEventListener('pagehide', flushBlockedStats);
 
   // @font-face only registers at document level (it is ignored inside
   // shadow-adopted stylesheets), so the brand fonts are injected once per
@@ -66,9 +92,11 @@ const ScaredyCatBlocker = (function () {
     overlayCssPromise.then(css => {
       if (!css) return;
       try {
-        const sheet = new CSSStyleSheet();
-        sheet.replaceSync(css);
-        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
+        if (!sharedOverlaySheet) {
+          sharedOverlaySheet = new CSSStyleSheet();
+          sharedOverlaySheet.replaceSync(css);
+        }
+        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sharedOverlaySheet];
       } catch (e) {
         // Constructable stylesheets unavailable: fall back to a <style> node.
         const style = document.createElement('style');
@@ -245,35 +273,25 @@ const ScaredyCatBlocker = (function () {
    * Create a blur overlay for an element
    */
   function createBlurOverlay(element, analysisResult) {
-    console.log('Scaredy Cat: Creating blur overlay for', element.tagName, element.src?.slice(0, 50));
-
     // Check if element is still in DOM
-    if (!element.parentNode) {
-      console.warn('Scaredy Cat: Element has no parent, cannot wrap');
-      return null;
-    }
+    if (!element.parentNode) return null;
 
     ensureStylesFor(element);
 
     // Check if already wrapped
-    if (element.closest('.scaredycat-wrapper')) {
-      console.log('Scaredy Cat: Element already wrapped, skipping');
-      return null;
-    }
+    if (element.closest('.scaredycat-wrapper')) return null;
 
     // Create wrapper container
     const wrapper = document.createElement('div');
     wrapper.className = 'scaredycat-wrapper';
     wrapper.setAttribute('data-scaredycat-wrapper', 'true');
 
-    // Store original element properties for restoration
+    // Read phase (one style + layout flush), then write phase below.
     const originalDisplay = getComputedStyle(element).display;
-    const originalPosition = getComputedStyle(element).position;
-
-    // Position the wrapper based on element
-    const rect = element.getBoundingClientRect();
-    wrapper.style.width = element.offsetWidth + 'px';
-    wrapper.style.height = element.offsetHeight + 'px';
+    const width = element.offsetWidth;
+    const height = element.offsetHeight;
+    wrapper.style.width = width + 'px';
+    wrapper.style.height = height + 'px';
     wrapper.style.display = originalDisplay === 'inline' ? 'inline-block' : originalDisplay;
 
     // Create the blur overlay and its tracking entry; the card itself is
@@ -372,35 +390,29 @@ const ScaredyCatBlocker = (function () {
       });
     }
 
-    // On a genuine horror page, aggressively stop all videos on the page —
-    // the player may live in a completely different DOM location than the
-    // matched element. This is gated on the page-level signal so a single
-    // block in a social feed never blankets unrelated posts' videos.
-    if (analysisResult?.isHorror && isHorrorPage()) {
-      stopAllPageVideos();
-
-      // Also set up ongoing monitoring since videos may load/play after blocking
-      startVideoMonitor();
-    }
-
     // Store reference for stats and management
     const id = generateId();
     wrapper.setAttribute('data-scaredycat-id', id);
     blockedElements.set(id, data);
+    window.ScaredyCatPerf?.mark('sc:blur');
+    noteBlocked();
 
-    // Notify background about blocked content
-    try {
-      chrome.runtime.sendMessage({ type: 'INCREMENT_BLOCKED' });
-    } catch (e) {
-      // Extension context may be invalidated
+    // On a genuine horror page, aggressively stop all videos on the page —
+    // the player may live in a completely different DOM location than the
+    // matched element. This is gated on the page-level signal so a single
+    // block in a social feed never blankets unrelated posts' videos. The
+    // cascade's own overlays skip this block (re-entrancy guard), so it runs
+    // once per trigger instead of once per video.
+    if (analysisResult?.isHorror && isHorrorPage() && !cascading) {
+      cascading = true;
+      try {
+        stopAllPageVideos();
+        // Also set up ongoing monitoring since videos may load/play after blocking
+        startVideoMonitor();
+      } finally {
+        cascading = false;
+      }
     }
-
-    console.log('Scaredy Cat: Blur overlay created successfully', {
-      wrapperId: id,
-      wrapperInDOM: wrapper.isConnected,
-      elementBlurred: element.classList.contains('scaredycat-blurred'),
-      wrapperSize: `${wrapper.offsetWidth}x${wrapper.offsetHeight}`
-    });
 
     return wrapper;
   }
@@ -433,7 +445,6 @@ const ScaredyCatBlocker = (function () {
         this.pause();
         this.currentTime = 0;
       };
-      console.log('Scaredy Cat: Video paused and muted');
     } catch (e) {
       console.error('Scaredy Cat: Failed to pause video', e);
     }
@@ -528,6 +539,62 @@ const ScaredyCatBlocker = (function () {
     });
 
     wrapper.appendChild(hideBtn);
+    addFalsePositiveLink(element, wrapper);
+  }
+
+  /**
+   * Build the feedback report payload for one tracked element. The worker fills
+   * in ids/versions/trimmed URL; here we only describe what we matched.
+   */
+  function buildReport(type, element, analysisResult) {
+    const kind = element.tagName === 'IMG' ? 'image'
+      : element.tagName === 'VIDEO' ? 'video'
+      : element.tagName === 'IFRAME' ? 'iframe' : 'other';
+    return {
+      type,
+      element: {
+        src: element.src || element.poster || '',
+        kind,
+        matchedTitle: analysisResult?.matchedTitle || null,
+        confidence: analysisResult?.confidence || 0,
+        band: analysisResult?.band || '',
+        reasons: analysisResult?.reasons || []
+      }
+    };
+  }
+
+  /**
+   * Low-key, opt-in correction affordance shown only AFTER a reveal. Revealing
+   * means "I want to see this" — frequently a correct blur — so this is the only
+   * thing that signals a false positive. It never auto-appears over the blur and
+   * never nags.
+   */
+  function addFalsePositiveLink(element, wrapper) {
+    if (wrapper.querySelector('.scaredycat-fp-link')) return;
+    const id = wrapper.getAttribute('data-scaredycat-id');
+    const data = blockedElements.get(id);
+
+    const link = document.createElement('button');
+    link.className = 'scaredycat-fp-link';
+    link.type = 'button';
+    link.textContent = "This isn't horror";
+    link.title = 'Tell us this was wrongly blurred';
+
+    link.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      link.disabled = true;
+      const report = buildReport('false_positive', element, data?.analysisResult);
+      const ok = await window.ScaredyCatFeedbackUI?.submit(report);
+      if (ok) {
+        link.textContent = 'Thanks — noted';
+        link.classList.add('scaredycat-fp-link--done');
+      } else {
+        link.disabled = false;
+      }
+    });
+
+    wrapper.appendChild(link);
   }
 
   /**
@@ -716,13 +783,16 @@ const ScaredyCatBlocker = (function () {
    * Handle window resize - update wrapper sizes
    */
   function handleResize() {
+    // Read every size first, then write: interleaving forces a layout per entry.
+    const sizes = [];
     blockedElements.forEach((data) => {
       const { element, wrapper } = data;
-      if (wrapper && element) {
-        wrapper.style.width = element.offsetWidth + 'px';
-        wrapper.style.height = element.offsetHeight + 'px';
-      }
+      if (wrapper && element) sizes.push([wrapper, element.offsetWidth, element.offsetHeight]);
     });
+    for (const [wrapper, w, h] of sizes) {
+      wrapper.style.width = w + 'px';
+      wrapper.style.height = h + 'px';
+    }
   }
 
   /**
@@ -819,6 +889,7 @@ const ScaredyCatBlocker = (function () {
     getBlockedItems,
     getBlockedData,
     getBlockedWrappers,
+    buildReport,
     isBlocked
   };
 })();

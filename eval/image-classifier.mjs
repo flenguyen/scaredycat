@@ -1,14 +1,16 @@
 /**
- * Node-side image classifier for the eval harness. Uses the SAME vision
- * model and prompt embeddings the extension ships, so eval scores match
- * production scores.
+ * Node-side image classifier for the eval harness. Uses the same prompt
+ * embeddings the extension ships and the MobileCLIP vision tower from
+ * eval/.model-cache (fp32 by default — the CPU baseline; pass --dtype fp16 to
+ * load the file the extension ships). The authoritative in-browser
+ * comparison is eval/fp16-compare.mjs.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env, AutoProcessor, CLIPVisionModelWithProjection, RawImage } from '@huggingface/transformers';
-import { MODEL_ID } from './setup-model.mjs';
+import { MODEL_ID, DEV_MODEL_DIR } from './setup-model.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -18,14 +20,29 @@ let promptData = null;
 
 export async function loadImageClassifier() {
   if (visionModel) return;
-  env.localModelPath = path.join(ROOT, 'models');
+  env.localModelPath = DEV_MODEL_DIR;
   env.allowRemoteModels = false;
-  promptData = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/prompt-embeddings.json'), 'utf8'));
+  const argv = process.argv;
+  const dtype = argv.includes('--dtype') ? argv[argv.indexOf('--dtype') + 1] : 'fp32';
+  promptData = loadPromptData();
   processor = await AutoProcessor.from_pretrained(MODEL_ID);
   visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, {
-    dtype: 'fp32', // q8 vision is badly degraded for MobileCLIP
+    dtype, // q8 vision is badly degraded for MobileCLIP; fp32/fp16 only
     session_options: { intraOpNumThreads: 1, interOpNumThreads: 1 }
   });
+}
+
+/** Same on-disk format as offscreen/classifier.js loadPromptData(). */
+export function loadPromptData() {
+  const meta = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/prompt-embeddings.json'), 'utf8'));
+  const raw = fs.readFileSync(path.join(ROOT, 'data', meta.embeddings || 'prompt-embeddings.bin'));
+  const floats = new Float32Array(raw.buffer, raw.byteOffset, raw.byteLength / 4);
+  const dim = meta.dim;
+  if (floats.length !== meta.prompts.length * dim) throw new Error('prompt-embeddings.bin does not match prompt-embeddings.json');
+  return {
+    ...meta,
+    prompts: meta.prompts.map((p, i) => ({ ...p, embedding: floats.subarray(i * dim, (i + 1) * dim) }))
+  };
 }
 
 /**

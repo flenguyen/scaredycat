@@ -70,6 +70,32 @@
 
     { "id": "tm-neutral-1", "label": "horror", "expectTextMiss": true, "context": "movie-still-04521.jpg gallery image", "note": "horror still, neutral filename — image layer only" },
     { "id": "tm-neutral-2", "label": "horror", "expectTextMiss": true, "context": "img 20251031 promotional photo", "note": "horror promo, neutral text — image layer only" },
-    { "id": "tm-neutral-3", "label": "horror", "expectTextMiss": true, "context": "untitled project behind the scenes", "note": "horror BTS, neutral text — image layer only" }
+    { "id": "tm-neutral-3", "label": "horror", "expectTextMiss": true, "context": "untitled project behind the scenes", "note": "horror BTS, neutral text — image layer only" },
+
+    {"id":"fd-neg-escape-room","label":"safe","vetoExpected":true,"context":"Book our downtown escape room for your team offsite","note":"generic phrase = horror title; veto territory, never DEFINITE"},
+    {"id":"fd-neg-white-noise","label":"safe","vetoExpected":true,"context":"White noise machine for babies review and buying guide","note":"generic phrase = horror title"},
+    {"id":"fd-neg-lights-out","label":"safe","vetoExpected":true,"context":"Lights out at 10pm: new dorm rules explained","note":"generic phrase = horror title"},
+    {"id":"fd-neg-black-swan","label":"safe","vetoExpected":true,"context":"Black swan event shakes the bond markets","note":"generic phrase = horror title"},
+    {"id":"fd-neg-trick-or-treat","label":"safe","vetoExpected":true,"context":"Trick or treat hours 2026 in Springfield neighborhoods","note":"generic phrase = horror title"},
+    {"id":"fd-neg-haunted-house","label":"safe","vetoExpected":true,"context":"Haunted house kids party decorations DIY","note":"generic phrase + soft keyword"},
+    {"id":"fd-neg-hide-and-seek","label":"safe","vetoExpected":true,"context":"Hide and seek with the toddlers in the backyard","note":"generic phrase = horror title"},
+    {"id":"fd-neg-truth-or-dare","label":"safe","vetoExpected":true,"context":"Truth or dare party game questions for teens","note":"generic phrase = horror title"},
+    {"id":"fd-neg-open-water","label":"safe","vetoExpected":true,"context":"Open water swimming safety tips for beginners","note":"generic phrase = horror title"},
+    {"id":"fd-neg-deep-blue-sea","label":"safe","vetoExpected":true,"context":"Deep blue sea diving trip photos Red Sea","note":"generic phrase = horror title"},
+    {"id":"fd-neg-warm-bodies","label":"safe","vetoExpected":true,"context":"Warm bodies needed: volunteer signup for the food bank","note":"generic phrase = horror title"},
+    {"id":"fd-neg-tooth-fairy","label":"safe","vetoExpected":true,"context":"Tooth fairy pillow craft for kids","note":"generic phrase = horror title"},
+    {"id":"fd-neg-prom-night","label":"safe","vetoExpected":true,"context":"Prom night photos class of 2026","note":"generic phrase = horror title"},
+    {"id":"fd-neg-castle-rock","label":"safe","vetoExpected":true,"context":"Castle Rock Colorado real estate listings","note":"place name = horror title"},
+    {"id":"fd-neg-dark-water","label":"safe","vetoExpected":true,"context":"Dark water damage in the basement: plumber tips","note":"generic phrase = horror title"},
+    {"id":"fd-neg-cat-people","label":"safe","vetoExpected":true,"context":"Cat people vs dog people: the survey results","note":"generic phrase = horror title"},
+    {"id":"fd-neg-pitch-black","label":"safe","vetoExpected":true,"context":"Pitch black bedroom for better sleep","note":"generic phrase = horror title"},
+    {"id":"fd-neg-pet-cemetery","label":"safe","vetoExpected":true,"context":"Pet cemetery in Paris: visiting the Cimetiere des Chiens","note":"real-world phrase = title variation"},
+    {"id":"fd-neg-day-of-the-dead","label":"safe","vetoExpected":true,"context":"Day of the Dead sugar skull cookie recipe","note":"holiday = horror title"},
+    {"id":"fd-neg-sleepy-hollow","label":"safe","vetoExpected":true,"context":"Sleepy Hollow NY weekend getaway itinerary","note":"town = horror title"},
+    {"id":"fd-neg-exorcist-files","label":"safe","vetoExpected":true,"context":"The Exorcist Files podcast episode 12","note":"flagged title as a FRAGMENT of another name: neighbor check must keep it out of DEFINITE"},
+    {"id":"fd-pos-exorcist","label":"horror","context":"The Exorcist (1973) 4K restoration poster","note":"curated fast-track: 12-char variant scores 74 but blurs without ML"},
+    {"id":"fd-pos-train-to-busan","label":"horror","context":"Train to Busan zombie thriller review","note":"curated fast-track"},
+    {"id":"fd-pos-pet-sematary","label":"horror","context":"Pet Sematary 2019 official trailer","note":"curated fast-track (2019 entry; \"pet cemetery\" variation deliberately not flagged)"},
+    {"id":"fd-pos-terrifier","label":"horror","context":"Terrifier 3 Art the Clown poster","note":"curated fast-track"}
   ]
 }

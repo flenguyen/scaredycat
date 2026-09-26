@@ -4,7 +4,14 @@
  * image classification requests to the offscreen ML document.
  */
 
-importScripts('background/verdict-cache.js', 'background/ml-router.js', 'background/db-updater.js');
+importScripts(
+  'background/db-version.js',
+  'background/image-key.js',
+  'background/verdict-cache.js',
+  'background/ml-router.js',
+  'background/db-updater.js',
+  'background/feedback.js'
+);
 
 // Trim the verdict cache when the worker spins up.
 ScaredyCatVerdictCache.prune();
@@ -14,7 +21,8 @@ const DEFAULT_SETTINGS = {
   enabled: true,
   sensitivity: 'medium', // 'low' (80+), 'medium' (60+), 'high' (40+)
   disabledSites: [],
-  allowedItems: [] // Specific URLs or titles user chose to show
+  allowedItems: [], // Specific URLs or titles user chose to show
+  feedbackConsent: false // Opt-in gate for sending any feedback off-device
 };
 
 // Stats live in chrome.storage.local, not sync: they change on every blocked
@@ -25,17 +33,46 @@ async function getStats() {
   return stats || { totalBlockedAllTime: 0 };
 }
 
-// Serialize increments so concurrent messages don't lose counts.
+// Serialize increments so concurrent messages don't lose counts. Content
+// scripts batch their blocks and send a count.
 let statsWriteChain = Promise.resolve();
-function incrementBlocked() {
+function incrementBlocked(count = 1) {
   statsWriteChain = statsWriteChain.then(async () => {
     const stats = await getStats();
-    stats.totalBlockedAllTime = (stats.totalBlockedAllTime || 0) + 1;
+    stats.totalBlockedAllTime = (stats.totalBlockedAllTime || 0) + count;
     await chrome.storage.local.set({ stats });
     return stats.totalBlockedAllTime;
   });
   return statsWriteChain;
 }
+
+// ---- Horror database seeding ------------------------------------------------
+// Content scripts read the database from chrome.storage.local in one call, in
+// parallel with settings, instead of fetching + parsing the bundled JSON on
+// every page load. The worker keeps that key populated: the bundled copy is
+// written here whenever it's newer than what's stored (fresh install, or an
+// update shipping a newer list), and db-updater.js writes newer remote copies.
+const DB_CACHE_KEY = 'horrorDatabase';
+
+async function seedBundledDatabase() {
+  try {
+    const res = await fetch(chrome.runtime.getURL('data/horror-database.json'));
+    const bundled = await res.json();
+    if (!ScaredyCatDBVersion.isValidDatabase(bundled)) return;
+    const { [DB_CACHE_KEY]: stored } = await chrome.storage.local.get(DB_CACHE_KEY);
+    if (ScaredyCatDBVersion.isValidDatabase(stored) &&
+        ScaredyCatDBVersion.compareDbVersion(stored, bundled) >= 0) {
+      return; // stored copy is at least as new
+    }
+    await chrome.storage.local.set({ [DB_CACHE_KEY]: bundled });
+    console.log(`Scaredy Cat: seeded horror DB v${bundled.version} (${bundled.titles.length} titles)`);
+  } catch (e) {
+    // Content scripts fall back to fetching the bundled file themselves.
+  }
+}
+
+chrome.runtime.onInstalled.addListener(seedBundledDatabase);
+chrome.runtime.onStartup.addListener(seedBundledDatabase);
 
 // Initialize extension on install
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -63,6 +100,43 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
+// ---- Right-click "report missed horror" -------------------------------------
+// Adds our own line to Chrome's context menu, scoped to media so it never
+// clutters the menu on plain text. The click handler hands the image/video URL
+// to the page's content script, which owns all in-page feedback UI (consent
+// sheet, toast) and funnels the report back through SUBMIT_FEEDBACK.
+const CONTEXT_MENU_ID = 'scaredycat-report-missed';
+
+function ensureContextMenu() {
+  try {
+    chrome.contextMenus.removeAll(() => {
+      chrome.contextMenus.create({
+        id: CONTEXT_MENU_ID,
+        title: '🙀 Scaredy Cat: Report missed horror',
+        contexts: ['image', 'video']
+      });
+    });
+  } catch (e) {
+    // contextMenus unavailable — nothing to do.
+  }
+}
+
+chrome.runtime.onInstalled.addListener(ensureContextMenu);
+chrome.runtime.onStartup.addListener(ensureContextMenu);
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== CONTEXT_MENU_ID || !tab?.id) return;
+  const srcUrl = info.srcUrl || '';
+  const kind = info.mediaType === 'video' ? 'video' : 'image';
+  chrome.tabs.sendMessage(tab.id, {
+    type: 'REPORT_MISSED_CONTEXT',
+    srcUrl,
+    kind
+  }).catch(() => {
+    // Content script not loaded on this page — ignore.
+  });
+});
+
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message, sender).then(sendResponse);
@@ -77,10 +151,16 @@ async function handleMessage(message, sender) {
   if (message.type === 'CLASSIFY_IMAGE') {
     return ScaredyCatMLRouter.handleClassifyRequest(message.url);
   }
+  // Pre-load the classifier (media sites / horror pages), fire-and-forget.
+  if (message.type === 'WARM_ML') {
+    ScaredyCatMLRouter.warm();
+    return { success: true };
+  }
 
   // Stats messages hit storage.local only — no settings read needed.
   if (message.type === 'INCREMENT_BLOCKED') {
-    const totalBlocked = await incrementBlocked();
+    const n = Number.isInteger(message.count) && message.count > 0 ? message.count : 1;
+    const totalBlocked = await incrementBlocked(n);
     return { success: true, totalBlocked };
   }
   if (message.type === 'GET_PAGE_STATS') {
@@ -94,6 +174,10 @@ async function handleMessage(message, sender) {
   switch (message.type) {
     case 'GET_SETTINGS':
       return { success: true, settings };
+
+    case 'SUBMIT_FEEDBACK':
+      // Consent is re-checked inside submit() so a UI bug can't leak data.
+      return ScaredyCatFeedback.submit(message.report, settings);
 
     case 'UPDATE_SETTINGS':
       const newSettings = { ...settings, ...message.settings };

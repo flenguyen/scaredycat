@@ -17,6 +17,11 @@
   console.log('Scaredy Cat: Media site detected, enabling early protection');
   window.__scaredycatMediaSite = true;
 
+  // Media pages almost always route posters to the image classifier: start
+  // loading the model now so it overlaps with the page's own load instead of
+  // adding to it. Fire-and-forget.
+  try { chrome.runtime.sendMessage({ type: 'WARM_ML' }).catch(() => {}); } catch (e) { /* ignore */ }
+
   // Simple observer that just hides hero content as it appears
   // Will be stopped once main script takes over
   let stopped = false;

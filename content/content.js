@@ -11,7 +11,41 @@
   let isEnabled = true;
   let settings = null;
   let isInitialized = false;
+  let protectionStarted = false;
+  let warmRequested = false;
   const currentHostname = window.location.hostname;
+
+  // Per-element trace logging. Even when the console hides the debug level,
+  // the template strings are still built — keep it off unless debugging.
+  const SC_DEBUG = false;
+
+  const DEFAULT_SETTINGS = { enabled: true, sensitivity: 'medium', allowedItems: [], disabledSites: [] };
+
+  // Lightweight timing marks. Each mark is a User Timing entry plus a mirror
+  // on <html data-sc-perf> (JSON), which eval/browser-latency.mjs reads from
+  // the main world. Counting is O(1); the attribute write is debounced.
+  const Perf = (function () {
+    const marks = {};      // name -> [ms since timeOrigin, ...] (capped)
+    const counts = {};     // name -> total count
+    const CAP = 64;
+    let flushTimer = null;
+    function flush() {
+      flushTimer = null;
+      try {
+        document.documentElement.dataset.scPerf = JSON.stringify({ marks, counts });
+      } catch (e) { /* no documentElement yet */ }
+    }
+    function mark(name) {
+      const t = performance.now();
+      try { performance.mark(name); } catch (e) { /* ignore */ }
+      counts[name] = (counts[name] || 0) + 1;
+      const list = marks[name] || (marks[name] = []);
+      if (list.length < CAP) list.push(Math.round(t * 10) / 10);
+      if (!flushTimer) flushTimer = setTimeout(flush, 250);
+    }
+    return { mark, flush };
+  })();
+  window.ScaredyCatPerf = Perf;
 
   // Trusted domains where we should never run
   const TRUSTED_DOMAINS = [
@@ -30,6 +64,7 @@
    */
   async function init() {
     if (isInitialized) return;
+    Perf.mark('sc:init');
 
     // Skip on trusted domains
     if (isTrustedDomain()) {
@@ -44,32 +79,48 @@
       window.__scaredycatStopEarlyObserver();
     }
 
-    // Load settings
+    // Settings and the (background-seeded) horror database both live in
+    // chrome.storage, which content scripts can read directly: no service
+    // worker wake-up, and both reads run in parallel.
+    let storedDb;
     try {
-      const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
-      if (response?.success) {
-        settings = response.settings;
-        isEnabled = settings.enabled;
-        if (settings.disabledSites?.includes(currentHostname)) {
-          isEnabled = false;
-        }
-        if (settings.sensitivity) {
-          ScaredyCatDetector.setSensitivity(settings.sensitivity);
-        }
-      }
+      const [syncRes, localRes] = await Promise.all([
+        chrome.storage.sync.get('settings').catch(() => ({})),
+        chrome.storage.local.get('horrorDatabase').catch(() => ({}))
+      ]);
+      settings = syncRes?.settings || { ...DEFAULT_SETTINGS };
+      storedDb = localRes?.horrorDatabase;
     } catch (e) {
-      settings = { enabled: true, sensitivity: 'medium', allowedItems: [], disabledSites: [] };
+      settings = { ...DEFAULT_SETTINGS };
     }
-
-    // Load horror database
-    await ScaredyCatDetector.loadDatabase();
+    isEnabled = settings.enabled !== false && !settings.disabledSites?.includes(currentHostname);
+    if (settings.sensitivity) ScaredyCatDetector.setSensitivity(settings.sensitivity);
 
     isInitialized = true;
+
+    // Always listen, so a later enable from the popup can start protection
+    // without a reload.
+    chrome.runtime.onMessage.addListener(handleMessage);
 
     if (!isEnabled) {
       revealAllEarlyHidden();
       return;
     }
+
+    await startProtection(storedDb);
+  }
+
+  /**
+   * Compile the database and begin scanning. Idempotent; also used when the
+   * extension is switched on after the page loaded.
+   */
+  async function startProtection(storedDb) {
+    if (protectionStarted) return;
+    protectionStarted = true;
+
+    await ScaredyCatDetector.loadDatabase(storedDb);
+    Perf.mark('sc:db-ready');
+    if (!isEnabled) { protectionStarted = false; return; }
 
     // Start scanning and observing
     ScaredyCatObserver.init(scanElements);
@@ -81,10 +132,18 @@
     // (no-op off YouTube).
     window.ScaredyCatYouTubeGuard?.init();
 
-    // Listen for messages
-    chrome.runtime.onMessage.addListener(handleMessage);
-
     console.log('Scaredy Cat: Initialized');
+  }
+
+  /**
+   * Ask the background to load the image classifier now, so the first
+   * ambiguous poster on this page doesn't pay the model load + shader compile.
+   * Fire-and-forget; only sent where ML is likely to be needed.
+   */
+  function requestWarm() {
+    if (warmRequested) return;
+    warmRequested = true;
+    try { chrome.runtime.sendMessage({ type: 'WARM_ML' }).catch(() => {}); } catch (e) { /* ignore */ }
   }
 
   /**
@@ -99,9 +158,14 @@
         if (!isEnabled) {
           ScaredyCatBlocker.removeAllBlurs();
           ScaredyCatObserver.stopObserving();
+          stopViewportTracking();
           window.ScaredyCatYouTubeGuard?.stop();
+        } else if (!protectionStarted) {
+          startProtection();
         } else {
+          ScaredyCatObserver.startObserving();
           window.ScaredyCatYouTubeGuard?.init();
+          performInitialScan();
         }
         sendResponse({ success: true });
         break;
@@ -128,6 +192,42 @@
         }
         sendResponse({ success: true });
         break;
+      case 'START_PICK_MODE':
+        // Launch the click-to-report picker for missed blurs.
+        window.ScaredyCatPicker?.start();
+        sendResponse({ success: true });
+        break;
+      case 'REPORT_MISSED_CONTEXT': {
+        // Right-click "report missed horror" relayed from the background.
+        const report = {
+          type: 'missed_blur',
+          element: {
+            src: message.srcUrl || '',
+            kind: message.kind || 'image',
+            matchedTitle: null,
+            confidence: 0,
+            band: '',
+            reasons: ['user-reported missed blur (context menu)']
+          }
+        };
+        window.ScaredyCatFeedbackUI?.submit(report);
+        sendResponse({ success: true });
+        break;
+      }
+      case 'REPORT_FALSE_POSITIVE': {
+        // Popup "Not horror?" on a blocked item: signal only, never unblurs.
+        const data = ScaredyCatBlocker.getBlockedData(message.id);
+        if (data?.element) {
+          const report = ScaredyCatBlocker.buildReport(
+            'false_positive', data.element, data.analysisResult
+          );
+          window.ScaredyCatFeedbackUI?.submit(report);
+          sendResponse({ success: true });
+        } else {
+          sendResponse({ success: false });
+        }
+        break;
+      }
       default:
         sendResponse({ success: false });
     }
@@ -170,34 +270,99 @@
   function collectMediaDeep(root, out = []) {
     root.querySelectorAll('img:not([data-scaredycat-processed]), video:not([data-scaredycat-processed]), iframe:not([data-scaredycat-processed])')
       .forEach(el => out.push(el));
-    root.querySelectorAll('*').forEach(el => {
+    // TreeWalker instead of querySelectorAll('*'): same visit order, no
+    // NodeList of the entire document.
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
+    let el;
+    while ((el = walker.nextNode())) {
       if (el.shadowRoot) {
         ScaredyCatObserver.observeRoot(el.shadowRoot);
         collectMediaDeep(el.shadowRoot, out);
       }
-    });
+    }
     return out;
+  }
+
+  // ---- Viewport gating -------------------------------------------------------
+  // Text scoring is cheap, but an AMBIGUOUS verdict costs an image download +
+  // inference. Elements far from the viewport wait until they approach it;
+  // most never do (long feeds, hidden carousel slides), which is the single
+  // biggest cut in classifier work. One viewport of margin in every direction
+  // covers the next screen of a feed and the next carousel click.
+  const VIEWPORT_MARGIN = '100%';
+  const TRACKED_PRUNE_MS = 15000;
+  let io = null;
+  const tracked = new Set(); // observed, not yet scanned
+  let pruneTimer = null;
+
+  function getIO() {
+    if (!io) io = new IntersectionObserver(onIntersect, { rootMargin: VIEWPORT_MARGIN, threshold: 0 });
+    return io;
+  }
+
+  function track(element) {
+    if (tracked.has(element)) return;
+    tracked.add(element);
+    getIO().observe(element);
+    if (!pruneTimer) pruneTimer = setTimeout(pruneTracked, TRACKED_PRUNE_MS);
+  }
+
+  function untrack(element) {
+    if (!tracked.delete(element)) return;
+    if (io) io.unobserve(element);
+  }
+
+  function onIntersect(entries) {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      untrack(entry.target);
+      scanOne(entry.target, entry.boundingClientRect);
+    }
+  }
+
+  /**
+   * IntersectionObserver holds strong references to its targets, so elements
+   * removed before they ever came near the viewport must be dropped by hand.
+   */
+  function pruneTracked() {
+    pruneTimer = null;
+    for (const element of tracked) {
+      if (!element.isConnected) untrack(element);
+    }
+    if (tracked.size && !pruneTimer) pruneTimer = setTimeout(pruneTracked, TRACKED_PRUNE_MS);
+  }
+
+  function stopViewportTracking() {
+    if (io) io.disconnect();
+    io = null;
+    tracked.clear();
+    clearTimeout(pruneTimer);
+    pruneTimer = null;
   }
 
   /**
    * Initial scan - keep it fast
    */
+  let firstScanMarked = false;
   function performInitialScan() {
     if (!isEnabled || !isInitialized) return;
+    if (!firstScanMarked) { firstScanMarked = true; Perf.mark('sc:first-scan'); }
 
     // SPA media sites hydrate title/genre/JSON-LD after init, so re-evaluate
     // the page-level horror signal against the current DOM before scoring.
     if (ScaredyCatDetector.refreshPageSignal()) clearSafeProcessedDeep(document);
+    if (ScaredyCatDetector.isMediaSite() || ScaredyCatDetector.hasPageHorrorSignal()) requestWarm();
 
     // Scan early-hidden elements first (media sites only)
     const earlyHidden = document.querySelectorAll('[data-scaredycat-early-hidden]');
     if (earlyHidden.length > 0) {
-      scanElements(Array.from(earlyHidden));
+      scanElements(Array.from(earlyHidden), { immediate: true });
     }
 
+    pruneTracked();
     const media = collectMediaDeep(document);
     if (media.length > 0) {
-      scanElements(media);
+      scanElements(media, { viewportFirst: true });
     }
   }
 
@@ -241,7 +406,7 @@
         // The genre line / listing filter may only now be in the DOM. If it
         // just flipped the page signal on, re-judge elements already marked
         // safe under the old (higher) image bar.
-        if (ScaredyCatDetector.refreshPageSignal()) clearSafeProcessedDeep(document);
+        if (ScaredyCatDetector.refreshPageSignal()) { clearSafeProcessedDeep(document); requestWarm(); }
         const media = collectMediaDeep(document);
         if (media.length > 0) scanElements(media);
       }, delay);
@@ -250,29 +415,36 @@
 
   /**
    * Scan elements for horror content.
-   * Viewport-visible elements are scored immediately; offscreen ones are
-   * deferred to idle time so scanning never competes with page interaction.
+   *   immediate:     score every element now (early-hidden posters must
+   *                  resolve so they can be revealed).
+   *   viewportFirst: one layout read; elements near the viewport are scored
+   *                  synchronously (no one-frame flash), the rest are tracked.
+   *   default:       everything is tracked; the IntersectionObserver scores
+   *                  each element when it comes within a viewport of view.
    */
-  function scanElements(elements) {
+  function scanElements(elements, { immediate = false, viewportFirst = false } = {}) {
     if (!isEnabled || !isInitialized || !settings || elements.length === 0) return;
 
-    const visible = [];
-    const deferred = [];
-    const viewportHeight = window.innerHeight;
-    for (const element of elements) {
-      if (element.hasAttribute('data-scaredycat-processed')) continue;
-      const rect = element.getBoundingClientRect();
-      const inViewport = rect.bottom > -200 && rect.top < viewportHeight + 200;
-      (inViewport ? visible : deferred).push(element);
+    if (immediate) {
+      for (const element of elements) {
+        if (element.hasAttribute('data-scaredycat-processed')) continue;
+        untrack(element);
+        scanOne(element);
+      }
+      return;
     }
 
-    for (const element of visible) scanOne(element);
-
-    if (deferred.length) {
-      const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 200));
-      idle(() => {
-        for (const element of deferred) scanOne(element);
-      });
+    const viewportHeight = viewportFirst ? window.innerHeight : 0;
+    for (const element of elements) {
+      if (element.hasAttribute('data-scaredycat-processed') || tracked.has(element)) continue;
+      if (viewportFirst) {
+        const rect = element.getBoundingClientRect();
+        if (rect.bottom > -200 && rect.top < viewportHeight + 200 && (rect.width || rect.height)) {
+          scanOne(element, rect);
+          continue;
+        }
+      }
+      track(element);
     }
   }
 
@@ -284,9 +456,9 @@
     return allowedItems.includes(ScaredyCatDetector.normalizeText(result.matchedTitle));
   }
 
-  function scanOne(element) {
+  function scanOne(element, rect) {
     if (element.hasAttribute('data-scaredycat-processed')) return;
-    if (!ScaredyCatDetector.shouldAnalyzeElement(element)) {
+    if (!ScaredyCatDetector.shouldAnalyzeElement(element, rect)) {
       element.setAttribute('data-scaredycat-processed', 'skip');
       revealEarlyHidden(element);
       return;
@@ -306,7 +478,7 @@
 
       // Verbose-level trace for debugging band routing (hidden by default;
       // enable "Verbose" in the DevTools console level filter to see it).
-      console.debug(`Scaredy Cat: band=${result.band} score=${result.confidence} ${(src || '(no src)').slice(0, 80)}`);
+      if (SC_DEBUG) console.debug(`Scaredy Cat: band=${result.band} score=${result.confidence} ${(src || '(no src)').slice(0, 80)}`);
 
       // Allowlist by matched title ("allow The Exorcist everywhere")
       if (isAllowedByTitle(result, settings.allowedItems)) {
@@ -350,10 +522,12 @@
    */
   function classifyAndApply(element, textResult, url) {
     element.setAttribute('data-scaredycat-processed', 'pending');
+    Perf.mark('sc:classify-request');
 
     ScaredyCatMLBridge.classifyUrl(url).then((imageScore) => {
+      Perf.mark(imageScore === null ? 'sc:ml-verdict-null' : 'sc:ml-verdict');
       if (!element.isConnected) return;
-      console.debug(`Scaredy Cat: image score=${imageScore === null ? 'n/a' : Math.round(imageScore)} ${url.slice(0, 80)}`);
+      if (SC_DEBUG) console.debug(`Scaredy Cat: image score=${imageScore === null ? 'n/a' : Math.round(imageScore)} ${url.slice(0, 80)}`);
       const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore, {
         pageHasHorrorSignal: ScaredyCatDetector.hasPageHorrorSignal(),
         isHorrorGenreListing: ScaredyCatDetector.isHorrorGenreListing(),

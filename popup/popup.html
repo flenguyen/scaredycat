@@ -81,6 +81,49 @@
       </div>
     </div>
 
+    <!-- Feedback -->
+    <div class="control-section feedback-section">
+      <label class="control-label">
+        <span class="control-title">Feedback</span>
+      </label>
+      <button class="action-btn" id="reportMissedBtn">
+        <span class="action-icon">🔍</span>
+        <span class="action-text">Report missed horror</span>
+      </button>
+      <button class="feedback-link" id="sendFeedbackBtn" aria-expanded="false">Send feedback</button>
+
+      <form class="feedback-form" id="feedbackForm" hidden>
+        <div class="feedback-cats" role="group" aria-label="Feedback category">
+          <button type="button" class="feedback-cat active" data-cat="bug">Bug</button>
+          <button type="button" class="feedback-cat" data-cat="idea">Idea</button>
+          <button type="button" class="feedback-cat" data-cat="praise">Praise</button>
+          <button type="button" class="feedback-cat" data-cat="other">Other</button>
+        </div>
+        <textarea id="feedbackText" class="feedback-text" rows="3"
+          placeholder="Tell the cat what's on your mind…"></textarea>
+        <input type="email" id="feedbackEmail" class="feedback-email"
+          placeholder="Email (optional, if you'd like a reply)">
+
+        <div class="feedback-consent-row" id="popupConsentRow" hidden>
+          <p class="feedback-consent-text">
+            We'll send your note plus the extension version — no images, no browsing history.
+          </p>
+          <div class="feedback-consent-actions">
+            <button type="button" class="feedback-cat" id="popupConsentDecline">Not now</button>
+            <button type="button" class="feedback-cat active" id="popupConsentAccept">Share &amp; send</button>
+          </div>
+        </div>
+
+        <button type="submit" class="action-btn feedback-submit" id="feedbackSubmit">Send</button>
+        <p class="feedback-status" id="feedbackStatus" role="status" aria-live="polite"></p>
+      </form>
+
+      <label class="feedback-toggle-row">
+        <span class="feedback-toggle-label">Share reports to improve detection</span>
+        <input type="checkbox" id="feedbackConsentToggle">
+      </label>
+    </div>
+
     <!-- Footer -->
     <footer class="footer">
       <p class="footer-text">Keeping you safe from spooky stuff! 👻</p>

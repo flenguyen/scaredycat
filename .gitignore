@@ -1,7 +1,9 @@
 node_modules/
 .cache/
-# dev-only model file (prompt precompute); the extension ships only the vision tower
-models/Xenova/mobileclip_s0/onnx/text_model_quantized.onnx
+# dev-only model files (tokenizer + text tower for prompt precompute); the extension ships only the vision tower
+eval/.model-cache/
+# packaged builds
+dist/
 
 # Chrome for Testing installed by @puppeteer/browsers (npm run smoke)
 chrome/

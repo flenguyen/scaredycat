@@ -1,0 +1,149 @@
+/**
+ * Scaredy Cat - Feedback UI (content side)
+ * Lives on arbitrary third-party pages, so every rule is defensive: explicit
+ * values (no reliance on page :root tokens), !important to resist host styles,
+ * and very high z-indexes. Palette mirrors the Scaredy Cat design system
+ * (plum #2E2447, cream #FFFCF5, lavender #F1EBFA).
+ */
+
+/* ---- "This isn't horror" link on a revealed blur ----------------------- */
+.scaredycat-fp-link {
+  position: absolute !important;
+  bottom: clamp(4px, 2.5cqmin, 10px) !important;
+  left: clamp(4px, 2.5cqmin, 10px) !important;
+  padding: clamp(3px, 2cqmin, 7px) clamp(6px, 4cqmin, 12px) !important;
+  font-size: clamp(9px, 4cqmin, 12px) !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+  border: none !important;
+  border-radius: clamp(4px, 2cqmin, 7px) !important;
+  cursor: pointer !important;
+  opacity: 0 !important;
+  transition: opacity 0.2s ease, background 0.2s ease !important;
+  z-index: 9998 !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+.scaredycat-wrapper:hover .scaredycat-fp-link { opacity: 0.85 !important; }
+.scaredycat-fp-link:hover { background: rgba(0, 0, 0, 0.85) !important; opacity: 1 !important; }
+.scaredycat-fp-link--done {
+  background: rgba(62, 110, 74, 0.9) !important; /* success green */
+  cursor: default !important;
+  opacity: 1 !important;
+}
+
+/* ---- Acknowledgement toast -------------------------------------------- */
+.scaredycat-toast {
+  position: fixed !important;
+  left: 50% !important;
+  bottom: 24px !important;
+  transform: translate(-50%, 16px) !important;
+  max-width: 320px !important;
+  padding: 12px 18px !important;
+  background: #2E2447 !important;
+  color: #FDF8F0 !important;
+  font: 500 14px/1.4 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(46, 36, 71, 0.35) !important;
+  z-index: 2147483646 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.25s ease, transform 0.25s ease !important;
+}
+.scaredycat-toast--in {
+  opacity: 1 !important;
+  transform: translate(-50%, 0) !important;
+}
+
+/* ---- Consent sheet ----------------------------------------------------- */
+.scaredycat-consent-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  background: rgba(20, 20, 30, 0.55) !important;
+  backdrop-filter: blur(2px) !important;
+  z-index: 2147483647 !important;
+}
+.scaredycat-consent {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 380px !important;
+  padding: 24px !important;
+  background: #FFFCF5 !important;
+  color: #54496E !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 60px rgba(46, 36, 71, 0.35) !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  text-align: left !important;
+}
+.scaredycat-consent-icon { font-size: 34px !important; }
+.scaredycat-consent-title {
+  margin: 8px 0 6px !important;
+  font: 800 20px/1.2 'Bricolage Grotesque', 'Inter', sans-serif !important;
+  color: #2E2447 !important;
+}
+.scaredycat-consent-body { margin: 0 0 8px !important; font-size: 14px !important; }
+.scaredycat-consent-list {
+  margin: 0 0 10px !important;
+  padding-left: 18px !important;
+  font-size: 13px !important;
+}
+.scaredycat-consent-list li { margin: 2px 0 !important; }
+.scaredycat-consent-note {
+  margin: 0 0 16px !important;
+  font-size: 12px !important;
+  color: #8D83A6 !important;
+}
+.scaredycat-consent-actions {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+}
+.scaredycat-consent-btn {
+  padding: 9px 16px !important;
+  font: 600 13px 'Inter', -apple-system, sans-serif !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  border: 1.5px solid rgba(46, 36, 71, 0.2) !important;
+  background: transparent !important;
+  color: #2E2447 !important;
+}
+.scaredycat-consent-btn--ghost:hover { background: #F1EBFA !important; }
+.scaredycat-consent-btn--primary {
+  background: #2E2447 !important;
+  color: #FDF8F0 !important;
+  border-color: #2E2447 !important;
+}
+.scaredycat-consent-btn--primary:hover { background: #42365E !important; }
+
+/* ---- Element picker ---------------------------------------------------- */
+html.scaredycat-picking, html.scaredycat-picking * { cursor: crosshair !important; }
+.scaredycat-picker-box {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  pointer-events: none !important;
+  border: 2px solid #2E2447 !important;
+  background: rgba(46, 36, 71, 0.12) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 2px rgba(255, 252, 245, 0.6) !important;
+  z-index: 2147483646 !important;
+  transition: transform 0.04s linear, width 0.04s linear, height 0.04s linear !important;
+}
+.scaredycat-picker-hint {
+  position: fixed !important;
+  top: 16px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  padding: 10px 18px !important;
+  background: #2E2447 !important;
+  color: #FDF8F0 !important;
+  font: 600 13px 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  border-radius: 999px !important;
+  box-shadow: 0 10px 30px rgba(46, 36, 71, 0.35) !important;
+  z-index: 2147483647 !important;
+}
