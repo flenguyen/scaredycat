@@ -6,31 +6,45 @@
  * (plum #2E2447, cream #FFFCF5, lavender #F1EBFA).
  */
 
-/* ---- "This isn't horror" link on a revealed blur ----------------------- */
+/* ---- "This isn't horror" pill on a revealed blur ----------------------- */
+/* Plum glass over the image, matching the "Hide again" pill. Hidden until the
+   tile is hovered OR focused so keyboard users can reach it. */
 .scaredycat-fp-link {
   position: absolute !important;
   bottom: clamp(4px, 2.5cqmin, 10px) !important;
   left: clamp(4px, 2.5cqmin, 10px) !important;
-  padding: clamp(3px, 2cqmin, 7px) clamp(6px, 4cqmin, 12px) !important;
+  padding: clamp(3px, 2cqmin, 7px) clamp(8px, 4cqmin, 14px) !important;
   font-size: clamp(9px, 4cqmin, 12px) !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   line-height: 1.2 !important;
-  color: #fff !important;
-  background: rgba(0, 0, 0, 0.55) !important;
-  border: none !important;
-  border-radius: clamp(4px, 2cqmin, 7px) !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  color: #FFFCF5 !important;
+  background: rgba(46, 36, 71, 0.85) !important;
+  border: 1px solid rgba(255, 252, 245, 0.18) !important;
+  border-radius: 999px !important;
   cursor: pointer !important;
   opacity: 0 !important;
   transition: opacity 0.2s ease, background 0.2s ease !important;
   z-index: 9998 !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
-.scaredycat-wrapper:hover .scaredycat-fp-link { opacity: 0.85 !important; }
-.scaredycat-fp-link:hover { background: rgba(0, 0, 0, 0.85) !important; opacity: 1 !important; }
+.scaredycat-wrapper:hover .scaredycat-fp-link,
+.scaredycat-wrapper:focus-within .scaredycat-fp-link,
+.scaredycat-fp-link:focus-visible { opacity: 0.85 !important; }
+.scaredycat-fp-link:hover { background: #42365E !important; opacity: 1 !important; }
+.scaredycat-fp-link:focus-visible {
+  outline: 2px solid #FFFCF5 !important;
+  outline-offset: 2px !important;
+}
 .scaredycat-fp-link--done {
-  background: rgba(62, 110, 74, 0.9) !important; /* success green */
+  background: rgba(62, 110, 74, 0.9) !important; /* success chip ink */
+  border-color: transparent !important;
   cursor: default !important;
   opacity: 1 !important;
+}
+@media (hover: none) {
+  .scaredycat-fp-link { opacity: 0.85 !important; }
 }
 
 /* ---- Acknowledgement toast -------------------------------------------- */
@@ -57,6 +71,8 @@
 }
 
 /* ---- Consent sheet ----------------------------------------------------- */
+/* No backdrop-filter: it forces full-viewport compositing on every scroll
+   frame. A slightly deeper scrim does the same job for free. */
 .scaredycat-consent-backdrop {
   position: fixed !important;
   inset: 0 !important;
@@ -64,9 +80,9 @@
   align-items: center !important;
   justify-content: center !important;
   padding: 20px !important;
-  background: rgba(20, 20, 30, 0.55) !important;
-  backdrop-filter: blur(2px) !important;
+  background: rgba(20, 20, 30, 0.62) !important;
   z-index: 2147483647 !important;
+  animation: scaredycat-backdrop-in 200ms ease-out !important;
 }
 .scaredycat-consent {
   box-sizing: border-box !important;
@@ -79,18 +95,20 @@
   box-shadow: 0 20px 60px rgba(46, 36, 71, 0.35) !important;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   text-align: left !important;
+  animation: scaredycat-sheet-in 200ms ease-out !important;
 }
-.scaredycat-consent-icon { font-size: 34px !important; }
+.scaredycat-consent-icon { font-size: 34px !important; line-height: 1 !important; }
 .scaredycat-consent-title {
   margin: 8px 0 6px !important;
   font: 800 20px/1.2 'Bricolage Grotesque', 'Inter', sans-serif !important;
   color: #2E2447 !important;
 }
-.scaredycat-consent-body { margin: 0 0 8px !important; font-size: 14px !important; }
+.scaredycat-consent-body { margin: 0 0 8px !important; font-size: 14px !important; line-height: 1.5 !important; }
 .scaredycat-consent-list {
   margin: 0 0 10px !important;
   padding-left: 18px !important;
   font-size: 13px !important;
+  line-height: 1.5 !important;
 }
 .scaredycat-consent-list li { margin: 2px 0 !important; }
 .scaredycat-consent-note {
@@ -108,20 +126,36 @@
   font: 600 13px 'Inter', -apple-system, sans-serif !important;
   border-radius: 999px !important;
   cursor: pointer !important;
-  border: 1.5px solid rgba(46, 36, 71, 0.2) !important;
+  border: 1.5px solid rgba(46, 36, 71, 0.25) !important;
   background: transparent !important;
   color: #2E2447 !important;
+  transition: background 0.15s ease, border-color 0.15s ease !important;
 }
-.scaredycat-consent-btn--ghost:hover { background: #F1EBFA !important; }
+.scaredycat-consent-btn:focus-visible {
+  outline: 2px solid #2E2447 !important;
+  outline-offset: 2px !important;
+}
+.scaredycat-consent-btn--ghost:hover { background: #F1EBFA !important; border-color: #2E2447 !important; }
 .scaredycat-consent-btn--primary {
   background: #2E2447 !important;
   color: #FDF8F0 !important;
   border-color: #2E2447 !important;
 }
-.scaredycat-consent-btn--primary:hover { background: #42365E !important; }
+.scaredycat-consent-btn--primary:hover { background: #42365E !important; border-color: #42365E !important; }
+
+@keyframes scaredycat-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaredycat-sheet-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
 
 /* ---- Element picker ---------------------------------------------------- */
 html.scaredycat-picking, html.scaredycat-picking * { cursor: crosshair !important; }
+/* The box tracks the pointer via rAF in picker.js; no CSS transition, which
+   only read as lag. */
 .scaredycat-picker-box {
   position: fixed !important;
   top: 0 !important;
@@ -132,7 +166,6 @@ html.scaredycat-picking, html.scaredycat-picking * { cursor: crosshair !importan
   border-radius: 6px !important;
   box-shadow: 0 0 0 2px rgba(255, 252, 245, 0.6) !important;
   z-index: 2147483646 !important;
-  transition: transform 0.04s linear, width 0.04s linear, height 0.04s linear !important;
 }
 .scaredycat-picker-hint {
   position: fixed !important;
@@ -146,4 +179,15 @@ html.scaredycat-picking, html.scaredycat-picking * { cursor: crosshair !importan
   border-radius: 999px !important;
   box-shadow: 0 10px 30px rgba(46, 36, 71, 0.35) !important;
   z-index: 2147483647 !important;
+  animation: scaredycat-sheet-in 200ms ease-out !important;
+}
+
+/* ---- Reduced motion: every surface goes instant ------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  .scaredycat-fp-link,
+  .scaredycat-toast,
+  .scaredycat-consent-btn { transition: none !important; }
+  .scaredycat-consent-backdrop,
+  .scaredycat-consent,
+  .scaredycat-picker-hint { animation: none !important; }
 }

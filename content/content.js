@@ -523,6 +523,9 @@
   function classifyAndApply(element, textResult, url) {
     element.setAttribute('data-scaredycat-processed', 'pending');
     Perf.mark('sc:classify-request');
+    // Fetch the brand fonts while the classifier runs so a block lands in
+    // brand type on its first frame (no system-font swap).
+    ScaredyCatBlocker.warmFonts?.();
 
     ScaredyCatMLBridge.classifyUrl(url).then((imageScore) => {
       Perf.mark(imageScore === null ? 'sc:ml-verdict-null' : 'sc:ml-verdict');

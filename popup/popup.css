@@ -5,14 +5,18 @@
  * Implements the Scaredy Cat design system (see DESIGN.md at repo root).
  * The popup is the reference implementation of the token set: if a value
  * isn't derived from a --sc-* token below, it shouldn't be here.
+ *
+ * First paint: <html class="sc-preload"> keeps the body invisible and every
+ * transition off until popup.js has applied the stored settings, so the
+ * popup opens already settled — no toggle sliding, no count jumping.
  */
 
-/* ---- Brand fonts (packaged with the extension) ---- */
+/* ---- Brand fonts (packaged with the extension; local, so never swap) ---- */
 @font-face {
   font-family: 'Bricolage Grotesque';
   font-style: normal;
   font-weight: 700 800;
-  font-display: swap;
+  font-display: block;
   src: url(../fonts/BricolageGrotesque.woff2) format('woff2');
 }
 
@@ -20,7 +24,7 @@
   font-family: 'Inter';
   font-style: normal;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: block;
   src: url(../fonts/Inter.woff2) format('woff2');
 }
 
@@ -28,7 +32,7 @@
   font-family: 'Fraunces';
   font-style: normal;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: block;
   src: url(../fonts/Fraunces.woff2) format('woff2');
 }
 
@@ -36,7 +40,7 @@
   font-family: 'Fraunces';
   font-style: italic;
   font-weight: 400 700;
-  font-display: swap;
+  font-display: block;
   src: url(../fonts/Fraunces-Italic.woff2) format('woff2');
 }
 
@@ -61,10 +65,17 @@
   --sc-chip-ink: #3E6E4A;
   --sc-border: rgba(46, 36, 71, 0.10);
   --sc-border-strong: rgba(46, 36, 71, 0.14);
+  --sc-border-ghost: rgba(46, 36, 71, 0.25);
 
   /* Shape */
   --sc-shadow-soft: 0 10px 30px rgba(46, 36, 71, 0.10);
   --sc-shadow-deep: 0 10px 30px rgba(46, 36, 71, 0.18);
+  --sc-radius-card: 16px;
+
+  /* Motion */
+  --sc-ease: cubic-bezier(0.2, 0, 0, 1);
+  --sc-fast: 150ms;
+  --sc-base: 200ms;
 
   /* Type */
   --sc-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -78,6 +89,19 @@
   box-sizing: border-box;
 }
 
+/* ---- First-paint gate (removed by popup.js once settings are applied) ---- */
+html.sc-preload body {
+  opacity: 0;
+  pointer-events: none;
+}
+
+html.sc-preload *,
+html.sc-preload *::before,
+html.sc-preload *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 body {
   font-family: var(--sc-sans);
   font-size: 14px;
@@ -86,6 +110,9 @@ body {
   background: var(--sc-page);
   min-width: 320px;
   max-width: 320px;
+  opacity: 1;
+  transition: opacity 120ms ease-out;
+  -webkit-font-smoothing: antialiased;
 }
 
 .popup-container {
@@ -93,6 +120,14 @@ body {
   flex-direction: column;
   gap: 12px;
   padding: 16px;
+}
+
+/* ---- Shared focus ring: 2px plum, 2px offset, on every control ---- */
+button:focus-visible,
+.text-btn:focus-visible,
+.toggle-input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--sc-plum);
+  outline-offset: 2px;
 }
 
 /* Header */
@@ -112,6 +147,7 @@ body {
 
 .logo-icon {
   font-size: 28px;
+  line-height: 1;
 }
 
 .logo-text {
@@ -119,111 +155,165 @@ body {
   font-size: 19px;
   font-weight: 800;
   color: var(--sc-plum);
+  letter-spacing: -0.01em;
 }
 
-/* Toggle Switch */
+/* Toggle Switch — the one switch style in the popup (two sizes) */
 .toggle-switch {
   position: relative;
   display: inline-block;
   width: 48px;
   height: 26px;
   cursor: pointer;
+  --knob: 20px;
+  --knob-inset: 3px;
+  --knob-travel: 22px;
 }
 
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
+.toggle-switch--sm {
+  width: auto;
+  height: auto;
+  --knob: 14px;
+  --knob-inset: 3px;
+  --knob-travel: 16px;
+}
+
+/* Visually hidden, still focusable and labelled */
+.toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .toggle-slider {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: var(--sc-on-dark-soft);
   border-radius: 999px;
-  transition: 0.3s;
+  transition: background var(--sc-base) var(--sc-ease);
+}
+
+.toggle-switch--sm .toggle-slider {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
 }
 
 .toggle-slider::before {
   position: absolute;
   content: "";
-  height: 20px;
-  width: 20px;
-  left: 3px;
-  bottom: 3px;
+  height: var(--knob);
+  width: var(--knob);
+  left: var(--knob-inset);
+  bottom: var(--knob-inset);
   background: var(--sc-card);
   border-radius: 50%;
-  transition: 0.3s;
+  transition: transform var(--sc-base) var(--sc-ease);
   box-shadow: 0 2px 4px rgba(46, 36, 71, 0.25);
 }
 
-.toggle-switch input:checked + .toggle-slider {
+.toggle-input:checked + .toggle-slider {
   background: var(--sc-plum);
 }
 
-.toggle-switch input:checked + .toggle-slider::before {
-  transform: translateX(22px);
+.toggle-input:checked + .toggle-slider::before {
+  transform: translateX(var(--knob-travel));
 }
 
-/* Status Section — the dark plum band, the popup's one high-contrast moment */
-.status-section {
-  margin-bottom: 4px;
-}
-
+/* Status Section — the dark plum band, the popup's one high-contrast moment
+   (and the only element that carries a shadow) */
 .status-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 14px;
+  padding: 14px 18px;
   background: var(--sc-plum);
-  border-radius: 16px;
+  border: 1.5px solid transparent;
+  border-radius: var(--sc-radius-card);
   color: var(--sc-on-dark);
   box-shadow: var(--sc-shadow-deep);
+  transition: background var(--sc-base) var(--sc-ease),
+              color var(--sc-base) var(--sc-ease),
+              transform var(--sc-base) var(--sc-ease);
 }
 
-.status-card.disabled,
-.popup-container.disabled .status-card {
-  background: var(--sc-on-dark-soft);
-  color: var(--sc-plum);
-  box-shadow: var(--sc-shadow-soft);
-}
-
-.status-icon {
-  font-size: 24px;
+.status-count {
+  font-family: var(--sc-display);
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--sc-page);
+  font-variant-numeric: tabular-nums;
+  min-width: 1.1ch;
+  text-align: center;
 }
 
 .status-info {
   display: flex;
   flex-direction: column;
-}
-
-.status-count {
-  font-family: var(--sc-display);
-  font-size: 26px;
-  font-weight: 800;
-  line-height: 1.15;
-  color: var(--sc-page);
-}
-
-.status-card.disabled .status-count,
-.popup-container.disabled .status-card .status-count {
-  color: var(--sc-plum);
+  gap: 2px;
+  min-width: 0;
 }
 
 .status-label {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sc-page);
+  line-height: 1.3;
 }
 
-/* Control Section — cream cards with hairline plum borders */
+.status-total {
+  font-size: 11px;
+  color: var(--sc-on-dark-soft);
+}
+
+.status-total strong {
+  font-weight: 700;
+  color: var(--sc-on-dark);
+}
+
+/* Paused everywhere — the band becomes a dashed stamp (a state the user caused) */
+.popup-container.disabled .status-card {
+  background: var(--sc-lavender);
+  border-color: var(--sc-plum);
+  border-style: dashed;
+  color: var(--sc-body);
+  box-shadow: none;
+  transform: rotate(-1.5deg);
+}
+
+.popup-container.disabled .status-card:hover {
+  transform: rotate(0deg);
+}
+
+.popup-container.disabled .status-count,
+.popup-container.disabled .status-label {
+  color: var(--sc-plum);
+}
+
+.popup-container.disabled .status-total {
+  color: var(--sc-muted);
+}
+
+.popup-container.disabled .status-total strong {
+  color: var(--sc-body);
+}
+
+/* Control Section — cream cards with hairline plum borders, no shadow
+   (the plum band is the only element that casts one) */
 .control-section {
   background: var(--sc-card);
   padding: 14px;
   border: 1px solid var(--sc-border);
-  border-radius: 16px;
-  box-shadow: var(--sc-shadow-soft);
+  border-radius: var(--sc-radius-card);
 }
 
 .control-label {
@@ -231,6 +321,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
+  min-height: 18px;
 }
 
 /* Kicker label */
@@ -246,6 +337,25 @@ body {
   font-size: 12px;
   color: var(--sc-plum);
   font-weight: 700;
+}
+
+/* Quiet text button (Show all, Send a note) */
+.text-btn {
+  font-size: 12px;
+  color: var(--sc-plum);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--sc-sans);
+  font-weight: 600;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 6px;
+}
+
+.text-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Sensitivity Buttons */
@@ -266,7 +376,8 @@ body {
   border-radius: 14px;
   cursor: pointer;
   font-family: var(--sc-sans);
-  transition: all 0.2s;
+  transition: border-color var(--sc-fast) var(--sc-ease),
+              background var(--sc-fast) var(--sc-ease);
 }
 
 .sensitivity-btn:hover {
@@ -281,6 +392,7 @@ body {
 
 .sensitivity-btn .btn-icon {
   font-size: 20px;
+  line-height: 1;
 }
 
 .sensitivity-btn .btn-label {
@@ -307,12 +419,14 @@ body {
   justify-content: center;
   gap: 10px;
   width: 100%;
-  padding: 11px 14px;
+  padding: 10px 14px;
   background: transparent;
-  border: 2px solid rgba(46, 36, 71, 0.25);
+  border: 2px solid var(--sc-border-ghost);
   border-radius: 999px;
   cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  transition: border-color var(--sc-base) var(--sc-ease),
+              background var(--sc-base) var(--sc-ease),
+              transform var(--sc-fast) var(--sc-ease);
   font-family: var(--sc-sans);
   font-size: 13px;
   font-weight: 600;
@@ -322,6 +436,27 @@ body {
 .action-btn:hover {
   border-color: var(--sc-plum);
   background: var(--sc-lavender);
+}
+
+.action-btn:active {
+  transform: translateY(0.5px);
+}
+
+/* Secondary (plum fill) — the main action inside a card */
+.action-btn--primary {
+  background: var(--sc-plum);
+  border-color: var(--sc-plum);
+  color: var(--sc-page);
+}
+
+.action-btn--primary:hover {
+  background: var(--sc-plum-hover);
+  border-color: var(--sc-plum-hover);
+}
+
+.action-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* Site paused — dashed stamp chip treatment */
@@ -336,49 +471,7 @@ body {
   transform: rotate(0deg);
 }
 
-.action-icon {
-  font-size: 18px;
-}
-
 /* Blocked Section */
-.blocked-section {
-  background: var(--sc-card);
-  padding: 14px;
-  border: 1px solid var(--sc-border);
-  border-radius: 16px;
-  box-shadow: var(--sc-shadow-soft);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-/* Kicker label */
-.section-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--sc-muted);
-}
-
-.show-all-btn {
-  font-size: 12px;
-  color: var(--sc-plum);
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--sc-sans);
-  font-weight: 600;
-}
-
-.show-all-btn:hover {
-  text-decoration: underline;
-}
-
 .blocked-list {
   list-style: none;
   max-height: 150px;
@@ -389,6 +482,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   padding: 8px 0;
   border-bottom: 1px solid var(--sc-border);
 }
@@ -416,6 +510,7 @@ body {
 .blocked-item-confidence {
   font-size: 10px;
   color: var(--sc-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .allow-btn {
@@ -429,7 +524,7 @@ body {
   cursor: pointer;
   color: var(--sc-body);
   flex-shrink: 0;
-  transition: border-color 0.2s, color 0.2s;
+  transition: border-color var(--sc-base) var(--sc-ease), color var(--sc-base) var(--sc-ease);
 }
 
 .allow-btn:hover {
@@ -454,7 +549,7 @@ body {
   border-radius: 999px;
   cursor: pointer;
   color: var(--sc-muted);
-  transition: border-color 0.2s, color 0.2s;
+  transition: border-color var(--sc-base) var(--sc-ease), color var(--sc-base) var(--sc-ease);
 }
 
 .wrong-btn:hover:not(:disabled) {
@@ -476,23 +571,20 @@ body {
   gap: 10px;
 }
 
-.feedback-link {
-  align-self: center;
-  font-size: 12px;
-  color: var(--sc-plum);
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: var(--sc-sans);
-  font-weight: 600;
+.feedback-section .control-label {
+  margin-bottom: 0;
 }
-
-.feedback-link:hover { text-decoration: underline; }
 
 .feedback-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* The class's display:flex would otherwise outrank the UA [hidden] rule */
+.feedback-form[hidden],
+.blocked-section[hidden] {
+  display: none;
 }
 
 .feedback-cats {
@@ -511,7 +603,9 @@ body {
   border-radius: 10px;
   cursor: pointer;
   color: var(--sc-body);
-  transition: all 0.2s;
+  transition: border-color var(--sc-fast) var(--sc-ease),
+              background var(--sc-fast) var(--sc-ease),
+              color var(--sc-fast) var(--sc-ease);
 }
 
 .feedback-cat:hover { background: var(--sc-lavender); }
@@ -533,10 +627,16 @@ body {
   border: 1.5px solid var(--sc-border);
   border-radius: 10px;
   resize: vertical;
+  transition: border-color var(--sc-fast) var(--sc-ease);
 }
 
-.feedback-text:focus,
-.feedback-email:focus {
+.feedback-text::placeholder,
+.feedback-email::placeholder {
+  color: var(--sc-muted);
+}
+
+.feedback-text:focus-visible,
+.feedback-email:focus-visible {
   outline: none;
   border-color: var(--sc-plum);
 }
@@ -550,6 +650,10 @@ body {
   color: var(--sc-muted);
   text-align: center;
   min-height: 14px;
+}
+
+.feedback-status:empty {
+  display: none;
 }
 
 .feedback-consent-row {
@@ -583,40 +687,6 @@ body {
   color: var(--sc-muted);
 }
 
-.feedback-toggle-row input[type="checkbox"] {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  accent-color: var(--sc-plum);
-  cursor: pointer;
-}
-
-/* Stats Section — success chip */
-.stats-section {
-  display: flex;
-  justify-content: center;
-  padding: 8px 14px;
-  background: var(--sc-chip-bg);
-  border-radius: 999px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--sc-chip-ink);
-}
-
-.stat-icon {
-  font-size: 14px;
-}
-
-.stat-text strong {
-  color: var(--sc-chip-ink);
-  font-weight: 700;
-}
-
 /* Footer — Fraunces italic aside */
 .footer {
   text-align: center;
@@ -631,8 +701,9 @@ body {
   color: var(--sc-muted);
 }
 
-/* Disabled State */
-.popup-container.disabled .control-section {
+/* Disabled State — only the detection controls dim; site pause and feedback
+   stay usable */
+.popup-container.disabled .sensitivity-section {
   opacity: 0.6;
   pointer-events: none;
 }
@@ -654,4 +725,26 @@ body {
 
 .blocked-list::-webkit-scrollbar-thumb:hover {
   background: var(--sc-muted);
+}
+
+/* Reduced motion — honored on every surface, no exceptions */
+@media (prefers-reduced-motion: reduce) {
+  body,
+  .toggle-slider,
+  .toggle-slider::before,
+  .status-card,
+  .sensitivity-btn,
+  .action-btn,
+  .allow-btn,
+  .wrong-btn,
+  .feedback-cat,
+  .feedback-text,
+  .feedback-email {
+    transition: none;
+  }
+
+  .popup-container.disabled .status-card,
+  .action-btn.site-disabled {
+    transform: none;
+  }
 }

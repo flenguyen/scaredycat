@@ -33,11 +33,23 @@ window.ScaredyCatPicker = (function () {
     box.style.display = 'block';
   }
 
+  // mousemove can fire far above frame rate; coalesce to one hit-test and
+  // one layout read per frame.
+  let moveRaf = 0;
+  let lastX = 0;
+  let lastY = 0;
   function onMove(e) {
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    if (!el || isOwnUi(el)) { box.style.display = 'none'; lastTarget = null; return; }
-    lastTarget = el;
-    positionBox(el);
+    lastX = e.clientX;
+    lastY = e.clientY;
+    if (moveRaf) return;
+    moveRaf = requestAnimationFrame(() => {
+      moveRaf = 0;
+      if (!active || !box) return;
+      const el = document.elementFromPoint(lastX, lastY);
+      if (!el || isOwnUi(el)) { box.style.display = 'none'; lastTarget = null; return; }
+      lastTarget = el;
+      positionBox(el);
+    });
   }
 
   function onKey(e) {
@@ -132,6 +144,7 @@ window.ScaredyCatPicker = (function () {
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('keydown', onKey, true);
     document.documentElement.classList.remove('scaredycat-picking');
+    if (moveRaf) { cancelAnimationFrame(moveRaf); moveRaf = 0; }
     box?.remove(); box = null;
     hint?.remove(); hint = null;
     lastTarget = null;

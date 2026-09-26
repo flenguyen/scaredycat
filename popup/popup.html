@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="sc-preload">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scaredy Cat</title>
+  <link rel="preload" href="../fonts/Inter.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../fonts/BricolageGrotesque.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,98 +13,86 @@
     <!-- Header -->
     <header class="header">
       <div class="logo">
-        <span class="logo-icon">🙀</span>
+        <span class="logo-icon" aria-hidden="true">🙀</span>
         <h1 class="logo-text">Scaredy Cat</h1>
       </div>
       <label class="toggle-switch">
-        <input type="checkbox" id="enableToggle" checked>
-        <span class="toggle-slider"></span>
+        <input type="checkbox" id="enableToggle" class="toggle-input" checked aria-label="Scaredy Cat on or off">
+        <span class="toggle-slider" aria-hidden="true"></span>
       </label>
     </header>
 
-    <!-- Status -->
-    <div class="status-section">
-      <div class="status-card" id="statusCard">
-        <div class="status-icon">🛡️</div>
-        <div class="status-info">
-          <span class="status-count" id="blockedCount">0</span>
-          <span class="status-label">items hidden on this page</span>
-        </div>
+    <!-- Status — the plum band, the popup's one high-contrast moment -->
+    <section class="status-card" id="statusCard" aria-live="polite">
+      <span class="status-count" id="blockedCount">0</span>
+      <div class="status-info">
+        <span class="status-label" id="statusLabel">All clear on this page</span>
+        <span class="status-total"><strong id="totalBlocked">0</strong> hidden all time</span>
       </div>
-    </div>
+    </section>
 
     <!-- Sensitivity Control -->
-    <div class="control-section">
-      <label class="control-label">
-        <span class="control-title">Sensitivity</span>
+    <section class="control-section sensitivity-section" id="sensitivitySection">
+      <div class="control-label">
+        <span class="control-title" id="sensitivityKicker">Sensitivity</span>
         <span class="control-value" id="sensitivityValue">Medium</span>
-      </label>
-      <div class="sensitivity-buttons">
-        <button class="sensitivity-btn" data-value="low">
-          <span class="btn-icon">😌</span>
+      </div>
+      <div class="sensitivity-buttons" role="group" aria-labelledby="sensitivityKicker">
+        <button type="button" class="sensitivity-btn" data-value="low" aria-pressed="false">
+          <span class="btn-icon" aria-hidden="true">😌</span>
           <span class="btn-label">Low</span>
         </button>
-        <button class="sensitivity-btn active" data-value="medium">
-          <span class="btn-icon">😟</span>
+        <button type="button" class="sensitivity-btn active" data-value="medium" aria-pressed="true">
+          <span class="btn-icon" aria-hidden="true">😟</span>
           <span class="btn-label">Medium</span>
         </button>
-        <button class="sensitivity-btn" data-value="high">
-          <span class="btn-icon">😱</span>
+        <button type="button" class="sensitivity-btn" data-value="high" aria-pressed="false">
+          <span class="btn-icon" aria-hidden="true">😱</span>
           <span class="btn-label">High</span>
         </button>
       </div>
       <p class="control-hint" id="sensitivityHint">Blocks content with 60%+ horror confidence</p>
-    </div>
+    </section>
 
     <!-- Site Controls -->
-    <div class="control-section">
-      <button class="action-btn site-toggle" id="siteToggle">
-        <span class="action-icon">🌐</span>
-        <span class="action-text">Disable on this site</span>
+    <section class="control-section">
+      <button type="button" class="action-btn site-toggle" id="siteToggle">
+        <span class="action-text">Pause on this site</span>
       </button>
-    </div>
+    </section>
 
     <!-- Blocked Items (if any) -->
-    <div class="blocked-section" id="blockedSection" style="display: none;">
-      <div class="section-header">
-        <span class="section-title">Hidden Items</span>
-        <button class="show-all-btn" id="showAllBtn">Show all</button>
+    <section class="control-section blocked-section" id="blockedSection" hidden>
+      <div class="control-label">
+        <span class="control-title">Hidden items</span>
+        <button type="button" class="text-btn" id="showAllBtn">Show all</button>
       </div>
       <ul class="blocked-list" id="blockedList">
         <!-- Dynamically populated -->
       </ul>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-section">
-      <div class="stat-item">
-        <span class="stat-icon">📊</span>
-        <span class="stat-text">Total blocked: <strong id="totalBlocked">0</strong></span>
-      </div>
-    </div>
+    </section>
 
     <!-- Feedback -->
-    <div class="control-section feedback-section">
-      <label class="control-label">
+    <section class="control-section feedback-section">
+      <div class="control-label">
         <span class="control-title">Feedback</span>
-      </label>
-      <button class="action-btn" id="reportMissedBtn">
-        <span class="action-icon">🔍</span>
+        <button type="button" class="text-btn" id="sendFeedbackBtn" aria-expanded="false" aria-controls="feedbackForm">Send a note</button>
+      </div>
+      <button type="button" class="action-btn" id="reportMissedBtn">
         <span class="action-text">Report missed horror</span>
       </button>
-      <button class="feedback-link" id="sendFeedbackBtn" aria-expanded="false">Send feedback</button>
 
       <form class="feedback-form" id="feedbackForm" hidden>
         <div class="feedback-cats" role="group" aria-label="Feedback category">
-          <button type="button" class="feedback-cat active" data-cat="bug">Bug</button>
-          <button type="button" class="feedback-cat" data-cat="idea">Idea</button>
-          <button type="button" class="feedback-cat" data-cat="praise">Praise</button>
-          <button type="button" class="feedback-cat" data-cat="other">Other</button>
+          <button type="button" class="feedback-cat active" data-cat="bug" aria-pressed="true">Bug</button>
+          <button type="button" class="feedback-cat" data-cat="idea" aria-pressed="false">Idea</button>
+          <button type="button" class="feedback-cat" data-cat="praise" aria-pressed="false">Praise</button>
+          <button type="button" class="feedback-cat" data-cat="other" aria-pressed="false">Other</button>
         </div>
         <textarea id="feedbackText" class="feedback-text" rows="3"
-          placeholder="Tell the cat what's on your mind…"></textarea>
+          placeholder="Tell the cat what's on your mind…" aria-label="Your note"></textarea>
         <input type="email" id="feedbackEmail" class="feedback-email"
-          placeholder="Email (optional, if you'd like a reply)">
+          placeholder="Email (optional, if you'd like a reply)" aria-label="Email, optional">
 
         <div class="feedback-consent-row" id="popupConsentRow" hidden>
           <p class="feedback-consent-text">
@@ -114,15 +104,16 @@
           </div>
         </div>
 
-        <button type="submit" class="action-btn feedback-submit" id="feedbackSubmit">Send</button>
+        <button type="submit" class="action-btn action-btn--primary feedback-submit" id="feedbackSubmit">Send</button>
         <p class="feedback-status" id="feedbackStatus" role="status" aria-live="polite"></p>
       </form>
 
-      <label class="feedback-toggle-row">
+      <label class="feedback-toggle-row toggle-switch toggle-switch--sm">
         <span class="feedback-toggle-label">Share reports to improve detection</span>
-        <input type="checkbox" id="feedbackConsentToggle">
+        <input type="checkbox" id="feedbackConsentToggle" class="toggle-input">
+        <span class="toggle-slider" aria-hidden="true"></span>
       </label>
-    </div>
+    </section>
 
     <!-- Footer -->
     <footer class="footer">

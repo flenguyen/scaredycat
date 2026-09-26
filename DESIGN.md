@@ -70,7 +70,9 @@ Kickers (section eyebrows like SENSITIVITY, HIDDEN ITEMS) are Inter 700, 0.72rem
 
 **Dashed stamp chip** — success-chip or lavender fill, 1.5px *dashed* border, rotated ±1.5deg. A hand stamp on the page: "Spoiled safely ✅," "Paused on this site." Reserve it for states the user caused — it reads as a mark left on purpose.
 
-**Dark plum band** — solid `#2E2447`, cream display type, `#C9BFE0` supporting text. One per screen, maximum: the landing page's final CTA, the popup's blocked-count hero.
+**Dark plum band** — solid `#2E2447`, cream display type, `#C9BFE0` supporting text. One per screen, maximum: the landing page's final CTA, the popup's blocked-count hero. It is also the only element on a screen that casts a shadow; sibling cards use the hairline border alone. When the user pauses the product everywhere, the band becomes a lavender dashed stamp ("Paused everywhere") rather than dimming.
+
+**Toolbar badge** — plum `#2E2447` with cream digits, showing the tab's hidden count (capped at 99+). Cleared on navigation and whenever the product is paused.
 
 **Verdict Box** *(landing)* — card surface + kicker + dashed stamps + a Fraunces italic punchline.
 
@@ -84,7 +86,13 @@ Kickers (section eyebrows like SENSITIVITY, HIDDEN ITEMS) are Inter 700, 0.72rem
 
 **Voice** — reassuring-funny, never mocking the user for being scared (see [context/persona.md](context/persona.md)). The interface speaks plainly ("3 items hidden on this page"); the *asides* carry the wit, in Fraunces italic ("Keeping you safe from spooky stuff! 👻").
 
-**Motion** — 150–300ms, simple `ease`/`ease-out`, opacity and small translates/scales only (the overlay enters at `scale(.95)→1`). Hover lift is −1px. Nothing bounces, spins, or attention-seeks — this product lowers heart rates. `prefers-reduced-motion` is honored on every surface, no exceptions; `prefers-contrast: high` gets real borders.
+**Motion** — 150–300ms, simple `ease`/`ease-out`, opacity and small translates/scales only. Hover lift is −1px. Nothing bounces, spins, or attention-seeks — this product lowers heart rates. `prefers-reduced-motion` is honored on every surface, no exceptions; `prefers-contrast: high` gets real borders.
+
+Two choreographies are load-bearing and must not be "improved":
+- **Blocking is instant and leak-free.** The blur, the dark scrim and the wrapper all land on the first frame the element is blocked; only the cream card animates in (`opacity 0→1`, `scale(.96)→1`, 220ms). Never transition the blur *in* — a partially sharp frame is the one thing this product exists to prevent.
+- **Revealing is one motion.** Blur clears, element opacity rises and the scrim fades together over 250ms ease-out (`.scaredycat-revealing` in [styles/blur-overlay.css](styles/blur-overlay.css)). Card state swaps (blocked → confirm → synopsis) are a 150ms fade-in of the new card.
+
+The popup opens already settled: `html.sc-preload` holds the body invisible and all transitions off until stored settings are applied, then fades in over 120ms. Nothing may move or animate after first paint.
 
 ---
 
@@ -98,7 +106,8 @@ Kickers (section eyebrows like SENSITIVITY, HIDDEN ITEMS) are Inter 700, 0.72rem
 - Write the joke into the copy, not the chrome.
 
 **Don't**
-- Green outside an install CTA — green is conversion, plum is state.
+- Green outside an install CTA — green is conversion, plum is state. (The popup's old green "Total blocked" chip is gone for this reason.)
+- Hover-only controls. Anything that appears on hover also appears on `:focus-within`, and stays visible on touch devices.
 - Red, orange, or warning yellow anywhere. The calmest possible product does not have alarm colors.
 - Real horror imagery, ever — blurred abstract blobs only.
 - Gradients. The old indigo→purple gradient is retired; surfaces are flat paper.
@@ -111,7 +120,7 @@ Kickers (section eyebrows like SENSITIVITY, HIDDEN ITEMS) are Inter 700, 0.72rem
 
 | Surface | What it borrows |
 |---|---|
-| **Popup** | Page cream body · plum band hero (count in Bricolage 800) · kickers · lavender active states · ghost pill site toggle · dashed stamp when paused · success chip for totals · Fraunces italic footer. The reference implementation: [popup/popup.css](popup/popup.css). |
+| **Popup** | Page cream body · plum band hero (count in Bricolage 800, all-time total as its muted second line) · kickers · lavender active states · ghost pill site toggle · dashed stamp when paused · Fraunces italic footer. The reference implementation: [popup/popup.css](popup/popup.css). |
 | **Blur card (all tiers)** | Card surface on dark scrim · plum pill + ghost pill · Bricolage heading at the large tier. [styles/blur-overlay.css](styles/blur-overlay.css). |
 | **Synopsis state** | Fraunces title/body in serif-body ink · Inter muted meta · "Spoiled safely" dashed stamp. |
 | **Landing page** | The full set, including green install CTAs, giant `#EFE8FA` numerals, Verdict Box, cat ratings, dark plum final band. |

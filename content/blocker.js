@@ -20,6 +20,28 @@ const ScaredyCatBlocker = (function () {
   // creates overlays, and each of those must not re-run the page-wide scan.
   let cascading = false;
 
+  // Reveal choreography: blur, element opacity and scrim ease out together
+  // over this window (mirrors the 250ms transitions in blur-overlay.css).
+  const REVEAL_MS = 250;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Assistive tech: a blurred image's alt text must not be read aloud, and a
+  // blurred <video controls> must leave the tab order. Host pages often mark
+  // images aria-hidden themselves, so the prior values are stored and restored.
+  function hideFromAT(element, data) {
+    if (data) {
+      data.prevAriaHidden = element.getAttribute('aria-hidden');
+      data.prevInert = element.hasAttribute('inert');
+    }
+    element.setAttribute('aria-hidden', 'true');
+    element.setAttribute('inert', '');
+  }
+  function restoreAT(element, data) {
+    if (data?.prevAriaHidden != null) element.setAttribute('aria-hidden', data.prevAriaHidden);
+    else element.removeAttribute('aria-hidden');
+    if (!data?.prevInert) element.removeAttribute('inert');
+  }
+
   // Blocked-count stats are batched per page (one storage write per burst
   // instead of one per element).
   let pendingBlockedCount = 0;
@@ -77,6 +99,24 @@ const ScaredyCatBlocker = (function () {
   src: url('${chrome.runtime.getURL(f.file)}') format('woff2');
 }`).join('\n');
     document.head.appendChild(style);
+  }
+
+  // Kick the (local, ~270KB) font fetch as soon as a classification request
+  // is in flight, so the first card lands in brand type instead of swapping
+  // from the system fallback a beat later. Pages that never classify pay
+  // nothing; pages that classify almost always block within the fetch window.
+  let fontsWarmed = false;
+  function warmFonts() {
+    if (fontsWarmed) return;
+    fontsWarmed = true;
+    ensureBrandFonts();
+    try {
+      if (document.fonts?.load) {
+        document.fonts.load("600 14px 'Inter'").catch(() => {});
+        document.fonts.load("700 20px 'Bricolage Grotesque'").catch(() => {});
+        document.fonts.load("400 14px 'Fraunces'").catch(() => {});
+      }
+    } catch (e) { /* best effort */ }
   }
 
   function ensureStylesFor(element) {
@@ -173,10 +213,15 @@ const ScaredyCatBlocker = (function () {
     // On the overlay (which persists across state swaps), not the message
     // (which is rebuilt): live regions only announce changes within them.
     overlay.setAttribute('aria-live', 'polite');
+    overlay.setAttribute('role', 'group');
+    overlay.setAttribute('aria-label', 'Hidden by Scaredy Cat');
+    // A state swap (blocked -> confirm -> synopsis) gets the quiet fade-in;
+    // a fresh overlay gets the card entrance animation.
+    const isSwap = overlay.childElementCount > 0;
     overlay.textContent = '';
 
     const message = document.createElement('div');
-    message.className = 'scaredycat-message';
+    message.className = 'scaredycat-message' + (isSwap ? ' scaredycat-message--swap' : '');
 
     if (data.cardState === 'confirm') {
       message.appendChild(makeText('span', 'scaredycat-icon', '🙀'));
@@ -210,7 +255,7 @@ const ScaredyCatBlocker = (function () {
       message.appendChild(actions);
     } else {
       message.appendChild(makeText('span', 'scaredycat-icon', '🙀'));
-      message.appendChild(makeText('p', 'scaredycat-heading', 'Horror content detected'));
+      message.appendChild(makeText('p', 'scaredycat-heading', 'Something spooky was here.'));
       message.appendChild(makeText('p', 'scaredycat-subtext', "Blurred before it reached your eyes. You're welcome."));
       message.appendChild(makeText('span', 'scaredycat-text', 'Content hidden'));
 
@@ -287,12 +332,17 @@ const ScaredyCatBlocker = (function () {
     wrapper.setAttribute('data-scaredycat-wrapper', 'true');
 
     // Read phase (one style + layout flush), then write phase below.
-    const originalDisplay = getComputedStyle(element).display;
+    const computed = getComputedStyle(element);
+    const originalDisplay = computed.display;
+    // Rounded host thumbnails keep their corners: the wrapper is sized to the
+    // element's box, so px and % radii both carry over unchanged.
+    const radius = computed.borderRadius;
     const width = element.offsetWidth;
     const height = element.offsetHeight;
     wrapper.style.width = width + 'px';
     wrapper.style.height = height + 'px';
     wrapper.style.display = originalDisplay === 'inline' ? 'inline-block' : originalDisplay;
+    if (radius && radius !== '0px') wrapper.style.borderRadius = radius;
 
     // Create the blur overlay and its tracking entry; the card itself is
     // built by the shared renderer (same path as re-hiding).
@@ -311,7 +361,10 @@ const ScaredyCatBlocker = (function () {
       wasPlaying: false,
       wasMuted: false,
       originalSrc: null,
-      stoppedIframes: []
+      stoppedIframes: [],
+      prevAriaHidden: null,
+      prevInert: false,
+      cancelReveal: null
     };
 
     attachEscapeHandler(overlay, data);
@@ -324,8 +377,9 @@ const ScaredyCatBlocker = (function () {
     wrapper.appendChild(element);
     wrapper.appendChild(overlay);
 
-    // Apply blur to the element itself
+    // Apply blur to the element itself (lands instantly: no transition on add)
     element.classList.add('scaredycat-blurred');
+    hideFromAT(element, data);
 
     // Handle video elements - pause and mute them
     if (element.tagName === 'VIDEO') {
@@ -472,15 +526,48 @@ const ScaredyCatBlocker = (function () {
   function revealElement(element, wrapper) {
     const id = wrapper.getAttribute('data-scaredycat-id');
     const data = blockedElements.get(id);
+    if (data?.cancelReveal) data.cancelReveal(); // re-entrancy: finish any in-flight reveal first
 
-    // Remove blur from element
+    const overlay = data?.overlay?.isConnected
+      ? data.overlay
+      : wrapper.querySelector('.scaredycat-overlay:not(.scaredycat-fade-out)');
+    // Keyboard-initiated reveals land on "Hide again" afterwards, so the
+    // way back is one keypress away and visible (it shows on focus-within).
+    const viaKeyboard = !!overlay?.querySelector(':focus-visible');
+    const instant = reducedMotion.matches;
+
+    // One coordinated motion: .scaredycat-revealing carries the transition
+    // for the after-change style, so removing the blur class eases filter and
+    // opacity out over the same window as the scrim fade.
+    if (!instant) element.classList.add('scaredycat-revealing');
     element.classList.remove('scaredycat-blurred');
+    restoreAT(element, data);
 
-    // Remove overlay
-    const overlay = wrapper.querySelector('.scaredycat-overlay');
-    if (overlay) {
+    const finish = () => {
+      element.classList.remove('scaredycat-revealing');
+      if (overlay) overlay.remove();
+      if (data) data.cancelReveal = null;
+    };
+    if (instant || !overlay) {
+      finish();
+    } else {
       overlay.classList.add('scaredycat-fade-out');
-      setTimeout(() => overlay.remove(), 300);
+      let done = false;
+      let timer = null;
+      const once = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        overlay.removeEventListener('transitionend', onEnd);
+        finish();
+      };
+      const onEnd = (e) => {
+        if (e.target === overlay && e.propertyName === 'opacity') once();
+      };
+      overlay.addEventListener('transitionend', onEnd);
+      // Fallback: hidden tab, shadow-root sheet not yet adopted, etc.
+      timer = setTimeout(once, REVEAL_MS + 100);
+      if (data) data.cancelReveal = once;
     }
 
     // Resume video if it was playing before
@@ -511,6 +598,9 @@ const ScaredyCatBlocker = (function () {
 
     // Add "hide again" button
     addHideAgainButton(element, wrapper);
+    if (viaKeyboard) {
+      wrapper.querySelector('.scaredycat-hide-again-btn')?.focus({ preventScroll: true });
+    }
 
     // Track revealed elements
     revealedElements.add(id);
@@ -607,8 +697,15 @@ const ScaredyCatBlocker = (function () {
     const hideBtn = wrapper.querySelector('.scaredycat-hide-again-btn');
     if (hideBtn) hideBtn.remove();
 
-    // Re-apply blur
+    // A re-hide inside the reveal window must not leave a fading overlay
+    // behind (the next reveal would find the stale one first).
+    const tracked = blockedElements.get(id);
+    if (tracked?.cancelReveal) tracked.cancelReveal();
+    element.classList.remove('scaredycat-revealing');
+
+    // Re-apply blur (instant — no transition on add)
     element.classList.add('scaredycat-blurred');
+    hideFromAT(element, tracked);
 
     // Pause video again if it's a video element
     if (element.tagName === 'VIDEO') {
@@ -664,6 +761,8 @@ const ScaredyCatBlocker = (function () {
     if (!wrapper) return;
 
     const id = wrapper.getAttribute('data-scaredycat-id');
+    const data = blockedElements.get(id);
+    if (data?.cancelReveal) data.cancelReveal();
 
     // Move element back out of wrapper
     wrapper.parentNode.insertBefore(element, wrapper);
@@ -673,6 +772,8 @@ const ScaredyCatBlocker = (function () {
 
     // Clean up element
     element.classList.remove('scaredycat-blurred');
+    element.classList.remove('scaredycat-revealing');
+    restoreAT(element, data);
     element.removeAttribute('data-scaredycat-processed');
 
     // Remove from tracking
@@ -890,7 +991,8 @@ const ScaredyCatBlocker = (function () {
     getBlockedData,
     getBlockedWrappers,
     buildReport,
-    isBlocked
+    isBlocked,
+    warmFonts
   };
 })();
 

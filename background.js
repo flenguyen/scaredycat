@@ -46,6 +46,71 @@ function incrementBlocked(count = 1) {
   return statsWriteChain;
 }
 
+// ---- Toolbar badge: per-tab hidden count ------------------------------------
+// Plum badge, cream digits (DESIGN.md tokens). The count is read back from the
+// badge itself rather than kept in worker memory, so a service-worker restart
+// can never desync it. Chrome clears tab-scoped badge text on navigation; the
+// onUpdated listener below makes that explicit for the loading state too.
+const BADGE_MAX = 99;
+
+function setBadgeColors() {
+  try {
+    chrome.action.setBadgeBackgroundColor({ color: '#2E2447' });
+    chrome.action.setBadgeTextColor?.({ color: '#FDF8F0' });
+  } catch (e) {
+    // Older Chrome without setBadgeTextColor: background alone is fine.
+  }
+}
+
+function formatBadge(n) {
+  if (n <= 0) return '';
+  return n > BADGE_MAX ? `${BADGE_MAX}+` : String(n);
+}
+
+function parseBadge(text) {
+  if (!text) return 0;
+  const n = parseInt(text, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+async function bumpBadge(tabId, count) {
+  if (tabId == null) return;
+  try {
+    const current = parseBadge(await chrome.action.getBadgeText({ tabId }));
+    await chrome.action.setBadgeText({ tabId, text: formatBadge(current + count) });
+  } catch (e) {
+    // Tab may have closed between the block and the flush.
+  }
+}
+
+async function clearBadge(tabId) {
+  try {
+    await chrome.action.setBadgeText({ tabId, text: '' });
+  } catch (e) {
+    // Tab gone — nothing to clear.
+  }
+}
+
+async function clearAllBadges(hostname = null) {
+  const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) {
+    if (tab.id == null) continue;
+    if (hostname) {
+      let host = '';
+      try { host = new URL(tab.url || '').hostname; } catch (e) { /* no url */ }
+      if (host !== hostname) continue;
+    }
+    clearBadge(tab.id);
+  }
+}
+
+chrome.runtime.onInstalled.addListener(setBadgeColors);
+chrome.runtime.onStartup.addListener(setBadgeColors);
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (changeInfo.status === 'loading') clearBadge(tabId);
+});
+
 // ---- Horror database seeding ------------------------------------------------
 // Content scripts read the database from chrome.storage.local in one call, in
 // parallel with settings, instead of fetching + parsing the bundled JSON on
@@ -160,6 +225,7 @@ async function handleMessage(message, sender) {
   // Stats messages hit storage.local only — no settings read needed.
   if (message.type === 'INCREMENT_BLOCKED') {
     const n = Number.isInteger(message.count) && message.count > 0 ? message.count : 1;
+    bumpBadge(sender?.tab?.id, n);
     const totalBlocked = await incrementBlocked(n);
     return { success: true, totalBlocked };
   }
@@ -169,7 +235,10 @@ async function handleMessage(message, sender) {
     return { success: true, totalBlockedAllTime: stats.totalBlockedAllTime || 0 };
   }
 
-  const { settings } = await chrome.storage.sync.get('settings');
+  // Tolerate a missing/partial key (fresh profile, sync wipe) so a partial
+  // UPDATE_SETTINGS can never persist a settings object with holes in it.
+  const stored = await chrome.storage.sync.get('settings');
+  const settings = { ...DEFAULT_SETTINGS, ...(stored.settings || {}) };
 
   switch (message.type) {
     case 'GET_SETTINGS':
@@ -182,6 +251,7 @@ async function handleMessage(message, sender) {
     case 'UPDATE_SETTINGS':
       const newSettings = { ...settings, ...message.settings };
       await chrome.storage.sync.set({ settings: newSettings });
+      if (message.settings?.enabled === false) clearAllBadges();
       // Notify all tabs about settings change
       notifyAllTabs({ type: 'SETTINGS_UPDATED', settings: newSettings });
       return { success: true, settings: newSettings };
@@ -201,7 +271,9 @@ async function handleMessage(message, sender) {
       }
       const updatedSettings = { ...settings, disabledSites };
       await chrome.storage.sync.set({ settings: updatedSettings });
-      return { success: true, isDisabled: disabledSites.includes(site) };
+      const nowDisabled = disabledSites.includes(site);
+      if (nowDisabled) clearAllBadges(site);
+      return { success: true, isDisabled: nowDisabled };
 
     case 'ADD_TO_ALLOWLIST':
       const allowedItems = [...settings.allowedItems, message.item];
@@ -236,43 +308,6 @@ async function notifyAllTabs(message) {
       // Tab might not have content script loaded, ignore
     }
   }
-}
-
-// Handle extension icon click when popup is not available
-chrome.action.onClicked.addListener(async (tab) => {
-  // Toggle extension enabled state
-  const { settings } = await chrome.storage.sync.get('settings');
-  settings.enabled = !settings.enabled;
-  await chrome.storage.sync.set({ settings });
-
-  // Update icon to reflect state
-  updateIcon(settings.enabled);
-
-  // Notify the current tab
-  try {
-    await chrome.tabs.sendMessage(tab.id, {
-      type: 'SETTINGS_UPDATED',
-      settings
-    });
-  } catch (e) {
-    // Content script not loaded
-  }
-});
-
-/**
- * Update extension icon based on enabled state
- */
-function updateIcon(enabled) {
-  const suffix = enabled ? '' : '_disabled';
-  chrome.action.setIcon({
-    path: {
-      16: `icons/icon16${suffix}.png`,
-      48: `icons/icon48${suffix}.png`,
-      128: `icons/icon128${suffix}.png`
-    }
-  }).catch(() => {
-    // Icons might not exist, use default
-  });
 }
 
 console.log('Scaredy Cat background service worker loaded!');

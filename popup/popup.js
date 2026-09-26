@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const enableToggle = document.getElementById('enableToggle');
   const statusCard = document.getElementById('statusCard');
   const blockedCount = document.getElementById('blockedCount');
+  const statusLabel = document.getElementById('statusLabel');
   const sensitivityBtns = document.querySelectorAll('.sensitivity-btn');
   const sensitivityValue = document.getElementById('sensitivityValue');
   const sensitivityHint = document.getElementById('sensitivityHint');
@@ -36,6 +37,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   let settings = null;
   let currentTab = null;
   let currentHostname = '';
+  let pageState = { count: 0, unsupported: false };
+
+  // Mirrors background.js DEFAULT_SETTINGS: the popup reads storage directly
+  // (no service-worker round trip), so it must tolerate a missing key.
+  const DEFAULT_SETTINGS = {
+    enabled: true,
+    sensitivity: 'medium',
+    disabledSites: [],
+    allowedItems: [],
+    feedbackConsent: false
+  };
+
+  const withTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve(undefined), ms))
+  ]);
 
   // Sensitivity descriptions
   const sensitivityDescriptions = {
@@ -48,42 +65,91 @@ document.addEventListener('DOMContentLoaded', async () => {
    * Initialize the popup
    */
   async function init() {
-    // Get current tab
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    currentTab = tab;
-
-    try {
-      currentHostname = new URL(tab.url).hostname;
-    } catch (e) {
-      currentHostname = '';
-    }
-
-    // Load settings
-    const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
-    if (response?.success) {
-      settings = response.settings;
-      updateUI();
-    }
-
-    // Get page stats
-    try {
-      const statsResponse = await chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_STATS' });
-      if (statsResponse?.success) {
-        updatePageStats(statsResponse);
-      }
-    } catch (e) {
-      // Content script might not be loaded
-      blockedCount.textContent = '—';
-    }
-
-    // Get total blocked
-    const globalStats = await chrome.runtime.sendMessage({ type: 'GET_PAGE_STATS' });
-    if (globalStats?.success) {
-      totalBlocked.textContent = globalStats.totalBlockedAllTime || 0;
-    }
-
-    // Set up event listeners
+    // Listeners first: a click during the (brief) load must never be lost.
     setupEventListeners();
+
+    // Everything the first frame needs, in flight at once. Settings and the
+    // all-time total come straight from storage (same shape the worker
+    // returns) so opening the popup wakes the service worker zero times.
+    const tabP = chrome.tabs.query({ active: true, currentWindow: true })
+      .then(([tab]) => tab || null)
+      .catch(() => null);
+    const pageStatsP = tabP
+      .then(tab => tab?.id != null
+        ? chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_STATS' })
+        : { noContentScript: true })
+      .catch(() => ({ noContentScript: true }));
+
+    try {
+      const [tab, syncRes, localRes] = await Promise.all([
+        tabP,
+        chrome.storage.sync.get('settings').catch(() => ({})),
+        chrome.storage.local.get('stats').catch(() => ({}))
+      ]);
+      currentTab = tab;
+      try {
+        currentHostname = new URL(tab.url).hostname;
+      } catch (e) {
+        currentHostname = '';
+      }
+
+      settings = { ...DEFAULT_SETTINGS, ...(syncRes?.settings || {}) };
+      updateUI();
+      totalBlocked.textContent = formatCount(localRes?.stats?.totalBlockedAllTime || 0);
+
+      // A responsive tab gets its hidden-items list into the first frame; a
+      // slow one applies late rather than holding the whole popup back.
+      const stats = await withTimeout(pageStatsP, 120);
+      if (stats?.success) {
+        updatePageStats(stats);
+      } else if (stats?.noContentScript) {
+        pageState = { count: 0, unsupported: true };
+        renderStatus();
+      } else {
+        pageStatsP.then(late => {
+          if (late?.success) updatePageStats(late);
+          else if (late?.noContentScript) {
+            pageState = { count: 0, unsupported: true };
+            renderStatus();
+          }
+        });
+      }
+    } finally {
+      // One synchronous style flush so the before-change style is already the
+      // final state; removing the gate then only fades the body in.
+      void document.body.offsetHeight;
+      document.documentElement.classList.remove('sc-preload');
+    }
+  }
+
+  /**
+   * The plum band: numeral + label, phrased for the page's actual state.
+   */
+  function renderStatus() {
+    const enabled = settings ? settings.enabled : true;
+    const sitePaused = !!(settings && currentHostname && settings.disabledSites.includes(currentHostname));
+    const { count, unsupported } = pageState;
+
+    if (!enabled) {
+      blockedCount.textContent = '—';
+      statusLabel.textContent = 'Paused everywhere';
+    } else if (unsupported) {
+      blockedCount.textContent = '—';
+      statusLabel.textContent = "Can't run on this page";
+    } else if (sitePaused) {
+      blockedCount.textContent = '—';
+      statusLabel.textContent = 'Paused on this site';
+    } else if (count === 0) {
+      blockedCount.textContent = '0';
+      statusLabel.textContent = 'All clear on this page';
+    } else {
+      blockedCount.textContent = formatCount(count);
+      statusLabel.textContent = count === 1 ? 'item hidden on this page' : 'items hidden on this page';
+    }
+  }
+
+  function formatCount(n) {
+    return Number(n).toLocaleString();
   }
 
   /**
@@ -97,12 +163,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     container.classList.toggle('disabled', !settings.enabled);
 
     // Sensitivity buttons
-    sensitivityBtns.forEach(btn => {
-      const value = btn.dataset.value;
-      btn.classList.toggle('active', value === settings.sensitivity);
-    });
-    sensitivityValue.textContent = capitalizeFirst(settings.sensitivity);
-    sensitivityHint.textContent = sensitivityDescriptions[settings.sensitivity];
+    setSensitivityUI(settings.sensitivity);
 
     // Site toggle
     const isSiteDisabled = settings.disabledSites.includes(currentHostname);
@@ -110,20 +171,33 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Feedback consent toggle reflects the stored opt-in.
     if (feedbackConsentToggle) feedbackConsentToggle.checked = !!settings.feedbackConsent;
+
+    renderStatus();
+  }
+
+  function setSensitivityUI(sensitivity) {
+    sensitivityBtns.forEach(btn => {
+      const on = btn.dataset.value === sensitivity;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', String(on));
+    });
+    sensitivityValue.textContent = capitalizeFirst(sensitivity);
+    sensitivityHint.textContent = sensitivityDescriptions[sensitivity];
   }
 
   /**
    * Update page stats display
    */
   function updatePageStats(stats) {
-    blockedCount.textContent = stats.blockedCount || 0;
+    pageState = { count: stats.blockedCount || 0, unsupported: false };
+    renderStatus();
 
     // Update blocked items list
     if (stats.blockedItems && stats.blockedItems.length > 0) {
-      blockedSection.style.display = 'block';
+      blockedSection.hidden = false;
       renderBlockedItems(stats.blockedItems);
     } else {
-      blockedSection.style.display = 'none';
+      blockedSection.hidden = true;
     }
   }
 
@@ -202,6 +276,7 @@ document.addEventListener('DOMContentLoaded', async () => {
    * Re-query the content script and re-render the blocked list
    */
   async function refreshPageStats() {
+    if (!currentTab) return;
     try {
       const stats = await chrome.tabs.sendMessage(currentTab.id, { type: 'GET_PAGE_STATS' });
       if (stats?.success) {
@@ -212,19 +287,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  // Image verdicts arrive after the synchronous text pass; one delayed
+  // refresh picks them up without polling.
+  let statsRefreshTimer = null;
+  function scheduleStatsRefresh(delay = 700) {
+    clearTimeout(statsRefreshTimer);
+    statsRefreshTimer = setTimeout(refreshPageStats, delay);
+  }
+
   /**
    * Update site toggle button state
    */
   function updateSiteToggle(isDisabled) {
-    if (isDisabled) {
-      siteToggle.classList.add('site-disabled');
-      siteToggle.querySelector('.action-text').textContent = 'Enable on this site';
-      siteToggle.querySelector('.action-icon').textContent = '✓';
-    } else {
-      siteToggle.classList.remove('site-disabled');
-      siteToggle.querySelector('.action-text').textContent = 'Disable on this site';
-      siteToggle.querySelector('.action-icon').textContent = '🌐';
-    }
+    siteToggle.classList.toggle('site-disabled', isDisabled);
+    siteToggle.setAttribute('aria-pressed', String(isDisabled));
+    siteToggle.querySelector('.action-text').textContent = isDisabled
+      ? '✓ Paused on this site'
+      : 'Pause on this site';
   }
 
   /**
@@ -234,6 +313,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Enable/disable toggle
     enableToggle.addEventListener('change', async () => {
       const enabled = enableToggle.checked;
+      // Optimistic: the band and controls follow the switch immediately.
+      container.classList.toggle('disabled', !enabled);
+      if (settings) settings.enabled = enabled;
+      renderStatus();
+
       const response = await chrome.runtime.sendMessage({
         type: 'UPDATE_SETTINGS',
         settings: { enabled }
@@ -241,17 +325,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (response?.success) {
         settings = response.settings;
-        container.classList.toggle('disabled', !enabled);
-
-        // Notify content script
-        try {
-          await chrome.tabs.sendMessage(currentTab.id, {
-            type: 'TOGGLE_ENABLED',
-            enabled
-          });
-        } catch (e) {
-          // Content script might not be loaded
-        }
+        renderStatus();
+        // The worker already broadcast SETTINGS_UPDATED to every tab; give the
+        // page a beat to (un)blur, then refresh the list.
+        scheduleStatsRefresh();
+      } else {
+        // Roll back
+        enableToggle.checked = !enabled;
+        container.classList.toggle('disabled', enabled);
+        if (settings) settings.enabled = !enabled;
+        renderStatus();
       }
     });
 
@@ -260,10 +343,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       btn.addEventListener('click', async () => {
         const sensitivity = btn.dataset.value;
 
-        sensitivityBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        sensitivityValue.textContent = capitalizeFirst(sensitivity);
-        sensitivityHint.textContent = sensitivityDescriptions[sensitivity];
+        setSensitivityUI(sensitivity);
 
         const response = await chrome.runtime.sendMessage({
           type: 'UPDATE_SETTINGS',
@@ -272,17 +352,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (response?.success) {
           settings = response.settings;
+          if (!currentTab) return;
 
-          // Trigger rescan on current page
+          // Trigger rescan on current page. The rescan acks synchronously
+          // after the text pass; image verdicts land a moment later.
           try {
             await chrome.tabs.sendMessage(currentTab.id, { type: 'RESCAN_PAGE' });
-            // Refresh stats after a short delay
-            setTimeout(async () => {
-              const stats = await chrome.tabs.sendMessage(currentTab.id, { type: 'GET_PAGE_STATS' });
-              if (stats?.success) {
-                updatePageStats(stats);
-              }
-            }, 500);
+            await refreshPageStats();
+            scheduleStatsRefresh();
           } catch (e) {
             // Content script might not be loaded
           }
@@ -305,8 +382,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Reload settings
         const settingsResponse = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
         if (settingsResponse?.success) {
-          settings = settingsResponse.settings;
+          settings = { ...DEFAULT_SETTINGS, ...settingsResponse.settings };
         }
+        renderStatus();
+        if (!currentTab) return;
 
         // Trigger content script update
         try {
@@ -314,14 +393,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             type: 'SETTINGS_UPDATED',
             settings
           });
-
-          // Refresh stats
-          setTimeout(async () => {
-            const stats = await chrome.tabs.sendMessage(currentTab.id, { type: 'GET_PAGE_STATS' });
-            if (stats?.success) {
-              updatePageStats(stats);
-            }
-          }, 500);
+          await refreshPageStats();
+          scheduleStatsRefresh();
         } catch (e) {
           // Content script might not be loaded
         }
@@ -330,6 +403,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Show all button: session-only reveal of everything blocked on the page
     showAllBtn.addEventListener('click', async () => {
+      if (!currentTab) return;
       try {
         await chrome.tabs.sendMessage(currentTab.id, { type: 'SHOW_ALL_PAGE' });
         await refreshPageStats();
@@ -352,6 +426,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // click the missed content. Consent is handled in-page by the picker flow.
     reportMissedBtn?.addEventListener('click', async () => {
       try {
+        if (!currentTab) throw new Error('no tab');
         await chrome.tabs.sendMessage(currentTab.id, { type: 'START_PICK_MODE' });
         window.close();
       } catch (e) {
@@ -375,8 +450,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Category chips (single select).
     feedbackCats.forEach(chip => {
       chip.addEventListener('click', () => {
-        feedbackCats.forEach(c => c.classList.remove('active'));
+        feedbackCats.forEach(c => {
+          c.classList.remove('active');
+          c.setAttribute('aria-pressed', 'false');
+        });
         chip.classList.add('active');
+        chip.setAttribute('aria-pressed', 'true');
         selectedCat = chip.dataset.cat;
       });
     });
@@ -387,7 +466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         type: 'UPDATE_SETTINGS',
         settings: { feedbackConsent: feedbackConsentToggle.checked }
       });
-      if (res?.success) settings = res.settings;
+      if (res?.success) settings = { ...DEFAULT_SETTINGS, ...res.settings };
     });
 
     function buildGeneralReport() {

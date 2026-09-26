@@ -12,6 +12,12 @@
  *  - <= 200px wide .......... button label shortens to "Show"
  *  - <= 120px either axis ... card chrome drops away (emoji + pill only)
  *  - <= 130px tall .......... stack rotates horizontal for banners
+ *
+ * Motion model (DESIGN.md §5): blocking is instant and leak-free — the
+ * blur, the scrim and the dark wrapper all land on the first frame; only
+ * the cream card animates in. Revealing is one coordinated 250ms ease-out
+ * (blur clears, element opacity rises, scrim fades), driven by the
+ * .scaredycat-revealing class blocker.js adds for exactly that window.
  */
 
 /* Wrapper container for blocked content */
@@ -19,17 +25,21 @@
   position: relative;
   display: inline-block;
   overflow: hidden;
-  border-radius: 4px;
+  /* blocker.js copies the host element's computed border-radius onto the
+     wrapper so rounded thumbnails keep their shape; 0 is the fallback. */
+  border-radius: 0;
   background: #14141e; /* Solid dark background as fallback */
   container-type: size;
   container-name: scaredycat;
 
-  /* Design tokens (canonical set — see DESIGN.md) */
-  --sc-cream: #FFFCF5;
-  --sc-ink: #2E2447;
-  --sc-ink-hover: #42365E;
-  --sc-ink-soft: #54496E;
-  --sc-ink-serif: #42365E;
+  /* Design tokens (canonical set — see DESIGN.md; names match popup.css) */
+  --sc-page: #FDF8F0;
+  --sc-card: #FFFCF5;
+  --sc-lavender: #F1EBFA;
+  --sc-plum: #2E2447;
+  --sc-plum-hover: #42365E;
+  --sc-body: #54496E;
+  --sc-serif-body: #42365E;
   --sc-muted: #8D83A6;
   --sc-chip-bg: #E7F2E7;
   --sc-chip-ink: #3E6E4A;
@@ -38,12 +48,20 @@
   --sc-display: 'Bricolage Grotesque', var(--sc-sans);
 }
 
-/* Blurred element */
+/* Blurred element. No transition here: the blur must land on the very
+   first frame the class is present, never animate in from sharp. */
 .scaredycat-blurred {
   filter: blur(30px) brightness(0.3) !important;
-  transition: filter 0.3s ease-in-out !important;
+  transition: none !important;
   pointer-events: none !important; /* Prevent interaction with blurred content */
   opacity: 0.3 !important;
+}
+
+/* Reveal only: blocker.js adds this in the same task it removes
+   .scaredycat-blurred, so the after-change style carries the transition and
+   blur + opacity ease out together with the scrim. Removed on transitionend. */
+.scaredycat-revealing {
+  transition: filter 250ms ease-out, opacity 250ms ease-out !important;
 }
 
 /* Ensure videos can't play while blurred */
@@ -53,7 +71,9 @@ iframe.scaredycat-blurred {
   opacity: 0 !important; /* Completely hide video/iframe content */
 }
 
-/* Overlay on top of blurred content */
+/* Overlay on top of blurred content. A freshly inserted overlay has no
+   before-change style, so the scrim appears at full alpha immediately; the
+   transition only ever runs on the way out (.scaredycat-fade-out). */
 .scaredycat-overlay {
   position: absolute;
   top: 0;
@@ -65,8 +85,10 @@ iframe.scaredycat-blurred {
   align-items: center;
   justify-content: center;
   z-index: 9999;
-  transition: opacity 0.3s ease-in-out;
-  border-radius: 4px;
+  transition: opacity 250ms ease-out;
+  border-radius: inherit;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Fade out animation for overlay */
@@ -84,7 +106,7 @@ iframe.scaredycat-blurred {
   align-items: center;
   gap: clamp(4px, 3.5cqmin, 14px);
   padding: clamp(8px, 6cqmin, 26px) clamp(10px, 7cqmin, 32px);
-  background: var(--sc-cream);
+  background: var(--sc-card);
   border-radius: clamp(8px, 5cqmin, 24px);
   /* Token shadow + dark ambient shadow: the card sits on a near-black backdrop */
   box-shadow: 0 10px 30px rgba(46, 36, 71, 0.18), 0 4px 24px rgba(0, 0, 0, 0.35);
@@ -96,6 +118,13 @@ iframe.scaredycat-blurred {
   letter-spacing: normal;
   text-transform: none;
   text-shadow: none;
+  /* Only the card animates in; the scrim behind it is already opaque. */
+  animation: scaredycat-card-in 220ms ease-out;
+}
+
+/* State swap (blocked -> confirm -> synopsis): a quiet fade-in of the new card */
+.scaredycat-message--swap {
+  animation: scaredycat-card-swap 150ms ease-out;
 }
 
 .scaredycat-message * {
@@ -115,7 +144,7 @@ iframe.scaredycat-blurred {
   font-family: var(--sc-display);
   font-size: clamp(15px, 6cqmin, 26px);
   font-weight: 700;
-  color: var(--sc-ink);
+  color: var(--sc-plum);
   line-height: 1.2;
 }
 
@@ -124,7 +153,7 @@ iframe.scaredycat-blurred {
   margin: 0;
   font-size: clamp(11px, 4cqmin, 16px);
   font-weight: 400;
-  color: var(--sc-ink-soft);
+  color: var(--sc-body);
   line-height: 1.4;
 }
 
@@ -132,7 +161,7 @@ iframe.scaredycat-blurred {
 .scaredycat-text {
   font-size: clamp(11px, 6.5cqmin, 19px);
   font-weight: 600;
-  color: var(--sc-ink);
+  color: var(--sc-plum);
   margin: 0;
   line-height: 1.25;
 }
@@ -168,25 +197,25 @@ iframe.scaredycat-blurred {
 }
 
 .scaredycat-btn--primary {
-  background: var(--sc-ink);
-  color: var(--sc-cream);
+  background: var(--sc-plum);
+  color: var(--sc-card);
   border: none;
 }
 
 .scaredycat-btn--primary:hover {
-  background: var(--sc-ink-hover);
+  background: var(--sc-plum-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(46, 36, 71, 0.35);
 }
 
 .scaredycat-btn--secondary {
   background: transparent;
-  color: var(--sc-ink);
+  color: var(--sc-plum);
   border: 2px solid rgba(46, 36, 71, 0.25);
 }
 
 .scaredycat-btn--secondary:hover {
-  border-color: var(--sc-ink);
+  border-color: var(--sc-plum);
   transform: translateY(-1px);
 }
 
@@ -195,7 +224,7 @@ iframe.scaredycat-blurred {
 }
 
 .scaredycat-btn:focus-visible {
-  outline: 2px solid var(--sc-ink);
+  outline: 2px solid var(--sc-plum);
   outline-offset: 2px;
 }
 
@@ -265,7 +294,7 @@ iframe.scaredycat-blurred {
   font-weight: 700;
   font-size: clamp(15px, 7cqmin, 28px);
   line-height: 1.15;
-  color: var(--sc-ink);
+  color: var(--sc-plum);
 }
 
 .scaredycat-syn-meta {
@@ -280,7 +309,7 @@ iframe.scaredycat-blurred {
   font-family: var(--sc-serif);
   font-size: clamp(12px, 4.5cqmin, 17px);
   line-height: 1.55;
-  color: var(--sc-ink-serif);
+  color: var(--sc-serif-body);
   max-width: 60ch;
 }
 
@@ -333,7 +362,7 @@ iframe.scaredycat-blurred {
   }
 
   .scaredycat-btn--secondary {
-    background: var(--sc-cream);
+    background: var(--sc-card);
     border-color: transparent;
   }
 
@@ -375,38 +404,58 @@ iframe.scaredycat-blurred {
   }
 }
 
-/* Hide again button (shown on revealed content) — scales with the tile */
+/* "Hide again" pill on revealed content — plum glass over the image, scales
+   with the tile. Hidden until the tile is hovered OR focused: keyboard users
+   tab onto it and see it, and pointer users get it on hover. */
 .scaredycat-hide-again-btn {
   position: absolute;
   bottom: clamp(4px, 2.5cqmin, 10px);
   right: clamp(4px, 2.5cqmin, 10px);
-  padding: clamp(3px, 2cqmin, 7px) clamp(6px, 4cqmin, 14px);
+  padding: clamp(3px, 2cqmin, 7px) clamp(8px, 4cqmin, 14px);
   font-size: clamp(9px, 4cqmin, 13px);
-  font-weight: 500;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.7);
-  border: none;
-  border-radius: clamp(4px, 2cqmin, 7px);
+  font-weight: 600;
+  font-family: var(--sc-sans);
+  line-height: 1.2;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--sc-card);
+  background: rgba(46, 36, 71, 0.85);
+  border: 1px solid rgba(255, 252, 245, 0.18);
+  border-radius: 999px;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, background 0.2s ease;
   z-index: 9998;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
-.scaredycat-wrapper:hover .scaredycat-hide-again-btn {
+.scaredycat-wrapper:hover .scaredycat-hide-again-btn,
+.scaredycat-wrapper:focus-within .scaredycat-hide-again-btn,
+.scaredycat-hide-again-btn:focus-visible {
   opacity: 1;
 }
 
 .scaredycat-hide-again-btn:hover {
-  background: rgba(0, 0, 0, 0.9);
+  background: var(--sc-plum-hover);
 }
 
-/* Animation for initial appearance */
-@keyframes scaredycat-appear {
+/* Cream ring: the pill sits over arbitrary host imagery, not a cream card */
+.scaredycat-hide-again-btn:focus-visible {
+  outline: 2px solid var(--sc-card);
+  outline-offset: 2px;
+}
+
+/* No hover on touch devices: keep the pill discoverable at rest */
+@media (hover: none) {
+  .scaredycat-hide-again-btn {
+    opacity: 0.85;
+  }
+}
+
+/* Card entrance — the scrim is already opaque, so this can never leak */
+@keyframes scaredycat-card-in {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.96);
   }
   to {
     opacity: 1;
@@ -414,8 +463,13 @@ iframe.scaredycat-blurred {
   }
 }
 
-.scaredycat-overlay {
-  animation: scaredycat-appear 0.3s ease-out;
+@keyframes scaredycat-card-swap {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* The card stays cream in dark mode by design — the dark overlay backdrop
@@ -436,26 +490,28 @@ iframe.scaredycat-blurred {
   }
 
   .scaredycat-btn--secondary {
-    border: 2px solid var(--sc-ink);
+    border: 2px solid var(--sc-plum);
   }
 }
 
-/* Reduced motion support */
+/* Reduced motion support — every surface goes instant, no exceptions */
 @media (prefers-reduced-motion: reduce) {
-  .scaredycat-blurred {
+  .scaredycat-revealing {
     transition: none !important;
   }
 
-  .scaredycat-overlay {
-    animation: none;
-    transition: none;
-  }
-
+  .scaredycat-overlay,
   .scaredycat-overlay.scaredycat-fade-out {
     transition: none;
   }
 
-  .scaredycat-btn {
+  .scaredycat-message,
+  .scaredycat-message--swap {
+    animation: none;
+  }
+
+  .scaredycat-btn,
+  .scaredycat-hide-again-btn {
     transition: none;
   }
 }
@@ -501,12 +557,6 @@ picture.scaredycat-blurred img {
 .scaredycat-blurred[style*="background"] {
   filter: blur(25px) brightness(0.7) !important;
   pointer-events: none !important;
-}
-
-/* Prevent text selection on overlay */
-.scaredycat-overlay {
-  user-select: none;
-  -webkit-user-select: none;
 }
 
 /* Z-index management to stay on top of most content */

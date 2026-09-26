@@ -38,11 +38,6 @@ A Chrome extension that protects you from horror-related content while browsing.
    - Select the `scaredycat` folder
    - The extension should now appear in your toolbar
 
-5. **(Optional) Better Icons**
-   - Open `icons/generate-icons.html` in your browser
-   - Download each icon and save to the `icons/` folder
-   - Reload the extension in `chrome://extensions/`
-
 ## Usage
 
 ### Basic Controls

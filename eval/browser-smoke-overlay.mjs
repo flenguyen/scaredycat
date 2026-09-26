@@ -102,7 +102,7 @@ try {
   console.log('\n-- Large tier: full card + confirm + curated synopsis --');
   check('blocked state', await overlayState('large') === 'blocked');
   const heading = await q('large', '.scaredycat-heading');
-  check('heading visible at large tier', heading?.display === 'block' && heading.text === 'Horror content detected');
+  check('heading visible at large tier', heading?.display === 'block' && heading.text === 'Something spooky was here.');
   const spoil = await q('large', '.scaredycat-spoil-btn');
   check('spoil pill visible at large tier', !!spoil && spoil.display !== 'none', spoil?.display);
   check('"?" pill hidden at large tier', (await q('large', '.scaredycat-help-btn'))?.display === 'none');
