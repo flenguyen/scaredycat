@@ -79,6 +79,16 @@ typos, all precompiled into fast indexes), which lands it in one of three bands:
    Title matches are never vetoed (horror posters often look innocuous).
 3. **Likely safe** — revealed, zero ML cost
 
+### Borrowed titles
+
+Trailer and clip cards in search dropdowns and video rails (IMDb's suggestion list, for
+one) link to a sub-resource of a title (`/title/tt…/videoplayer/vi…/`) and carry only
+"0:51 Official Teaser" as text, so on their own they never reach the title list and each
+one is judged on pixels alone — a known title ended up half-blurred. On media sites the
+detector borrows the name from a sibling card in the same list that links to the entity
+itself (`/title/tt…/`), so every card tied to a listed title scores as that title. Covered
+by `eval/browser-smoke-sibling-title.mjs` (part of `npm run smoke`).
+
 ### Page-level signals
 
 Beyond per-element text, the page itself is scored once. A strong title match in

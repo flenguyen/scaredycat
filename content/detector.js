@@ -495,9 +495,61 @@ const ScaredyCatDetector = (function () {
         const title = container.querySelector('[class*="title"], h1, h2, h3');
         if (title) parts.push(title.textContent?.trim() || '');
       }
+      // Goes FIRST: the strength check wants at least one cleanly bounded
+      // occurrence, and the URL tokens already collected ("vi1053476889")
+      // would otherwise flank it and demote a definite title to partial.
+      const siblingTitle = findSiblingEntityTitle(element);
+      if (siblingTitle) parts.unshift(siblingTitle);
     }
 
     return parts.join(' ').slice(0, 1000);
+  }
+
+  // A link path with at least three segments: the first two name an entity
+  // ("/title/tt26657236"), the rest a sub-resource of it ("/videoplayer/vi1…").
+  const ENTITY_SUBRESOURCE_RE = /^(\/[^/]+\/[^/]+)\/[^/]+/;
+  const SIBLING_SCOPE_SELECTOR = 'ul, ol, [role="listbox"], [role="list"], section';
+  const SIBLING_ANCHOR_LIMIT = 80;
+
+  /**
+   * Trailer/clip cards in search dropdowns and video rails (IMDb search
+   * suggestions, for one) link to a sub-resource of a title and carry only
+   * "0:51 Official Teaser" as text, so they never match the title list even
+   * when the title's own card sits right next to them. The name lives in a
+   * sibling card that links to the entity itself: borrow it. Same list, same
+   * entity path prefix, nothing else — a poster whose own link IS the entity
+   * path costs one regex test and returns null.
+   */
+  function findSiblingEntityTitle(element) {
+    const link = element.closest('a[href]');
+    if (!link) return null;
+    let pathname;
+    try { pathname = new URL(link.href).pathname; } catch (e) { return null; }
+    const m = ENTITY_SUBRESOURCE_RE.exec(pathname);
+    if (!m) return null;
+    const entityPath = m[1];
+
+    const scope = link.closest(SIBLING_SCOPE_SELECTOR);
+    if (!scope) return null;
+    const anchors = scope.querySelectorAll('a[href]');
+    const limit = Math.min(anchors.length, SIBLING_ANCHOR_LIMIT);
+    for (let i = 0; i < limit; i++) {
+      const anchor = anchors[i];
+      if (anchor === link) continue;
+      let p;
+      try { p = new URL(anchor.href).pathname; } catch (e) { continue; }
+      if (p !== entityPath && p !== entityPath + '/') continue;
+      // Prefer a dedicated title node, then the poster's alt text, then the
+      // link text — but never link text that already contains our own blur
+      // overlay copy, which would feed "spooky" back into the keyword score.
+      const titleEl = anchor.querySelector('[class*="title"], h1, h2, h3');
+      const text = (titleEl && titleEl.textContent) ||
+        anchor.querySelector('img[alt]')?.alt ||
+        (!anchor.querySelector('.scaredycat-overlay') && anchor.textContent) || '';
+      const trimmed = text.replace(/\s+/g, ' ').trim();
+      if (trimmed && trimmed.length < 150) return trimmed;
+    }
+    return null;
   }
 
   /**

@@ -119,9 +119,15 @@ const ScaredyCatScoring = (function () {
     'ii', 'iii', 'iv', 'vi', 'vii', 'viii', 'ix'
   ]);
 
+  // Opaque identifiers that page URLs contribute to the context ("tt26657236",
+  // "vi1053476889", "s01e02"-style codes excluded): a short letter prefix on a
+  // run of digits. Like bare numbers, they say nothing about which title is
+  // being named, so they must not demote a bounded title match to 'partial'.
+  const ID_TOKEN_REGEX = /^[a-z]{1,3}\d{4,}$/;
+
   function isSuspiciousNeighbor(token) {
     if (!token || token.length <= 1) return false;
-    if (/^\d+$/.test(token)) return false;
+    if (/^\d+$/.test(token) || ID_TOKEN_REGEX.test(token)) return false;
     return !CONTEXT_FILLER_TOKENS.has(token);
   }
 

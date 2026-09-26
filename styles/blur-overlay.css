@@ -25,6 +25,9 @@
   position: relative;
   display: inline-block;
   overflow: hidden;
+  /* Sized to the host element's box in px by blocker.js; a flex host must
+     not shrink or stretch it away from that box. */
+  flex: none;
   /* blocker.js copies the host element's computed border-radius onto the
      wrapper so rounded thumbnails keep their shape; 0 is the fallback. */
   border-radius: 0;

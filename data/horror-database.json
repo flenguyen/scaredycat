@@ -1,6 +1,6 @@
 {
-  "version": "1.3.2",
-  "lastUpdated": "2026-06-22",
+  "version": "1.3.3",
+  "lastUpdated": "2026-09-25",
   "safeTitlesNote": "Known non-horror titles that lexically contain a horror title variant or keyword. Matches become suppression spans in scoring-core (longest-match-wins). Every entry must genuinely collide — eval/lint-database.mjs rejects dead weight and entries that equal a horror title. Deliberately blocked mild-spooky titles (Hocus Pocus, Scary Movie, Wicked, Ghostbusters) must NOT be listed here.",
   "safeTitles": [
     "Freaky Friday",
@@ -48,6 +48,7 @@
     { "title": "Ash vs Evil Dead", "year": 2015, "variations": [] },
     { "title": "Autopsy of Jane Doe", "year": 2016, "variations": ["jane doe autopsy"] },
     { "title": "Babadook", "year": 2014, "definite": true, "variations": ["the babadook"] },
+    { "title": "Backrooms", "year": 2026, "definite": true, "variations": ["the backrooms"] },
     { "title": "Barbarian", "year": 2022, "variations": [] },
     { "title": "Bates Motel", "year": 2013, "variations": [] },
     { "title": "Behind the Mask: The Rise of Leslie Vernon", "year": 2006, "variations": ["leslie vernon"] },

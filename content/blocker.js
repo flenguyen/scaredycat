@@ -344,6 +344,24 @@ const ScaredyCatBlocker = (function () {
     wrapper.style.display = originalDisplay === 'inline' ? 'inline-block' : originalDisplay;
     if (radius && radius !== '0px') wrapper.style.borderRadius = radius;
 
+    // An absolutely positioned element takes no part in its parent's flow
+    // (IMDb slates: a flex host holding an `inset: 0` img). Wrapping it in an
+    // in-flow block turns the wrapper into a flex item that gets squeezed to
+    // half the host, so the blur covered only half the thumbnail. The wrapper
+    // takes over the element's positioning instead; the element then fills
+    // the wrapper, which stretches with the host when both insets are set.
+    const position = computed.position;
+    if (position === 'absolute' || position === 'fixed') {
+      wrapper.style.position = position;
+      wrapper.style.top = computed.top;
+      wrapper.style.right = computed.right;
+      wrapper.style.bottom = computed.bottom;
+      wrapper.style.left = computed.left;
+      if (computed.zIndex !== 'auto') wrapper.style.zIndex = computed.zIndex;
+      if (computed.left !== 'auto' && computed.right !== 'auto') wrapper.style.width = '';
+      if (computed.top !== 'auto' && computed.bottom !== 'auto') wrapper.style.height = '';
+    }
+
     // Create the blur overlay and its tracking entry; the card itself is
     // built by the shared renderer (same path as re-hiding).
     const overlay = document.createElement('div');
