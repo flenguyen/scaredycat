@@ -15,6 +15,13 @@
   let warmRequested = false;
   const currentHostname = window.location.hostname;
 
+  // Canonical image keys the user reported as missed horror (see
+  // ADD_TO_BLOCKLIST in background.js). Checked before everything else in
+  // scanOne: a report is a manual block and outranks size filters, the
+  // allowlist, text scoring and the classifier.
+  let blockedKeys = new Set();
+  const USER_REPORTED_REASON = 'You reported this';
+
   // Per-element trace logging. Even when the console hides the debug level,
   // the template strings are still built — keep it off unless debugging.
   const SC_DEBUG = false;
@@ -86,10 +93,11 @@
     try {
       const [syncRes, localRes] = await Promise.all([
         chrome.storage.sync.get('settings').catch(() => ({})),
-        chrome.storage.local.get('horrorDatabase').catch(() => ({}))
+        chrome.storage.local.get(['horrorDatabase', 'blockedItems']).catch(() => ({}))
       ]);
       settings = syncRes?.settings || { ...DEFAULT_SETTINGS };
       storedDb = localRes?.horrorDatabase;
+      setBlockedKeys(localRes?.blockedItems);
     } catch (e) {
       settings = { ...DEFAULT_SETTINGS };
     }
@@ -197,8 +205,16 @@
         window.ScaredyCatPicker?.start();
         sendResponse({ success: true });
         break;
+      case 'BLOCKLIST_UPDATED':
+        // Another tab (or this one, echoed) changed the user blocklist.
+        setBlockedKeys(message.blockedItems);
+        if (isEnabled && protectionStarted) applyBlocklistToPage();
+        sendResponse({ success: true });
+        break;
       case 'REPORT_MISSED_CONTEXT': {
         // Right-click "report missed horror" relayed from the background.
+        // Block first; the report is the optional part.
+        if (message.srcUrl) blockReported(message.srcUrl);
         const report = {
           type: 'missed_blur',
           element: {
@@ -254,11 +270,101 @@
         settings.allowedItems = [...(settings.allowedItems || []), item];
       }
     }
+    // "Allow" on a user-reported item undoes the report for good; otherwise
+    // the blocklist would re-blur it on the next scan.
+    if (src) unblockReported(src);
 
     const element = data.element;
     ScaredyCatBlocker.removeBlur(element);
     if (element) element.setAttribute('data-scaredycat-processed', 'allowed');
     return true;
+  }
+
+  // ---- User blocklist ----------------------------------------------------------
+
+  function setBlockedKeys(list) {
+    blockedKeys = new Set(Array.isArray(list) ? list : []);
+  }
+
+  // image-key.js declares a top-level const (shared content-script scope,
+  // not a window property), so reference it bare and guard with typeof.
+  function canonicalKey(url) {
+    try {
+      if (typeof ScaredyCatImageKey !== 'undefined') return ScaredyCatImageKey.canonicalImageKey(url);
+    } catch (e) { /* fall through */ }
+    return String(url || '');
+  }
+
+  /**
+   * Every URL an element might have been reported under: `currentSrc` is what
+   * the context menu hands us for srcset images, `src`/`poster` is what the
+   * picker and the popup describe.
+   */
+  function mediaUrls(element) {
+    const urls = [];
+    for (const u of [element.currentSrc, element.src, element.poster]) {
+      if (u && !urls.includes(u)) urls.push(u);
+    }
+    return urls;
+  }
+
+  function isUserBlocked(element) {
+    if (!blockedKeys.size) return false;
+    return mediaUrls(element).some(u => blockedKeys.has(canonicalKey(u)));
+  }
+
+  function blockUserReported(element) {
+    element.setAttribute('data-scaredycat-processed', 'blocked');
+    ScaredyCatBlocker.createBlurOverlay(element, {
+      isHorror: true,
+      confidence: 100,
+      band: ScaredyCatDetector.BANDS?.DEFINITE_HORROR,
+      matchedTitle: null,
+      reasons: [USER_REPORTED_REASON]
+    });
+  }
+
+  /**
+   * Re-run every media element on the page (processed or not, shadow roots
+   * included) against the blocklist and blur the ones that now match.
+   */
+  function applyBlocklistToPage() {
+    if (!blockedKeys.size) return;
+    const media = collectMediaDeep(document, [], 'img, video, iframe');
+    for (const el of media) {
+      if (el.getAttribute('data-scaredycat-processed') === 'blocked') continue;
+      if (!isUserBlocked(el)) continue;
+      el.removeAttribute('data-scaredycat-processed');
+      scanOne(el);
+    }
+  }
+
+  /**
+   * The user reported `src` as missed horror. Remember it, blur every copy on
+   * this page now, and persist (the worker fans out to other tabs). Local
+   * only: works even if the report never leaves the device.
+   */
+  function blockReported(src) {
+    if (!src) return;
+    const key = canonicalKey(src);
+    blockedKeys.add(key);
+    if (settings?.allowedItems?.length) {
+      settings.allowedItems = settings.allowedItems.filter(i => canonicalKey(i) !== key);
+    }
+    try {
+      chrome.runtime.sendMessage({ type: 'ADD_TO_BLOCKLIST', item: src }).catch(() => {});
+    } catch (e) { /* worker unavailable; the in-page block still applies */ }
+    if (isEnabled && protectionStarted) applyBlocklistToPage();
+  }
+
+  function unblockReported(src) {
+    if (!src) return;
+    const key = canonicalKey(src);
+    if (!blockedKeys.has(key)) return;
+    blockedKeys.delete(key);
+    try {
+      chrome.runtime.sendMessage({ type: 'REMOVE_FROM_BLOCKLIST', item: src }).catch(() => {});
+    } catch (e) { /* ignore */ }
   }
 
   /**
@@ -267,9 +373,10 @@
    * invisible to plain document.querySelectorAll. Discovered shadow roots
    * are also registered with the mutation observer.
    */
-  function collectMediaDeep(root, out = []) {
-    root.querySelectorAll('img:not([data-scaredycat-processed]), video:not([data-scaredycat-processed]), iframe:not([data-scaredycat-processed])')
-      .forEach(el => out.push(el));
+  const UNPROCESSED_MEDIA = 'img:not([data-scaredycat-processed]), video:not([data-scaredycat-processed]), iframe:not([data-scaredycat-processed])';
+
+  function collectMediaDeep(root, out = [], selector = UNPROCESSED_MEDIA) {
+    root.querySelectorAll(selector).forEach(el => out.push(el));
     // TreeWalker instead of querySelectorAll('*'): same visit order, no
     // NodeList of the entire document.
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -277,7 +384,7 @@
     while ((el = walker.nextNode())) {
       if (el.shadowRoot) {
         ScaredyCatObserver.observeRoot(el.shadowRoot);
-        collectMediaDeep(el.shadowRoot, out);
+        collectMediaDeep(el.shadowRoot, out, selector);
       }
     }
     return out;
@@ -458,6 +565,14 @@
 
   function scanOne(element, rect) {
     if (element.hasAttribute('data-scaredycat-processed')) return;
+
+    // User-reported images outrank everything: size/skip filters, the
+    // allowlist, text scoring and the classifier.
+    if (isUserBlocked(element)) {
+      blockUserReported(element);
+      return;
+    }
+
     if (!ScaredyCatDetector.shouldAnalyzeElement(element, rect)) {
       element.setAttribute('data-scaredycat-processed', 'skip');
       revealEarlyHidden(element);
@@ -544,6 +659,9 @@
   }
 
   function applyVerdict(element, textResult, verdict) {
+    // A report landed while the classifier was running: the block already
+    // applied, don't let a "safe" verdict relabel it.
+    if (element.getAttribute('data-scaredycat-processed') === 'blocked') return;
     element.setAttribute('data-scaredycat-processed', verdict.isHorror ? 'blocked' : 'safe');
     if (verdict.isHorror) {
       ScaredyCatBlocker.createBlurOverlay(element, {
@@ -580,10 +698,14 @@
     init();
   }
 
-  // Expose for debugging
+  // Expose for debugging, plus the report→block hooks used by picker.js and
+  // blocker.js (they load before this file, but only call these on click).
   window.ScaredyCat = {
     isEnabled: () => isEnabled,
     rescan: performInitialScan,
-    getStats: () => ({ blocked: ScaredyCatBlocker.getBlockedCount() })
+    getStats: () => ({ blocked: ScaredyCatBlocker.getBlockedCount() }),
+    blockReported,
+    unblockReported,
+    USER_REPORTED_REASON
   };
 })();

@@ -52,5 +52,11 @@ differ('https://cdn.example.com/img/pic.jpg?id=1', 'https://cdn.example.com/img/
 differ('https://cdn.example.com/img/a.jpg', 'https://cdn.example.com/img/b.jpg', 'generic paths');
 same('not a url', 'not a url', 'non-url passthrough');
 
+// Report→block: the context menu reports `currentSrc` (a srcset candidate) while
+// a later scan may see `src`; both must land on the same key.
+same('https://image.tmdb.org/t/p/w185/poster1.jpg', 'https://image.tmdb.org/t/p/w780/poster1.jpg', 'tmdb srcset candidates');
+same('https://i.ytimg.com/vi/abc123XYZ/hqdefault.jpg', 'https://i.ytimg.com/vi/abc123XYZ/sddefault.jpg?sqp=x', 'youtube srcset candidates');
+same('https://cdn.example.com/img/pic.jpg?w=320&dpr=2', 'https://cdn.example.com/img/pic.jpg', 'generic srcset vs bare src');
+
 console.log(failures ? `\nimage-key: ${failures} failure(s)` : '\nimage-key: all cases pass ✓');
 process.exit(failures ? 1 : 0);

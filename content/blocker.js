@@ -692,6 +692,12 @@ const ScaredyCatBlocker = (function () {
       e.preventDefault();
       e.stopPropagation();
       link.disabled = true;
+      // A user-reported block is undone right away (it's their own report);
+      // ML/text blocks stay signal-only, "Allow" is the explicit unblur.
+      const reason = window.ScaredyCat?.USER_REPORTED_REASON;
+      if (reason && data?.analysisResult?.reasons?.includes(reason)) {
+        window.ScaredyCat?.unblockReported?.(element.src || element.poster || '');
+      }
       const report = buildReport('false_positive', element, data?.analysisResult);
       const ok = await window.ScaredyCatFeedbackUI?.submit(report);
       if (ok) {

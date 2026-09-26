@@ -101,6 +101,8 @@ window.ScaredyCatPicker = (function () {
     if (!target) return;
 
     const info = describe(target);
+    // Block first: the click means "hide this". The report is the optional part.
+    if (info.src) window.ScaredyCat?.blockReported?.(info.src);
     const report = {
       type: 'missed_blur',
       element: {

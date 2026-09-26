@@ -46,6 +46,33 @@ function incrementBlocked(count = 1) {
   return statsWriteChain;
 }
 
+// ---- User blocklist --------------------------------------------------------
+// Images the user reported as missed horror, kept as canonical image keys so
+// the same poster at another size is caught too. Local, not sync: URLs would
+// blow through sync's 8 KB per-item quota. Oldest first; capped. Writes are
+// serialized so two quick reports can't lose each other.
+const BLOCKLIST_MAX = 500;
+let blocklistWriteChain = Promise.resolve();
+
+async function getBlockedItems() {
+  const { blockedItems } = await chrome.storage.local.get('blockedItems');
+  return Array.isArray(blockedItems) ? blockedItems : [];
+}
+
+function updateBlockedItems(mutate) {
+  blocklistWriteChain = blocklistWriteChain.then(async () => {
+    const current = await getBlockedItems();
+    const next = mutate(current).slice(-BLOCKLIST_MAX);
+    const changed = next.length !== current.length || next.some((k, i) => k !== current[i]);
+    if (changed) {
+      await chrome.storage.local.set({ blockedItems: next });
+      notifyAllTabs({ type: 'BLOCKLIST_UPDATED', blockedItems: next });
+    }
+    return next;
+  });
+  return blocklistWriteChain;
+}
+
 // ---- Toolbar badge: per-tab hidden count ------------------------------------
 // Plum badge, cream digits (DESIGN.md tokens). The count is read back from the
 // badge itself rather than kept in worker memory, so a service-worker restart
@@ -290,6 +317,34 @@ async function handleMessage(message, sender) {
         settings: { ...settings, allowedItems: filteredItems }
       });
       return { success: true };
+
+    case 'ADD_TO_BLOCKLIST': {
+      // A "missed horror" report. Persist before anything else so the block
+      // holds even if the report itself is never sent (no consent, offline).
+      if (!message.item) return { success: false, error: 'Missing item' };
+      const key = ScaredyCatImageKey.canonicalImageKey(message.item);
+      const blockedItems = await updateBlockedItems(
+        current => [...current.filter(k => k !== key), key]
+      );
+      // Keep the lists disjoint: a report overrides an earlier "Allow", at
+      // any size variant of the poster. Titles pass through canonicalImageKey
+      // unchanged, so they never collide with an image key.
+      const allowedItems = settings.allowedItems.filter(
+        i => ScaredyCatImageKey.canonicalImageKey(i) !== key
+      );
+      if (allowedItems.length !== settings.allowedItems.length) {
+        await chrome.storage.sync.set({ settings: { ...settings, allowedItems } });
+      }
+      return { success: true, blockedItems };
+    }
+
+    case 'REMOVE_FROM_BLOCKLIST': {
+      const key = ScaredyCatImageKey.canonicalImageKey(message.item || '');
+      const blockedItems = await updateBlockedItems(
+        current => current.filter(k => k !== key)
+      );
+      return { success: true, blockedItems };
+    }
 
     default:
       return { success: false, error: 'Unknown message type' };

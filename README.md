@@ -206,6 +206,10 @@ The extension should NOT blur:
 - Check if the extension is enabled (purple toggle in popup)
 - Try increasing sensitivity to "High"
 - Make sure the site isn't in the disabled list
+- Report it: right-click the image and choose "Scaredy Cat: Report missed horror", or use
+  "Report missed horror" in the popup and click the image. It is blurred immediately and
+  remembered on this device, so it stays blurred on reload and wherever the same poster
+  appears. "Allow" in the popup undoes it.
 
 ### Too many false positives
 - Lower the sensitivity to "Low"
