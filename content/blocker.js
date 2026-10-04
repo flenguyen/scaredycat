@@ -452,6 +452,8 @@ const ScaredyCatBlocker = (function () {
 
   /** True if `node` is one of our wrappers or sits inside one. */
   function isInsideWrapper(node) {
+    // Nothing blocked (the common case): no ancestor walk per mutation.
+    if (!blockedElements.size) return false;
     for (let n = node; n; n = n.parentNode) {
       if (wrappers.has(n)) return true;
     }
