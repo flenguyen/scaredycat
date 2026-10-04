@@ -6,13 +6,13 @@
 
 | ID | Persona | Archetype | Age | Key Driver | Search Pattern | Role in Growth |
 |----|---------|-----------|-----|------------|----------------|----------------|
-| casey | Plot-Curious Casey | The Coward Who Reads the Ending | 18-34 | Knowing the plot without the trauma | "is [movie] scary", "what happens in [movie]" | Wedge segment: highest intent, fastest activation, most shareable identity |
+| casey | Plot-Curious Casey | The Fan Who Reads the Ending | 18-34 | Knowing the plot without the trauma | "is [movie] scary", "what happens in [movie]" | Wedge segment: highest intent, fastest activation, most shareable mascot |
 
 ---
 
 ## Persona 1: Plot-Curious Casey
 
-**The Coward Who Reads the Ending**
+**The Fan Who Reads the Ending**
 
 > **Quick Profile:** Chronically online 18-34 year old who refuses to watch horror but desperately needs to know what happens in it. Reads Wikipedia plot sections at 1am with the lights on, asks friends to narrate movies, googles "is it scary" before agreeing to anything. Fluent in horror discourse without having seen a single frame.
 
@@ -45,7 +45,7 @@
 
 - FOMO on cultural moments (everyone is talking about the new A24 thing)
 - Control: knowing what happens defuses the fear
-- Identity: being a scaredy-cat is funnier as a bit than as a confession
+- Identity: they would rather have a funny character take the scary parts for them than call themselves a coward
 - Comfort: the internet should be a safe place to browse at night
 
 ### Behaviors
@@ -75,12 +75,12 @@
 
 - **When** everyone is talking about a new horror movie, **I want** the full plot delivered quickly and entertainingly, **so that** I can be part of the conversation without watching it.
 - **When** I'm browsing Netflix or YouTube at night, **I want** scary thumbnails and trailers hidden before I see them, **so that** I can relax instead of bracing for ambushes.
-- **When** I admit I'm too scared to watch something, **I want** the product to treat that as good taste rather than weakness, **so that** being a scaredy-cat feels like a fun identity instead of an embarrassing one.
+- **When** I admit I'm too scared to watch something, **I want** the product to treat that as good taste rather than weakness, **so that** I feel looked after by Scaredy Cat instead of labelled a scaredy cat.
 - **When** I find a synopsis that made me laugh, **I want** an effortless way to send it to my group chat, **so that** I can be the one who found the thing.
 
 ### Key Quote (representative, to be replaced with a real review)
 
-> "I have read the Wikipedia plot of every Conjuring movie and seen none of them. This extension is literally me as a cat."
+> "I have read the Wikipedia plot of every Conjuring movie and seen none of them. Scaredy Cat does the watching for me."
 
 ### Strategic Considerations
 
@@ -88,13 +88,14 @@
 
 - **Intent is already expressed:** they generate the "is it scary" / "what happens in" search volume the library targets. No demand creation needed.
 - **Instant activation:** "just tell me what happens" is built for them; time-to-value is one click.
-- **They power the loop:** self-tagging cowardice is shareable, which recruits the partner and anxious-browser segments without targeting them.
+- **They power the loop:** a funny character who takes the scary parts for you is easy to share, which recruits the partner and anxious-browser segments without targeting them.
 
 **Messaging:**
 
-- Lead with the spoiler payoff, not the blocking: "The cat read it so you don't have to."
-- Never frame around anxiety or protection; frame around taste and convenience.
-- All copy in the cat's voice; Casey installs because it's funny, stays because it works.
+- Scaredy Cat is the character and the brand. It is the one who gets scared, so it does the looking and the blurring. The user is protected by Scaredy Cat and is never called a scaredy cat.
+- Lead with the spoiler payoff, not the blocking: "Scaredy Cat read it so you don't have to."
+- Never frame around anxiety. Protection is fine when Scaredy Cat is the one doing it; frame around taste and convenience.
+- All copy in Scaredy Cat's voice; Casey installs because it's funny, stays because it works.
 
 **What would invalidate this persona:**
 

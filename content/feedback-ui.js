@@ -104,7 +104,7 @@ window.ScaredyCatFeedbackUI = (function () {
 
       sheet.innerHTML = `
         <div class="scaredycat-consent-icon">🙀</div>
-        <h2 class="scaredycat-consent-title">Help the cat learn?</h2>
+        <h2 class="scaredycat-consent-title">Help Scaredy Cat learn?</h2>
         <p class="scaredycat-consent-body">
           To improve detection, we'd send a small report. It includes:
         </p>
@@ -223,8 +223,8 @@ window.ScaredyCatFeedbackUI = (function () {
     }
     if (res?.success) {
       toast(res.queued
-        ? "Saved. The cat will send it when you're back online 🙀"
-        : "Noted. The cat's taking notes 🙀");
+        ? "Saved. Scaredy Cat will send it when you're back online 🙀"
+        : "Noted. Scaredy Cat is taking notes 🙀");
       return true;
     }
     if (res?.rateLimited) {

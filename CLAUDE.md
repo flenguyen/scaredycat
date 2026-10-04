@@ -2,6 +2,16 @@
 
 Chrome MV3 extension that blurs horror pictures and trailers while you browse. Detection runs on the device: text scoring first, then a bundled image model for unclear cases. The website lives in the separate `scared-cat-web` repo. UI work follows [DESIGN.md](DESIGN.md).
 
+## Brand
+
+Scaredy Cat is both the product and its mascot, a character. It is the one who gets scared, so it does the looking and the blurring, and the user is protected by it. In all copy (UI, toasts, welcome page, release notes, store listing, website):
+- Write "Scaredy Cat", never "the cat". The pronoun is "it". `npm run eval` (welcome copy) and `npm run release:check` reject "the cat".
+- Never call the user a scaredy cat or a coward.
+- Tips and coffees go to the person who makes Scaredy Cat. Say "its creator" or "the person who makes it", never a personal name, and never suggest the mascot gets the money.
+- Real cats in movie content ("Jones the cat") are fine. So are code names like `feedback-cat` (note categories).
+
+The positioning behind this is in [context/persona.md](context/persona.md).
+
 ## Welcome page
 
 One page, two places: `welcome/welcome.html` in the extension (opened on install by `background.js` and from the popup's "How it works" link) and https://www.scaredycat.app/welcome. Both run the same files from this repo:
@@ -33,7 +43,7 @@ The website reads these from this repo's `main` branch through `scared-cat-web/a
 | **1** | `2.0.0` | A change to the deal people made with us. | **The user.** Stop, explain the trigger, draft the note. They pick 2.0 or downgrade it to Level 2. | Yes |
 | **2** | `1.6.0` | Something people can see or use that they couldn't before. | Claude | Yes ("New in 1.6") |
 | **3** | `1.5.1` | Works better: fixes, wrong-blur corrections, speed, accessibility, copy. | Claude | No (listed only) |
-| none | n/a | Tests, eval and tooling; docs; title-list data updates (they ship through the 6-hourly list, not a release); website articles. | Claude | n/a |
+| none | n/a | Tests, eval and tooling; docs; title-list data updates (they ship through the 6-hourly list, not a release); website articles; brand and marketing wording (renaming the mascot, voice changes), which is a marketing decision. | Claude | n/a |
 
 **Level 1 triggers.** Any one of these means stop and ask:
 1. A new kind of data leaves the device, or there is a new destination or third party.
@@ -58,7 +68,7 @@ f. Tag it locally: `git tag vX.Y.Z`. **Ask before pushing** the tag or `main`.
 
 Pushing to `main` is what updates scaredycat.app/changelog: the website reads `https://raw.githubusercontent.com/flenguyen/scaredycat/main/data/releases.json`. The page re-reads it every 5 minutes; to update it immediately after a push, run `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://www.scaredycat.app/api/revalidate/releases` (secret in `.env.local`). A user-facing website launch gets a `"surface": "website"` entry here (`version` and `level` null, id `web-YYYY-MM-DD-slug`). Never hand-edit release text in the web repo.
 
-A commit with no user-visible effect (tests, tooling, docs, comments) puts **`[no-release]`** in its message. The guard hook in `.claude/settings.json` (`scripts/release-guard.mjs`) blocks a `git commit` that stages runtime files (`manifest.json`, `background*`, `content/`, `popup/`, `offscreen/`, `styles/`, `fonts/`, `icons/`) without `data/releases.json` or `[no-release]`.
+A commit with no user-visible effect (tests, tooling, docs, comments), or one that only changes brand wording, puts **`[no-release]`** in its message. The guard hook in `.claude/settings.json` (`scripts/release-guard.mjs`) blocks a `git commit` that stages runtime files (`manifest.json`, `background*`, `content/`, `popup/`, `offscreen/`, `styles/`, `fonts/`, `icons/`) without `data/releases.json` or `[no-release]`.
 
 ### Writing the notes
 

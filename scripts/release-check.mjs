@@ -89,9 +89,10 @@ export function validateReleases(payload, { manifestVersion, packageVersion, tod
     return errors;
   }
 
-  // ---- Copy rule: no em dashes anywhere ----
+  // ---- Copy rules: no em dashes, and the mascot is Scaredy Cat ----
   for (const [at, s] of strings(payload, '')) {
     if (s.includes(EM_DASH)) err(`${at} contains an em dash (U+2014); use a period, comma, colon or parentheses`);
+    if (/\bthe cat\b/i.test(s)) err(`${at} says "the cat"; the mascot is Scaredy Cat`);
   }
 
   // ---- Per-entry shape ----

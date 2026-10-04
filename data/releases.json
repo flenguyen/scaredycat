@@ -32,7 +32,7 @@
       "level": 3,
       "date": "2026-10-04",
       "title": "Sponsored trailers on YouTube get blurred",
-      "aside": "Paying for the spot does not get you past the cat.",
+      "aside": "Paying for the spot does not get you past Scaredy Cat.",
       "summary": "Scaredy Cat now reads the title on YouTube's sponsored cards, so paid horror trailers in search results get blurred.",
       "changes": [
         {
@@ -53,7 +53,7 @@
       "level": 3,
       "date": "2026-10-04",
       "title": "Signed title lists and a safer report route",
-      "aside": "The cat now checks the seal on every envelope before opening it.",
+      "aside": "Scaredy Cat now checks the seal on every envelope before opening it.",
       "summary": "Scaredy Cat now checks our signature on every title list it downloads, and your reports go through our website.",
       "changes": [
         {
@@ -81,7 +81,7 @@
       "level": 3,
       "date": "2026-10-04",
       "title": "Lighter, and harder for pages to fool",
-      "aside": "The cat had a security review and only hissed twice.",
+      "aside": "Scaredy Cat had a security review and only hissed twice.",
       "summary": "Scaredy Cat uses less memory, and web pages can no longer press its buttons or tell that it is installed.",
       "changes": [
         {
@@ -187,7 +187,7 @@
       "level": 2,
       "date": "2026-10-04",
       "title": "You can see what changed",
-      "aside": "The cat now keeps a diary, and most of it is about LinkedIn.",
+      "aside": "Scaredy Cat now keeps a diary, and most of it is about LinkedIn.",
       "summary": "A What's new page in the popup, spoiler summaries that arrive from our website, and clearer wording about what a note sends.",
       "changes": [
         {
@@ -226,7 +226,7 @@
       "level": 2,
       "date": "2026-10-04",
       "title": "New horror films arrive on their own",
-      "aside": "The cat has not seen any of these 1,500 new films and plans to keep it that way.",
+      "aside": "Scaredy Cat has not seen any of these 1,500 new films and plans to keep it that way.",
       "summary": "The title list now comes from scaredycat.app and picks up new horror releases automatically.",
       "changes": [
         {
@@ -301,8 +301,8 @@
       "version": "1.3.0",
       "level": 2,
       "date": "2026-09-25",
-      "title": "You can report what the cat missed",
-      "aside": "The cat now accepts tips.",
+      "title": "You can report what Scaredy Cat missed",
+      "aside": "Scaredy Cat now accepts tips.",
       "summary": "Scaredy Cat checks only what is on screen, downloads at half the size, and lets you report what it missed.",
       "changes": [
         {
@@ -351,7 +351,7 @@
       "level": 2,
       "date": "2026-06-17",
       "title": "It can tell when a whole page is horror",
-      "aside": "If a website files something under Horror, the cat takes its word for it.",
+      "aside": "If a website files something under Horror, Scaredy Cat takes its word for it.",
       "summary": "Scaredy Cat reads a page's own genre labels and gets new titles without an update.",
       "changes": [
         {
@@ -402,7 +402,7 @@
       "level": null,
       "date": "2026-06-15",
       "title": "The first movie explainers",
-      "aside": "The cat reads the Wikipedia plot so you don't have to watch the trailer.",
+      "aside": "Scaredy Cat reads the Wikipedia plot so you don't have to watch the trailer.",
       "summary": "The website started explaining horror films and how scary they are.",
       "changes": [
         {
@@ -434,8 +434,8 @@
       "version": "1.1.0",
       "level": 2,
       "date": "2026-06-11",
-      "title": "The cat learns to look at pictures",
-      "aside": "Freaky Friday was never in danger, but the cat blurred it anyway until this update.",
+      "title": "Scaredy Cat learns to look at pictures",
+      "aside": "Freaky Friday was never in danger, but Scaredy Cat blurred it anyway until this update.",
       "summary": "An image check that runs on your computer, plus \"Just tell me what happens\" spoilers and a new look.",
       "changes": [
         {
@@ -448,7 +448,7 @@
         },
         {
           "type": "improved",
-          "text": "A new design for the popup and the blur card. The card resizes to fit the picture, and tiny thumbnails show only the cat and a Show button."
+          "text": "A new design for the popup and the blur card. The card resizes to fit the picture, and tiny thumbnails show only the Scaredy Cat icon and a Show button."
         },
         {
           "type": "fixed",

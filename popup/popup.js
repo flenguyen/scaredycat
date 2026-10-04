@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else if (res?.success) {
         feedbackStatus.textContent = res.queued
           ? "Saved. We'll send it when you're back online. 🙀"
-          : "Thanks! The cat's taking notes 🙀";
+          : "Thanks! Scaredy Cat is taking notes 🙀";
         feedbackText.value = '';
         feedbackEmail.value = '';
       } else if (res?.rateLimited) {

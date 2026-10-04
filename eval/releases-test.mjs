@@ -40,7 +40,7 @@ function goodPayload() {
     ],
     releases: [
       ext('1.5.1', 3, '2026-10-04'),
-      ext('1.5.0', 2, '2026-10-04', { aside: 'The cat keeps a diary.' }),
+      ext('1.5.0', 2, '2026-10-04', { aside: 'Scaredy Cat keeps a diary.' }),
       web('web-2026-10-03-spoiler-library', '2026-10-03'),
       ext('1.4.0', 2, '2026-10-02'),
       ext('1.3.1', 3, '2026-09-26'),

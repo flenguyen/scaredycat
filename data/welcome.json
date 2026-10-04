@@ -6,9 +6,9 @@
   },
   "hero": {
     "kicker": "Welcome to Scaredy Cat",
-    "title": "The cat read it so you don't have to.",
+    "title": "Scaredy Cat read it so you don't have to.",
     "lede": "Scaredy Cat blurs horror posters, thumbnails and trailers before they reach your screen. When you're curious, it tells you what happens instead.",
-    "aside": "Pin the cat to your toolbar: click the puzzle piece next to the address bar, then the pin beside Scaredy Cat."
+    "aside": "Pin Scaredy Cat to your toolbar: click the puzzle piece next to the address bar, then the pin beside its name."
   },
   "see": {
     "kicker": "See it work",
@@ -31,7 +31,7 @@
     "title": "If we blur something harmless, tell us.",
     "steps": [
       "Click **Show anyway** to see it.",
-      "Point at the picture and click **This isn't horror**. That sends us a report, so the cat stops making the same mistake.",
+      "Point at the picture and click **This isn't horror**. That sends us a report, so Scaredy Cat stops making the same mistake.",
       "To keep it visible on every visit, click the Scaredy Cat icon in your toolbar and press **Allow** next to it under Hidden items."
     ],
     "demo": {
@@ -42,7 +42,7 @@
   },
   "missed": {
     "kicker": "Something slipped through?",
-    "title": "If something scary gets past the cat, block it yourself.",
+    "title": "If something scary gets past Scaredy Cat, block it yourself.",
     "paragraphs": [
       "Right-click the picture or video and choose **Report missed horror**. It's blurred right away and stays blurred on this computer from then on.",
       "You can also click the Scaredy Cat icon in your toolbar, press **Report missed horror**, and then click the picture."
@@ -60,8 +60,8 @@
   },
   "loop": {
     "kicker": "Why your reports matter",
-    "title": "Every report makes the cat a little smarter.",
-    "body": "The cat learns from the mistakes you point out. One report about a wrong blur can fix that film for everybody who uses Scaredy Cat.",
+    "title": "Every report makes Scaredy Cat a little smarter.",
+    "body": "Scaredy Cat learns from the mistakes you point out. One report about a wrong blur can fix that film for everyone.",
     "cards": [
       { "title": "You flag a mistake", "text": "A picture we blurred for no reason, or one we should have caught." },
       { "title": "We read every report", "text": "A person looks at each one and corrects the title list or tunes detection for that kind of picture." },
@@ -69,14 +69,14 @@
     ],
     "consentLabel": "Share reports to improve detection",
     "consentDetail": "Reports include the page and picture addresses, what we matched, your settings and any note you add. We never send the picture itself or your browsing history. You can turn this off anytime in the popup.",
-    "consentOn": "Sharing is on. Thanks for helping the cat.",
+    "consentOn": "Sharing is on. Thanks for helping Scaredy Cat.",
     "consentOff": "Sharing is off. Nothing will be sent.",
     "consentError": "Couldn't save that. Try again in a moment.",
     "webConsent": "To turn sharing on, click the Scaredy Cat icon in your toolbar and switch on **Share reports to improve detection**. It's off until you do."
   },
   "note": {
     "kicker": "Say hello",
-    "title": "Tell the cat what you think.",
+    "title": "Tell Scaredy Cat what you think.",
     "body": "Bugs, wrong blurs, sites you'd like covered: we read every note. Add your email if you'd like a reply.",
     "categories": [
       { "id": "bug", "label": "Bug" },
@@ -84,7 +84,7 @@
       { "id": "praise", "label": "Praise" },
       { "id": "other", "label": "Other" }
     ],
-    "placeholder": "What should the cat know?",
+    "placeholder": "What should Scaredy Cat know?",
     "emailPlaceholder": "Email (optional, if you'd like a reply)",
     "consentText": "We'll send your note, your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report database. We never send images or your browsing history. Sending also turns on report sharing, which you can turn off above or in the popup.",
     "consentDecline": "Not now",
@@ -92,7 +92,7 @@
     "send": "Send",
     "status": {
       "empty": "Add a quick note first 🙂",
-      "sent": "Thanks! The cat's taking notes 🙀",
+      "sent": "Thanks! Scaredy Cat is taking notes 🙀",
       "queued": "Saved. We'll send it when you're back online 🙀",
       "deduped": "Already noted, thanks 🙀",
       "rateLimited": "Easy there. Give it a moment.",
@@ -103,8 +103,8 @@
   },
   "band": {
     "title": "You're all set. Go browse bravely.",
-    "body": "Scaredy Cat is free and has no ads. If it saved you from a jump scare, you can buy the cat a coffee.",
-    "cta": "Buy the cat a coffee on Ko-fi",
+    "body": "Scaredy Cat is free and has no ads. If it saved you from a jump scare, you can buy the person who makes it a coffee.",
+    "cta": "Buy Scaredy Cat's creator a coffee on Ko-fi",
     "url": "https://ko-fi.com/francoislenguyen",
     "webInstall": "Don't have Scaredy Cat yet?",
     "webInstallLink": "Join the free beta",

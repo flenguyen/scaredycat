@@ -57,6 +57,7 @@ test('no empty strings, no em dashes, balanced bold markers', () => {
   for (const [at, text] of leaves(copy)) {
     assert.ok(text.trim(), `${at} is empty`);
     assert.ok(!text.includes('—'), `${at} has an em dash`);
+    assert.ok(!/\bthe cat\b/i.test(text), `${at} says "the cat"; the mascot is Scaredy Cat`);
     assert.equal((text.match(/\*\*/g) || []).length % 2, 0, `${at} has an unclosed **`);
   }
 });

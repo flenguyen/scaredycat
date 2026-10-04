@@ -154,7 +154,7 @@
     s2.section.appendChild(stage(refs.mistake));
     root.appendChild(s2.section);
 
-    // 03: blocking something the cat missed
+    // 03: blocking something Scaredy Cat missed
     const s3 = step({ numeral: '03', text: copy.missed, titleId: 'wcMissedTitle' });
     copy.missed.paragraphs.forEach(p => s3.col.appendChild(rich('p', null, p)));
     refs.openMenu = el('button', 'wc-ghost-btn', copy.missed.tryButton);
