@@ -162,7 +162,8 @@ npm run setup:model          # fp16 MobileCLIP-S0 vision tower (~23MB) into mode
                              # transformers.js 4.x + its ORT wasm into vendor/
 npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.{json,bin}
 npm run eval                 # text-layer metrics, genre-signal, image-key, auto-title,
-                             # summary-lookup and release-notes tests
+                             # summary-lookup, release-notes, guard, list-signature
+                             # and report-sender tests
 npm run release:check        # versions + data/releases.json agree (pack runs it too)
 npm run eval:combined        # text + image verdict fixtures
 npm run lint:database        # safeTitles + definite-flag invariants
@@ -252,7 +253,9 @@ scaredycat/
 │   ├── image-key.js          # Size-agnostic canonical image keys (cache/dedupe)
 │   ├── db-version.js         # Database version compare shared by seeding + refresh
 │   ├── synopses.js           # Spoiler-summary index + lookup for the blur card
-│   └── db-updater.js         # Remote refresh (every 6h) of the title list + summaries
+│   ├── trust.js              # Ed25519 public keys + signature check for downloaded lists
+│   ├── db-updater.js         # Remote refresh (every 6h) of the title list + summaries
+│   └── feedback.js           # Opt-in reports: clamping, outbox, retries, pacing
 ├── content/
 │   ├── scoring-core.js       # Pure text-scoring engine (also used by the eval harness)
 │   ├── genre-signal.js       # Pure genre-declaration predicates (shared with eval)
@@ -336,6 +339,14 @@ Spoiler summaries ("Just tell me what happens") don't live in this repo: they ar
 edited in Sanity and served by the website at `/api/titles/synopses.json`, which the
 worker refreshes alongside the title list (`background/synopses.js`).
 
+Both downloads are signed. The website sends `X-Scaredy-Signature: kid=<kid>;sig=<base64>`,
+an Ed25519 signature over `"scaredycat-sig-v1\n" + <file name> + "\n"` followed by the
+body bytes. The worker checks it against the public keys in `background/trust.js` before
+it decodes or parses anything, and keeps the last good copy when the signature is
+missing or wrong. While `TRUSTED_KEYS` is empty, no download is accepted (or even made),
+and the extension runs on the list it shipped with. The production key and its kid go
+into that map before a release; keep the old kid listed while the website rotates.
+
 ### Adding Keywords
 
 Edit the `keywords` array in `data/horror-database.json`:
@@ -383,13 +394,13 @@ never leaves the device. These are the only requests the extension makes:
 - **The title list and spoiler summaries** are downloaded from scaredycat.app every 6
   hours. The request carries no identifier and no cookies (only an ETag, so an unchanged
   list isn't downloaded again), so the server sees what any website sees: an IP address
-  and the browser type.
+  and the browser type. A download is used only when it carries the website's signature.
 - **Pictures being checked** are downloaded a second time from the site already showing
   them, without your cookies, so the on-device model can look at them. The result stays
   on your computer.
 - **Reports and notes, only if you opt in.** Sharing is off until you say yes, and you can
-  turn it off in the popup. Reports are stored in our report
-  database. Each one contains: the report type, a random report ID and time, the page
+  turn it off in the popup. Reports are sent to scaredycat.app, which checks them and
+  passes them on to our report database without keeping a copy. Each one contains: the report type, a random report ID and time, the page
   address cut off before any `?` or `#`, the picture or video link, what we matched and
   how confident we were (with the reasons), your sensitivity setting, the extension,
   title-list and model versions, and your note or category. A missed-horror pick sends

@@ -107,8 +107,8 @@ const browser = await puppeteer.launch({
   // in this browser, so no report can reach a real endpoint even if the
   // worker restarts and loses the in-worker stub.
   args: extensionArgs(ROOT, [
-    `--host-resolver-rules=MAP ${HOST} 127.0.0.1, MAP *.airtable.com ~NOTFOUND, ` +
-      'MAP airtable.com ~NOTFOUND, MAP *.scaredycat.app ~NOTFOUND, MAP scaredycat.app ~NOTFOUND',
+    `--host-resolver-rules=MAP ${HOST} 127.0.0.1, ` +
+      'MAP *.scaredycat.app ~NOTFOUND, MAP scaredycat.app ~NOTFOUND',
     '--window-size=1400,1100'
   ])
 });
@@ -149,7 +149,7 @@ try {
     const realFetch = self.fetch;
     self.fetch = (input, init) => {
       const url = typeof input === 'string' ? input : input.url;
-      if (/airtable|\/api\/feedback/.test(url)) return Promise.resolve(new Response('{}', { status: 200 }));
+      if (/\/api\/feedback/.test(url)) return Promise.resolve(new Response('{}', { status: 200 }));
       return realFetch.call(self, input, init);
     };
   }, REPORTED_SRC);
