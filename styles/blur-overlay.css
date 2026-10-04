@@ -14,10 +14,17 @@
  *  - <= 130px tall .......... stack rotates horizontal for banners
  *
  * Motion model (DESIGN.md §5): blocking is instant and leak-free — the
- * blur, the scrim and the dark wrapper all land on the first frame; only
- * the cream card animates in. Revealing is one coordinated 250ms ease-out
- * (blur clears, element opacity rises, scrim fades), driven by the
- * .scaredycat-revealing class blocker.js adds for exactly that window.
+ * hidden element, the scrim and the dark wrapper all land on the first
+ * frame; only the cream card animates in. Revealing is one coordinated
+ * 250ms ease-out (element opacity rises, scrim fades), driven by the
+ * .scaredycat-revealing class for exactly that window.
+ *
+ * Two consumers: the welcome page links this file as a plain stylesheet,
+ * and content/blocker.js adopts it inside each card's closed shadow root,
+ * where .scaredycat-wrapper is the frame around the card. In the extension
+ * the blocked element and the light-DOM wrapper are styled inline by
+ * blocker.js (BLOCKED_STYLE and the wrapper setup), mirroring the
+ * .scaredycat-blurred and .scaredycat-wrapper rules here.
  */
 
 /* Wrapper container for blocked content */
@@ -51,20 +58,21 @@
   --sc-display: 'Bricolage Grotesque', var(--sc-sans);
 }
 
-/* Blurred element. No transition here: the blur must land on the very
-   first frame the class is present, never animate in from sharp. */
+/* Blocked element. No transition here: hiding must land on the very first
+   frame the class is present, never animate in from visible. No filter
+   either: under the 0.97 scrim a dimmed element shows nothing, and a large
+   blur filter costs a full repaint of the element for no visible gain. */
 .scaredycat-blurred {
-  filter: blur(30px) brightness(0.3) !important;
   transition: none !important;
   pointer-events: none !important; /* Prevent interaction with blurred content */
   opacity: 0.3 !important;
 }
 
-/* Reveal only: blocker.js adds this in the same task it removes
-   .scaredycat-blurred, so the after-change style carries the transition and
-   blur + opacity ease out together with the scrim. Removed on transitionend. */
+/* Reveal only: added in the same task that removes .scaredycat-blurred, so
+   the after-change style carries the transition and opacity eases in
+   together with the scrim fade. Removed on transitionend. */
 .scaredycat-revealing {
-  transition: filter 250ms ease-out, opacity 250ms ease-out !important;
+  transition: opacity 250ms ease-out !important;
 }
 
 /* Ensure videos can't play while blurred */
@@ -549,29 +557,7 @@ iframe.scaredycat-blurred {
   position: relative;
 }
 
-/* Handle picture elements */
-picture.scaredycat-blurred,
-picture.scaredycat-blurred img {
-  filter: blur(25px) brightness(0.7) !important;
-  pointer-events: none !important;
-}
-
-/* Handle elements with background images */
-.scaredycat-blurred[style*="background"] {
-  filter: blur(25px) brightness(0.7) !important;
-  pointer-events: none !important;
-}
-
 /* Z-index management to stay on top of most content */
 .scaredycat-wrapper {
   isolation: isolate;
-}
-
-/* YouTube hover-preview suppressed over a blocked thumbnail. Hidden via
-   visibility (not display) so YouTube can still reposition it and the guard
-   can recompute overlap when it moves to the next thumbnail. */
-ytd-video-preview.scaredycat-preview-suppressed,
-.scaredycat-preview-suppressed {
-  visibility: hidden !important;
-  pointer-events: none !important;
 }

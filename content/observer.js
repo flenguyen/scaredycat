@@ -20,6 +20,14 @@ const ScaredyCatObserver = (function () {
   let firstPendingAt = 0;
   let isObserving = false;
   const observedRoots = new WeakSet();
+  const State = ScaredyCatState;
+
+  // Shadow-root discovery walks every element of each added subtree. It only
+  // runs where shadow DOM can hide media: on media sites, or once a shadow
+  // host has been seen on this page (content.js probes once at init; added
+  // subtrees whose root is a host flip it on here). Elsewhere a plain
+  // querySelectorAll per added subtree is enough.
+  let deep = false;
 
   const DEBOUNCE_DELAY = 150;
   const MAX_WAIT = 500;
@@ -70,21 +78,23 @@ const ScaredyCatObserver = (function () {
         for (const node of mutation.addedNodes) {
           if (node.nodeType !== Node.ELEMENT_NODE) continue;
           // Our own overlay/wrapper insertions re-enter here: skip them.
-          if (node.closest && node.closest('.scaredycat-wrapper')) continue;
+          // (Checked against the blocker's own records, never a class a
+          // page could put on its media to hide it from us.)
+          if (ScaredyCatBlocker.isInsideWrapper(node)) continue;
           pendingRoots.add(node);
           collected = true;
         }
       } else if (mutation.type === 'attributes') {
         const t = mutation.target;
         if (!isMedia(t)) continue;
-        const state = t.getAttribute('data-scaredycat-processed');
+        const state = State.get(t);
         if (!state) {
           pendingElements.add(t);
           collected = true;
         } else if (state === 'safe' || state === 'skip') {
           // Lazy loaders swap in the real src after our first pass — those
           // verdicts were made against a placeholder, so re-analyze.
-          t.removeAttribute('data-scaredycat-processed');
+          State.clear(t);
           pendingElements.add(t);
           collected = true;
         }
@@ -95,8 +105,9 @@ const ScaredyCatObserver = (function () {
 
   /** Media under `root` (inclusive), descending into open shadow roots. */
   function collectMedia(root, out) {
-    if (isMedia(root) && !root.hasAttribute('data-scaredycat-processed')) out.add(root);
+    if (isMedia(root) && !State.has(root)) out.add(root);
     if (root.shadowRoot) {
+      deep = true;
       observeRoot(root.shadowRoot);
       collectMediaFromRoot(root.shadowRoot, out);
     }
@@ -105,8 +116,9 @@ const ScaredyCatObserver = (function () {
 
   function collectMediaFromRoot(root, out) {
     for (const el of root.querySelectorAll('img, video, iframe')) {
-      if (!el.hasAttribute('data-scaredycat-processed')) out.add(el);
+      if (!State.has(el)) out.add(el);
     }
+    if (!deep) return;
     // Nested shadow roots: a TreeWalker visits every element without
     // materializing a NodeList of the whole subtree.
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -135,7 +147,7 @@ const ScaredyCatObserver = (function () {
 
     const out = new Set();
     for (const el of elements) {
-      if (el.isConnected && !el.hasAttribute('data-scaredycat-processed')) out.add(el);
+      if (el.isConnected && !State.has(el)) out.add(el);
     }
     // A root nested inside another pending root would be walked twice.
     const rootList = [...roots].filter(r => r.isConnected);
@@ -165,7 +177,9 @@ const ScaredyCatObserver = (function () {
     startObserving,
     stopObserving,
     observeRoot,
-    isActive: () => isObserving
+    isActive: () => isObserving,
+    isDeep: () => deep,
+    setDeep: (value) => { if (value) deep = true; }
   };
 })();
 

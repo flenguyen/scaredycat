@@ -6,8 +6,8 @@
  */
 
 const ScaredyCatDetector = (function () {
-  // Horror database (loaded from JSON) and its compiled indexes
-  let horrorDatabase = null;
+  // Compiled title/keyword index. The raw database is not kept: once compiled,
+  // only the index and the small title lookup below are needed.
   let compiledIndex = null;
   let loadPromise = null;
 
@@ -58,67 +58,103 @@ const ScaredyCatDetector = (function () {
   /**
    * Compile the horror database once. `preloaded` is the copy the caller
    * already read from chrome.storage.local (content.js reads it in parallel
-   * with settings); when absent we read storage ourselves, and fall back to
-   * the bundled file only if storage has nothing usable.
+   * with settings on media sites); when absent we read storage ourselves.
+   *
+   * A bad list must never switch protection off: if the stored copy is
+   * missing, malformed, or throws while compiling, the worker's copy is used
+   * instead (GET_DB), and if even that fails, the built-in keyword list.
+   * Content scripts never fetch extension files themselves.
    */
   async function loadDatabase(preloaded) {
-    if (compiledIndex) return horrorDatabase;
+    if (compiledIndex) return true;
     if (loadPromise) return loadPromise;
 
     loadPromise = (async () => {
-      horrorDatabase = await resolveDatabase(preloaded);
-      compiledIndex = ScaredyCatScoring.compile(horrorDatabase);
-      titleInfo = new Map();
-      for (const entry of horrorDatabase.titles || []) {
-        const key = ScaredyCatScoring.normalizeText(entry.title);
-        // tmdb/type come with auto (pipeline) entries; curated ones mostly
-        // lack them and are looked up by name + year instead.
-        const info = {
-          title: entry.title,
-          year: entry.year || null,
-          tmdb: entry.tmdb ?? null,
-          type: entry.type || null
-        };
-        const list = titleInfo.get(key);
-        if (list) list.push(info);
-        else titleInfo.set(key, [info]);
-      }
+      if (compileDatabase(await readStoredDatabase(preloaded))) return true;
+      if (compileDatabase(await requestWorkerDatabase())) return true;
+      console.error('Scaredy Cat: Failed to load horror database');
+      compileDatabase({ version: '0', titles: [], keywords: getDefaultKeywords() }, { allowEmpty: true });
       // The page signal is computed by the first scan (content.js calls
       // refreshPageSignal before scoring), not here — avoids doing it twice.
-      return horrorDatabase;
+      return true;
     })();
 
     return loadPromise;
   }
 
   /**
-   * Pick the database to compile. The background worker keeps
-   * chrome.storage.local.horrorDatabase populated with whichever is newer:
-   * the bundled file (seeded on install/update) or the daily remote refresh
-   * (see background/db-updater.js). So the common path is one storage read,
-   * already done by the caller. The bundled file is only fetched when storage
-   * is empty (first run before the seed lands, or storage cleared).
+   * The background worker keeps chrome.storage.local.horrorDatabase populated
+   * with whichever is newer: the bundled file (seeded on install/update) or
+   * the periodic remote refresh (see background/db-updater.js). So the common
+   * path is one storage read, often already done by the caller.
    */
-  async function resolveDatabase(preloaded) {
-    let cached = preloaded;
-    if (cached === undefined) {
-      try {
-        cached = (await chrome.storage.local.get('horrorDatabase')).horrorDatabase;
-      } catch (error) {
-        cached = null; // storage unavailable
-      }
-    }
-    if (isValidDatabase(cached)) return cached;
-
+  async function readStoredDatabase(preloaded) {
+    if (preloaded !== undefined) return preloaded;
     try {
-      const response = await fetch(chrome.runtime.getURL('data/horror-database.json'));
-      const bundled = await response.json();
-      if (isValidDatabase(bundled)) return bundled;
+      return (await chrome.storage.local.get('horrorDatabase')).horrorDatabase;
     } catch (error) {
-      // fall through
+      return null; // storage unavailable
     }
-    console.error('Scaredy Cat: Failed to load horror database');
-    return { titles: [], keywords: getDefaultKeywords() };
+  }
+
+  async function requestWorkerDatabase() {
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'GET_DB' });
+      return res && res.success ? res.db : null;
+    } catch (error) {
+      return null; // worker unreachable / context invalidated
+    }
+  }
+
+  /**
+   * Compile `db` into the scoring index plus the title lookup. Returns false,
+   * leaving any previous state untouched, if it is invalid or throws.
+   */
+  function compileDatabase(db, { allowEmpty = false } = {}) {
+    if (!allowEmpty && !isValidDatabase(db)) return false;
+    try {
+      const clean = usableEntries(db);
+      if (!allowEmpty && !clean.titles.length) return false;
+      const index = ScaredyCatScoring.compile(clean);
+      const info = new Map();
+      for (const entry of clean.titles) {
+        const key = ScaredyCatScoring.normalizeText(entry.title);
+        // tmdb/type come with auto (pipeline) entries; curated ones mostly
+        // lack them and are looked up by name + year instead. Only what the
+        // card's summary request needs is kept.
+        const item = {
+          title: entry.title,
+          year: entry.year || null,
+          tmdb: entry.tmdb ?? null,
+          type: entry.type || null
+        };
+        const list = info.get(key);
+        if (list) list.push(item);
+        else info.set(key, [item]);
+      }
+      compiledIndex = index;
+      titleInfo = info;
+      return true;
+    } catch (error) {
+      console.warn('Scaredy Cat: horror database failed to compile', error);
+      return false;
+    }
+  }
+
+  /**
+   * The entries compile() can take without throwing. The worker validates
+   * the list too; this keeps one malformed entry (a numeric title, say) from
+   * costing the whole list if a bad copy ever reaches storage.
+   */
+  function usableEntries(db) {
+    const isString = (v) => typeof v === 'string';
+    const titles = (Array.isArray(db.titles) ? db.titles : []).filter(e =>
+      e && isString(e.title) &&
+      (e.variations === undefined || (Array.isArray(e.variations) && e.variations.every(isString))));
+    const keywords = (Array.isArray(db.keywords) ? db.keywords : []).filter(k =>
+      k && isString(k.keyword) && typeof k.weight === 'number');
+    const safeTitles = (Array.isArray(db.safeTitles) ? db.safeTitles : []).filter(isString);
+    return { ...db, titles, keywords, safeTitles };
   }
 
   function isValidDatabase(db) {
@@ -387,30 +423,39 @@ const ScaredyCatDetector = (function () {
     return ScaredyCatScoring.SENSITIVITY_THRESHOLDS[currentSensitivity];
   }
 
-  // Media-focused sites that need lower thresholds
+  // Media-focused sites that need lower thresholds. Anchored to the end of
+  // the hostname (subdomains included), so "max.com" no longer matches
+  // "fax.com" or "max.com.example.net", and "amc.com" no longer matches
+  // "pharmac.com".
+  //
+  // Amazon and Apple: the old /amazon\.com.*video/ and /apple\.com.*tv/
+  // were tested against the hostname only, where no path ever appears, so
+  // they never matched. That stays the behavior on purpose: Prime Video on
+  // amazon.com shares its hostname with the whole store, and treating all of
+  // amazon.com as a media site would send every product photo through the
+  // quiet-element classifier path. Prime Video's own host (primevideo.com)
+  // and tv.apple.com are listed.
   const MEDIA_SITE_PATTERNS = [
-    /rottentomatoes\.com/i,
-    /imdb\.com/i,
-    /themoviedb\.org/i,
-    /letterboxd\.com/i,
-    /justwatch\.com/i,
-    /netflix\.com/i,
-    /hulu\.com/i,
-    /disneyplus\.com/i,
-    /hbomax\.com/i,
-    /max\.com/i,
-    /amazon\.com.*video/i,
-    /primevideo\.com/i,
-    /peacocktv\.com/i,
-    /paramountplus\.com/i,
-    /apple\.com.*tv/i,
-    /tv\.apple\.com/i,
-    /vudu\.com/i,
-    /fandango\.com/i,
-    /youtube\.com/i,
-    /shudder\.com/i,
-    /amc\.com/i,
-    /fxnetworks\.com/i
+    /(^|\.)rottentomatoes\.com$/i,
+    /(^|\.)imdb\.com$/i,
+    /(^|\.)themoviedb\.org$/i,
+    /(^|\.)letterboxd\.com$/i,
+    /(^|\.)justwatch\.com$/i,
+    /(^|\.)netflix\.com$/i,
+    /(^|\.)hulu\.com$/i,
+    /(^|\.)disneyplus\.com$/i,
+    /(^|\.)hbomax\.com$/i,
+    /(^|\.)max\.com$/i,
+    /(^|\.)primevideo\.com$/i,
+    /(^|\.)peacocktv\.com$/i,
+    /(^|\.)paramountplus\.com$/i,
+    /(^|\.)tv\.apple\.com$/i,
+    /(^|\.)vudu\.com$/i,
+    /(^|\.)fandango\.com$/i,
+    /(^|\.)youtube\.com$/i,
+    /(^|\.)shudder\.com$/i,
+    /(^|\.)amc\.com$/i,
+    /(^|\.)fxnetworks\.com$/i
   ];
 
   let _isMediaSiteCached = null;
@@ -572,12 +617,12 @@ const ScaredyCatDetector = (function () {
       try { p = new URL(anchor.href).pathname; } catch (e) { continue; }
       if (p !== entityPath && p !== entityPath + '/') continue;
       // Prefer a dedicated title node, then the poster's alt text, then the
-      // link text — but never link text that already contains our own blur
-      // overlay copy, which would feed "spooky" back into the keyword score.
+      // link text. (Our blur card lives in a closed shadow root, so its copy
+      // never shows up in textContent to feed "spooky" into the keyword score.)
       const titleEl = anchor.querySelector('[class*="title"], h1, h2, h3');
       const text = (titleEl && titleEl.textContent) ||
         anchor.querySelector('img[alt]')?.alt ||
-        (!anchor.querySelector('.scaredycat-overlay') && anchor.textContent) || '';
+        anchor.textContent || '';
       const trimmed = text.replace(/\s+/g, ' ').trim();
       if (trimmed && trimmed.length < 150) return trimmed;
     }
@@ -705,8 +750,9 @@ const ScaredyCatDetector = (function () {
     const tagName = element.tagName?.toUpperCase();
     if (!tagName) return false;
 
-    // Quick checks first - no DOM traversal
-    if (tagName === 'SVG' || element.hasAttribute('data-scaredycat-processed')) {
+    // Quick checks first - no DOM traversal. (Already-judged elements are
+    // filtered by the caller through ScaredyCatState, never an attribute.)
+    if (tagName === 'SVG') {
       return false;
     }
 
@@ -733,11 +779,48 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Check if a URL/content is in the allowlist
+   * The subset of shouldAnalyzeElement that needs no layout: true when the
+   * element can be skipped without ever being tracked by the viewport
+   * observer (a logo/icon URL, a trusted source, or an image whose decoded
+   * size is already known to be under the bar). Unknown sizes (lazy images
+   * not loaded yet) are not skipped here; the full check runs later.
    */
-  function isAllowed(url, allowedItems) {
-    if (!allowedItems || allowedItems.length === 0) return false;
-    return allowedItems.some(item => url.includes(item));
+  function isCheapSkip(element) {
+    const tagName = element.tagName;
+    const src = element.src || '';
+    if (src && (/logo|icon|sprite|avatar|badge/i.test(src) || isTrustedSource(src))) return true;
+    if (tagName === 'IMG' && element.complete && element.naturalWidth && element.naturalHeight) {
+      const minSize = isMediaSiteCached() ? 60 : 100;
+      return element.naturalWidth < minSize || element.naturalHeight < minSize;
+    }
+    return false;
+  }
+
+  function canonicalImageKey(url) {
+    try {
+      if (typeof ScaredyCatImageKey !== 'undefined') return ScaredyCatImageKey.canonicalImageKey(url);
+    } catch (e) { /* fall through */ }
+    return String(url || '');
+  }
+
+  /**
+   * Is this image URL allowlisted? Exact match on the canonical image key
+   * (background/image-key.js), so the same poster at another size counts,
+   * and nothing else does: allowing one URL can't allow every URL that
+   * happens to contain it.
+   */
+  function isAllowed(url, allowedImages) {
+    if (!url || !allowedImages || !allowedImages.size) return false;
+    return allowedImages.has(canonicalImageKey(url));
+  }
+
+  /**
+   * Is this matched title allowlisted? Exact match on the normalized title:
+   * allowing "Us" allows the film Us, never every string containing "us".
+   */
+  function isTitleAllowed(title, allowedTitles) {
+    if (!title || !allowedTitles || !allowedTitles.size) return false;
+    return allowedTitles.has(ScaredyCatScoring.normalizeText(title));
   }
 
   /**
@@ -763,13 +846,18 @@ const ScaredyCatDetector = (function () {
   return {
     BANDS,
     loadDatabase,
+    // True once a database (stored, worker or built-in fallback) is compiled.
+    isReady: () => !!compiledIndex,
     analyzeElement,
     shouldAnalyzeElement,
+    isCheapSkip,
     setSensitivity,
     getThreshold,
     extractTextContext,
     normalizeText: ScaredyCatScoring.normalizeText,
+    canonicalImageKey,
     isAllowed,
+    isTitleAllowed,
     isLikelyLogo,
     isMediaSite: isMediaSiteCached,
     // True on social/professional feeds where the page-level horror signal is

@@ -1,29 +1,47 @@
 /**
  * Scaredy Cat - Content Blocker
- * Handles the visual blurring of horror content
+ * Handles the visual blocking of horror content.
+ *
+ * DOM shape of a block:
+ *   <div>                      wrapper, in the page's DOM; layout is inline !important
+ *     #shadow-root (closed)    the card, unreachable from the page
+ *       .scaredycat-wrapper.scaredycat-frame   size container (blur-overlay.css)
+ *         <slot>               renders the blocked element
+ *         .scaredycat-overlay  scrim + card  (or, once revealed: Hide again /
+ *                              This isn't horror)
+ *     <img>                    the blocked element, hidden by inline !important styles
+ * The page can't read the card, can't .click() its buttons, and every handler
+ * ignores synthetic events anyway. All per-block state (including a blanked
+ * iframe's src) lives in this file's closures, never in attributes.
  */
 
 const ScaredyCatBlocker = (function () {
   // Track blocked elements for stats
-  let blockedElements = new Map();
-  let revealedElements = new Set();
+  const blockedElements = new Map(); // id -> entry
+  const revealedElements = new Set();
 
-  // Page stylesheets don't cross shadow boundaries: when we blur an element
-  // living inside a shadow root (e.g. Rotten Tomatoes' rt-img components),
-  // the overlay styles must be adopted into that root explicitly.
-  const styledShadowRoots = new WeakSet();
-  let overlayCssPromise = null;
-  let sharedOverlaySheet = null; // one constructed sheet adopted by every shadow root
-  let brandFontsInjected = false;
+  // Our wrappers, and each one's entry. Wrapper membership is checked here,
+  // never by class name or attribute, which a page could plant to make us
+  // skip its own media.
+  const wrappers = new WeakSet();
+  const wrapperData = new WeakMap();
+
+  // Iframes we blanked -> their real src. Restored only from here.
+  const blankedIframes = new Map();
+  // Videos we paused -> { guard, autoplay, volume, muted } to undo on reveal.
+  const pausedVideos = new WeakMap();
 
   // Re-entrancy guard for the horror-page video cascade: stopAllPageVideos()
   // creates overlays, and each of those must not re-run the page-wide scan.
   let cascading = false;
 
-  // Reveal choreography: blur, element opacity and scrim ease out together
-  // over this window (mirrors the 250ms transitions in blur-overlay.css).
+  // Reveal choreography: element opacity and scrim ease out together over
+  // this window (mirrors the 250ms transitions in blur-overlay.css).
   const REVEAL_MS = 250;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Called when an entry is added, so content.js can arm its periodic prune.
+  let onEntryAdded = null;
 
   // Assistive tech: a blurred image's alt text must not be read aloud, and a
   // blurred <video controls> must leave the tab order. Host pages often mark
@@ -42,38 +60,57 @@ const ScaredyCatBlocker = (function () {
     if (!data?.prevInert) element.removeAttribute('inert');
   }
 
-  // Blocked-count stats are batched per page (one storage write per burst
-  // instead of one per element).
+  // ---- Stats and toolbar badge --------------------------------------------
+  // New blocks are batched per page (one message per burst instead of one per
+  // element). Every message carries the page's live hidden count, so the
+  // worker sets the badge to an absolute number instead of reading it back.
+  const MAX_INCREMENT = 200;
+  const MAX_PAGE_COUNT = 100000;
   let pendingBlockedCount = 0;
-  let statsFlushTimer = null;
-  function flushBlockedStats() {
-    statsFlushTimer = null;
-    if (!pendingBlockedCount) return;
-    const count = pendingBlockedCount;
-    pendingBlockedCount = 0;
+  let lastSentPageCount = -1;
+  let badgeTimer = null;
+
+  function hiddenCount() {
+    let n = 0;
+    blockedElements.forEach((data) => {
+      if (!data.revealed && data.wrapper.isConnected) n++;
+    });
+    return Math.min(n, MAX_PAGE_COUNT);
+  }
+
+  function send(message) {
     try {
-      chrome.runtime.sendMessage({ type: 'INCREMENT_BLOCKED', count }).catch(() => {});
+      chrome.runtime.sendMessage(message).catch(() => {});
     } catch (e) {
       // Extension context may be invalidated
     }
   }
+
+  function flushBadge() {
+    clearTimeout(badgeTimer);
+    badgeTimer = null;
+    const pageCount = hiddenCount();
+    if (pendingBlockedCount > 0) {
+      while (pendingBlockedCount > 0) {
+        const count = Math.min(pendingBlockedCount, MAX_INCREMENT);
+        pendingBlockedCount -= count;
+        send({ type: 'INCREMENT_BLOCKED', count, pageCount });
+      }
+    } else if (pageCount !== lastSentPageCount) {
+      send({ type: 'SET_BADGE', pageCount });
+    }
+    lastSentPageCount = pageCount;
+  }
+  function scheduleBadge(delay) {
+    if (!badgeTimer) badgeTimer = setTimeout(flushBadge, delay);
+  }
   function noteBlocked() {
     pendingBlockedCount++;
-    if (!statsFlushTimer) statsFlushTimer = setTimeout(flushBlockedStats, 1000);
+    scheduleBadge(1000);
   }
-  window.addEventListener('pagehide', flushBlockedStats);
-
-  // @font-face only registers at document level (it is ignored inside
-  // shadow-adopted stylesheets), so the brand fonts are injected once per
-  // document — and only on pages that actually block something, keeping
-  // unaffected pages at zero font cost. System stacks in blur-overlay.css
-  // cover pages whose CSP blocks chrome-extension:// font fetches.
-  const BRAND_FONTS = [
-    { family: 'Bricolage Grotesque', style: 'normal', weight: '700 800', file: 'fonts/BricolageGrotesque.woff2' },
-    { family: 'Inter', style: 'normal', weight: '400 700', file: 'fonts/Inter.woff2' },
-    { family: 'Fraunces', style: 'normal', weight: '400 700', file: 'fonts/Fraunces.woff2' },
-    { family: 'Fraunces', style: 'italic', weight: '400 700', file: 'fonts/Fraunces-Italic.woff2' },
-  ];
+  window.addEventListener('pagehide', () => {
+    if (pendingBlockedCount) flushBadge();
+  });
 
   // Page-wide media spillover (covering videos/iframes that were NOT themselves
   // judged horror) is only appropriate on a genuine horror page — a dedicated
@@ -86,69 +123,106 @@ const ScaredyCatBlocker = (function () {
     return !!(detector && detector.hasPageHorrorSignal && detector.hasPageHorrorSignal());
   }
 
-  function ensureBrandFonts() {
-    if (brandFontsInjected || !document.head) return;
-    brandFontsInjected = true;
-    const style = document.createElement('style');
-    style.setAttribute('data-scaredycat-fonts', 'true');
-    style.textContent = BRAND_FONTS.map(f => `@font-face {
-  font-family: '${f.family}';
-  font-style: ${f.style};
-  font-weight: ${f.weight};
-  font-display: swap;
-  src: url('${chrome.runtime.getURL(f.file)}') format('woff2');
-}`).join('\n');
-    document.head.appendChild(style);
+  /**
+   * Start fetching the card stylesheet while a classification is in flight,
+   * so the first card renders styled on its first frame. Pages that never
+   * classify pay nothing. Fonts wait for the first actual card.
+   */
+  function warmUi() {
+    ScaredyCatUI.loadSheets();
   }
 
-  // Kick the (local, ~270KB) font fetch as soon as a classification request
-  // is in flight, so the first card lands in brand type instead of swapping
-  // from the system fallback a beat later. Pages that never classify pay
-  // nothing; pages that classify almost always block within the fetch window.
-  let fontsWarmed = false;
-  function warmFonts() {
-    if (fontsWarmed) return;
-    fontsWarmed = true;
-    ensureBrandFonts();
-    try {
-      if (document.fonts?.load) {
-        document.fonts.load("600 14px 'Inter'").catch(() => {});
-        document.fonts.load("700 20px 'Bricolage Grotesque'").catch(() => {});
-        document.fonts.load("400 14px 'Fraunces'").catch(() => {});
-      }
-    } catch (e) { /* best effort */ }
-  }
+  // ---- Card shadow root ----------------------------------------------------
+  // Adopted synchronously with the root, before the worker's sheets arrive:
+  // the frame fills the wrapper and the scrim is opaque from the first frame.
+  // Until the full sheet lands the card itself stays invisible rather than
+  // rendering as unstyled text. (The blocked element is hidden by its own
+  // inline styles either way.)
+  const CARD_PRE_CSS = `
+.scaredycat-frame { position: relative; display: block; width: 100%; height: 100%; overflow: hidden; border-radius: inherit; }
+.scaredycat-overlay { position: absolute; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(20, 20, 30, 0.97); border-radius: inherit; }
+.scaredycat-frame:not(.scaredycat-styled) .scaredycat-message,
+.scaredycat-frame:not(.scaredycat-styled) button { visibility: hidden; }
+`;
+  // After blur-overlay.css / feedback.css. The frame is styled there as
+  // .scaredycat-wrapper (tokens, size container); here it fills the host.
+  // The light-DOM wrapper is the host, so hover/focus on the revealed
+  // element shows the pills through :host() as well.
+  const CARD_POST_CSS = `
+.scaredycat-frame { display: block; width: 100%; height: 100%; border-radius: inherit; }
+:host(:hover) .scaredycat-hide-again-btn,
+:host(:focus-within) .scaredycat-hide-again-btn { opacity: 1; }
+:host(:hover) .scaredycat-fp-link,
+:host(:focus-within) .scaredycat-fp-link { opacity: 0.85 !important; }
+:host .scaredycat-fp-link:hover,
+:host .scaredycat-fp-link.scaredycat-fp-link--done { opacity: 1 !important; }
+`;
 
-  function ensureStylesFor(element) {
-    ensureBrandFonts();
-    const root = element.getRootNode();
-    if (!(root instanceof ShadowRoot) || styledShadowRoots.has(root)) return;
-    styledShadowRoots.add(root);
-    if (!overlayCssPromise) {
-      overlayCssPromise = fetch(chrome.runtime.getURL('styles/blur-overlay.css'))
-        .then(r => r.text())
-        .catch(() => '');
+  // ---- Blocked element styles ------------------------------------------------
+  // Inline !important, so no page stylesheet can override them and nothing is
+  // injected into the page's CSS. Opacity 0 under the 0.97 scrim: nothing of
+  // the frame leaks, so there is no blur filter to pay for.
+  const BLOCKED_STYLE = { opacity: '0', 'pointer-events': 'none', transition: 'none' };
+  // Layout hints that make the element fill its wrapper. These only fill
+  // gaps: a page's own inline value wins, as it did over the old class rules.
+  const BLOCKED_LAYOUT = {
+    IMG: { display: 'block', width: '100%', height: 'auto' },
+    VIDEO: { display: 'block', width: '100%' },
+    IFRAME: { display: 'block', width: '100%', position: 'relative' }
+  };
+
+  function applyBlockedStyle(element, data) {
+    const s = element.style;
+    if (!s) return;
+    const saved = {};
+    for (const [prop, value] of Object.entries(BLOCKED_STYLE)) {
+      saved[prop] = [s.getPropertyValue(prop), s.getPropertyPriority(prop)];
+      s.setProperty(prop, value, 'important');
     }
-    overlayCssPromise.then(css => {
-      if (!css) return;
-      try {
-        if (!sharedOverlaySheet) {
-          sharedOverlaySheet = new CSSStyleSheet();
-          sharedOverlaySheet.replaceSync(css);
-        }
-        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sharedOverlaySheet];
-      } catch (e) {
-        // Constructable stylesheets unavailable: fall back to a <style> node.
-        const style = document.createElement('style');
-        style.textContent = css;
-        root.appendChild(style);
+    const layout = BLOCKED_LAYOUT[element.tagName];
+    if (layout) {
+      for (const [prop, value] of Object.entries(layout)) {
+        if (s.getPropertyValue(prop)) continue;
+        saved[prop] = ['', ''];
+        s.setProperty(prop, value);
       }
-    });
+    }
+    data.savedStyle = saved;
+  }
+
+  /**
+   * Put the element's own inline styles back. With `animate`, opacity eases
+   * in over REVEAL_MS (the transition is set in the same style change as the
+   * opacity, so it runs) and the element's own transition is restored after.
+   */
+  function restoreBlockedStyle(element, data, animate) {
+    const saved = data.savedStyle;
+    if (!saved || !element.style) return;
+    data.savedStyle = null;
+    const s = element.style;
+    for (const [prop, [value, priority]] of Object.entries(saved)) {
+      if (prop === 'transition' && animate) continue;
+      if (value) s.setProperty(prop, value, priority);
+      else s.removeProperty(prop);
+    }
+    if (animate) {
+      s.setProperty('transition', `opacity ${REVEAL_MS}ms ease-out`, 'important');
+      data.revealTransition = saved.transition;
+    }
+  }
+
+  function settleRevealTransition(element, data) {
+    const prev = data.revealTransition;
+    if (!prev) return;
+    data.revealTransition = null;
+    const [value, priority] = prev;
+    if (value) element.style.setProperty('transition', value, priority);
+    else element.style.removeProperty('transition');
   }
 
   // ---- Card rendering ----------------------------------------------------
   // Card states: 'blocked' | 'confirm' | 'synopsis'. "Revealed" is the
-  // absence of an overlay (revealElement removes it).
+  // absence of an overlay (revealEntry removes it).
 
   // Must match the large @container tier in styles/blur-overlay.css.
   const LARGE_TIER = { width: 360, height: 220 };
@@ -171,6 +245,8 @@ const ScaredyCatBlocker = (function () {
     btn.className = className;
     btn.textContent = label;
     btn.addEventListener('click', (e) => {
+      // Real clicks only: a page can't reveal or report by dispatching one.
+      if (!e.isTrusted) return;
       // Cards often sit inside <a> wrappers: never let clicks through.
       e.preventDefault();
       e.stopPropagation();
@@ -285,7 +361,7 @@ const ScaredyCatBlocker = (function () {
       const actions = document.createElement('div');
       actions.className = 'scaredycat-actions';
       actions.appendChild(makeButton('Yes. Show it.', 'scaredycat-btn scaredycat-btn--secondary', () => {
-        revealElement(data.element, data.wrapper);
+        revealEntry(data);
       }));
       actions.appendChild(makeButton('No. Tell me what happens.', 'scaredycat-btn scaredycat-btn--primary', () => {
         setCardState(data, 'synopsis');
@@ -323,7 +399,7 @@ const ScaredyCatBlocker = (function () {
         if (data.synopsisInfo && !data.everRevealed && isLargeTier(data.wrapper)) {
           setCardState(data, 'confirm');
         } else {
-          revealElement(data.element, data.wrapper);
+          revealEntry(data);
         }
       });
       showBtn.title = 'Show anyway';
@@ -340,7 +416,7 @@ const ScaredyCatBlocker = (function () {
 
   /** Transition the card and move focus into the new state. */
   function setCardState(data, state) {
-    if (!data.wrapper || !data.wrapper.isConnected) return;
+    if (!data.wrapper || !data.wrapper.isConnected || !data.overlay) return;
     data.cardState = state;
     renderCard(data);
     // Synopsis: focus "Back to the blur" so escape stays one keypress away.
@@ -350,13 +426,38 @@ const ScaredyCatBlocker = (function () {
     if (focusTarget) focusTarget.focus({ preventScroll: true });
   }
 
-  function attachEscapeHandler(overlay, data) {
+  /** A fresh overlay in the 'blocked' state, inside the entry's frame. */
+  function mountOverlay(data) {
+    const overlay = document.createElement('div');
+    overlay.className = 'scaredycat-overlay';
     overlay.addEventListener('keydown', (e) => {
+      if (!e.isTrusted) return;
       if (e.key === 'Escape' && data.cardState !== 'blocked') {
         e.stopPropagation();
         setCardState(data, 'blocked');
       }
     });
+    data.overlay = overlay;
+    data.cardState = 'blocked';
+    renderCard(data);
+    data.frame.appendChild(overlay);
+    return overlay;
+  }
+
+  /** The wrapper this element is blocked in, or null. */
+  function wrapperOf(element) {
+    const parent = element && element.parentNode;
+    return parent && wrappers.has(parent) ? parent : null;
+  }
+
+  /** True if `node` is one of our wrappers or sits inside one. */
+  function isInsideWrapper(node) {
+    // Nothing blocked (the common case): no ancestor walk per mutation.
+    if (!blockedElements.size) return false;
+    for (let n = node; n; n = n.parentNode) {
+      if (wrappers.has(n)) return true;
+    }
+    return false;
   }
 
   /**
@@ -366,15 +467,18 @@ const ScaredyCatBlocker = (function () {
     // Check if element is still in DOM
     if (!element.parentNode) return null;
 
-    ensureStylesFor(element);
-
     // Check if already wrapped
-    if (element.closest('.scaredycat-wrapper')) return null;
+    if (isInsideWrapper(element)) return null;
+
+    // Brand type for the card; the first block of a page fetches it.
+    ScaredyCatUI.ensureFonts();
+    // An early-hidden poster gets its own inline opacity back first; the
+    // blocked styles below hide it again in the same task.
+    window.__scaredycatRevealElement?.(element);
 
     // Create wrapper container
     const wrapper = document.createElement('div');
-    wrapper.className = 'scaredycat-wrapper';
-    wrapper.setAttribute('data-scaredycat-wrapper', 'true');
+    const setWrapper = (prop, value) => wrapper.style.setProperty(prop, value, 'important');
 
     // Read phase (one style + layout flush), then write phase below.
     const computed = getComputedStyle(element);
@@ -384,10 +488,19 @@ const ScaredyCatBlocker = (function () {
     const radius = computed.borderRadius;
     const width = element.offsetWidth;
     const height = element.offsetHeight;
-    wrapper.style.width = width + 'px';
-    wrapper.style.height = height + 'px';
-    wrapper.style.display = originalDisplay === 'inline' ? 'inline-block' : originalDisplay;
-    if (radius && radius !== '0px') wrapper.style.borderRadius = radius;
+    // The rules blur-overlay.css used to give .scaredycat-wrapper, inline: no
+    // page stylesheet can override them and nothing is added to page CSS.
+    setWrapper('position', 'relative');
+    setWrapper('display', originalDisplay === 'inline' ? 'inline-block' : originalDisplay);
+    setWrapper('overflow', 'hidden');
+    setWrapper('flex', 'none'); // a flex host must not shrink or stretch it
+    setWrapper('vertical-align', 'top');
+    setWrapper('isolation', 'isolate');
+    setWrapper('background', '#14141e');
+    setWrapper('container-type', 'size');
+    setWrapper('width', width + 'px');
+    setWrapper('height', height + 'px');
+    if (radius && radius !== '0px') setWrapper('border-radius', radius);
 
     // An absolutely positioned element takes no part in its parent's flow
     // (IMDb slates: a flex host holding an `inset: 0` img). Wrapping it in an
@@ -397,51 +510,65 @@ const ScaredyCatBlocker = (function () {
     // the wrapper, which stretches with the host when both insets are set.
     const position = computed.position;
     if (position === 'absolute' || position === 'fixed') {
-      wrapper.style.position = position;
-      wrapper.style.top = computed.top;
-      wrapper.style.right = computed.right;
-      wrapper.style.bottom = computed.bottom;
-      wrapper.style.left = computed.left;
-      if (computed.zIndex !== 'auto') wrapper.style.zIndex = computed.zIndex;
-      if (computed.left !== 'auto' && computed.right !== 'auto') wrapper.style.width = '';
-      if (computed.top !== 'auto' && computed.bottom !== 'auto') wrapper.style.height = '';
+      setWrapper('position', position);
+      setWrapper('top', computed.top);
+      setWrapper('right', computed.right);
+      setWrapper('bottom', computed.bottom);
+      setWrapper('left', computed.left);
+      if (computed.zIndex !== 'auto') setWrapper('z-index', computed.zIndex);
+      if (computed.left !== 'auto' && computed.right !== 'auto') wrapper.style.removeProperty('width');
+      if (computed.top !== 'auto' && computed.bottom !== 'auto') wrapper.style.removeProperty('height');
     }
 
-    // Create the blur overlay and its tracking entry; the card itself is
-    // built by the shared renderer (same path as re-hiding).
-    const overlay = document.createElement('div');
-    overlay.className = 'scaredycat-overlay';
+    // The card lives in a closed shadow root on the wrapper; a <slot> renders
+    // the blocked element (still a light-DOM child) inside the frame.
+    const frame = document.createElement('div');
+    frame.className = 'scaredycat-wrapper scaredycat-frame';
+    frame.appendChild(document.createElement('slot'));
+    const root = ScaredyCatUI.attach(wrapper, {
+      kinds: ['overlay', 'feedback'],
+      pre: CARD_PRE_CSS,
+      post: CARD_POST_CSS,
+      onStyled: () => frame.classList.add('scaredycat-styled')
+    });
+    root.appendChild(frame);
 
+    const id = generateId();
     const data = {
+      id,
       element,
       wrapper,
-      overlay,
+      frame,
+      overlay: null,
       analysisResult,
       cardState: 'blocked',
       synopsisInfo: null, // filled in by resolveSynopsis once the worker answers
       everRevealed: false,
+      revealed: false,
       timestamp: Date.now(),
       wasPlaying: false,
       wasMuted: false,
-      originalSrc: null,
       stoppedIframes: [],
+      stoppedVideos: [],
       prevAriaHidden: null,
       prevInert: false,
+      savedStyle: null,
+      revealTransition: null,
+      controls: [],
       cancelReveal: null
     };
+    wrappers.add(wrapper);
+    wrapperData.set(wrapper, data);
 
-    attachEscapeHandler(overlay, data);
-    renderCard(data);
+    // The card itself is built by the shared renderer (same path as re-hiding).
+    mountOverlay(data);
 
-    // Insert wrapper before element
+    // Insert wrapper before element, then move the element into it
     element.parentNode.insertBefore(wrapper, element);
-
-    // Move element into wrapper
     wrapper.appendChild(element);
-    wrapper.appendChild(overlay);
 
-    // Apply blur to the element itself (lands instantly: no transition on add)
-    element.classList.add('scaredycat-blurred');
+    // Hide the element itself (lands instantly: no transition on add)
+    applyBlockedStyle(element, data);
     hideFromAT(element, data);
 
     // Handle video elements - pause and mute them
@@ -453,9 +580,7 @@ const ScaredyCatBlocker = (function () {
 
     // Handle iframe elements - blank the src to stop playback
     if (element.tagName === 'IFRAME') {
-      data.originalSrc = element.src;
-      element.setAttribute('data-scaredycat-original-src', data.originalSrc);
-      element.src = 'about:blank';
+      blankIframe(element);
     }
 
     // Also check for videos inside nested elements
@@ -488,31 +613,27 @@ const ScaredyCatBlocker = (function () {
 
     if (container) {
       // Stop all videos in the container
-      const containerVideos = container.querySelectorAll('video');
-      containerVideos.forEach(v => {
-        if (!v.closest('.scaredycat-wrapper')) {
+      container.querySelectorAll('video').forEach(v => {
+        if (!isInsideWrapper(v)) {
           pauseVideo(v);
+          data.stoppedVideos.push(v);
         }
       });
 
       // Blank all iframes in the container (YouTube embeds, etc.)
       const containerIframes = container.querySelectorAll('iframe[src*="youtube"], iframe[src*="vimeo"], iframe[src*="player"], iframe[src*="video"]');
       containerIframes.forEach(iframe => {
-        if (!iframe.closest('.scaredycat-wrapper') && iframe.src && iframe.src !== 'about:blank') {
-          const iframeSrc = iframe.src;
-          iframe.setAttribute('data-scaredycat-original-src', iframeSrc);
-          iframe.src = 'about:blank';
+        if (!isInsideWrapper(iframe) && blankIframe(iframe)) {
           data.stoppedIframes.push(iframe);
         }
       });
     }
 
     // Store reference for stats and management
-    const id = generateId();
-    wrapper.setAttribute('data-scaredycat-id', id);
     blockedElements.set(id, data);
     window.ScaredyCatPerf?.mark('sc:blur');
     noteBlocked();
+    if (onEntryAdded) onEntryAdded();
     resolveSynopsis(data);
 
     // On a genuine horror page, aggressively stop all videos on the page —
@@ -535,6 +656,24 @@ const ScaredyCatBlocker = (function () {
     return wrapper;
   }
 
+  // ---- Media playback ------------------------------------------------------
+
+  /** Blank an iframe, remembering its src here (never in an attribute). */
+  function blankIframe(iframe) {
+    const src = iframe.src;
+    if (!src || src === 'about:blank') return false;
+    blankedIframes.set(iframe, src);
+    iframe.src = 'about:blank';
+    return true;
+  }
+
+  function restoreIframe(iframe) {
+    if (!blankedIframes.has(iframe)) return;
+    const src = blankedIframes.get(iframe);
+    blankedIframes.delete(iframe);
+    iframe.src = src;
+  }
+
   /**
    * Check if a video is currently playing
    */
@@ -546,32 +685,57 @@ const ScaredyCatBlocker = (function () {
   }
 
   /**
-   * Pause a video element and mute it
+   * Pause a video element and mute it. A play listener (ours, not the page's
+   * onplay, which stays untouched) keeps it paused until releaseVideo.
    */
   function pauseVideo(video) {
     try {
+      if (!pausedVideos.has(video)) {
+        const guard = () => {
+          try {
+            video.pause();
+            video.currentTime = 0;
+          } catch (e) { /* transient media state */ }
+        };
+        video.addEventListener('play', guard);
+        pausedVideos.set(video, {
+          guard,
+          autoplay: video.hasAttribute('autoplay'),
+          volume: video.volume,
+          muted: video.muted
+        });
+      }
       video.pause();
       video.muted = true;
       video.volume = 0;
-      // Remove autoplay to prevent it from starting again
+      // autoplay is a boolean attribute: any value ("false" included) turns
+      // it on, so it is removed outright and restored by releaseVideo.
       video.removeAttribute('autoplay');
-      video.setAttribute('autoplay', 'false');
       // Also set currentTime to 0 to reset
       video.currentTime = 0;
-      // Prevent future play attempts
-      video.onplay = function() {
-        this.pause();
-        this.currentTime = 0;
-      };
     } catch (e) {
       console.error('Scaredy Cat: Failed to pause video', e);
     }
+  }
+
+  /** Undo pauseVideo: drop our play guard, restore autoplay/volume/muted. */
+  function releaseVideo(video) {
+    const saved = pausedVideos.get(video);
+    if (!saved) return;
+    pausedVideos.delete(video);
+    video.removeEventListener('play', saved.guard);
+    try {
+      video.volume = saved.volume;
+      video.muted = saved.muted;
+    } catch (e) { /* ignore */ }
+    if (saved.autoplay) video.setAttribute('autoplay', '');
   }
 
   /**
    * Resume a video element
    */
   function resumeVideo(video, shouldPlay, wasMuted) {
+    releaseVideo(video);
     try {
       video.muted = wasMuted || false;
       if (shouldPlay) {
@@ -584,33 +748,36 @@ const ScaredyCatBlocker = (function () {
     }
   }
 
+  // ---- Reveal / hide again -----------------------------------------------
+
   /**
-   * Reveal a blocked element
+   * Reveal a blocked element (public: by element + wrapper)
    */
   function revealElement(element, wrapper) {
-    const id = wrapper.getAttribute('data-scaredycat-id');
-    const data = blockedElements.get(id);
-    if (data?.cancelReveal) data.cancelReveal(); // re-entrancy: finish any in-flight reveal first
+    const data = wrapperData.get(wrapper);
+    if (data) revealEntry(data);
+  }
 
-    const overlay = data?.overlay?.isConnected
-      ? data.overlay
-      : wrapper.querySelector('.scaredycat-overlay:not(.scaredycat-fade-out)');
+  function revealEntry(data) {
+    if (data.cancelReveal) data.cancelReveal(); // re-entrancy: finish any in-flight reveal first
+    const { element } = data;
+
+    const overlay = data.overlay?.isConnected ? data.overlay : null;
+    data.overlay = null;
     // Keyboard-initiated reveals land on "Hide again" afterwards, so the
     // way back is one keypress away and visible (it shows on focus-within).
     const viaKeyboard = !!overlay?.querySelector(':focus-visible');
     const instant = reducedMotion.matches;
 
-    // One coordinated motion: .scaredycat-revealing carries the transition
-    // for the after-change style, so removing the blur class eases filter and
-    // opacity out over the same window as the scrim fade.
-    if (!instant) element.classList.add('scaredycat-revealing');
-    element.classList.remove('scaredycat-blurred');
+    // One coordinated motion: the element's opacity eases in over the same
+    // window as the scrim fade (the transition rides on the restored styles).
+    restoreBlockedStyle(element, data, !instant);
     restoreAT(element, data);
 
     const finish = () => {
-      element.classList.remove('scaredycat-revealing');
+      settleRevealTransition(element, data);
       if (overlay) overlay.remove();
-      if (data) data.cancelReveal = null;
+      data.cancelReveal = null;
     };
     if (instant || !overlay) {
       finish();
@@ -629,71 +796,68 @@ const ScaredyCatBlocker = (function () {
         if (e.target === overlay && e.propertyName === 'opacity') once();
       };
       overlay.addEventListener('transitionend', onEnd);
-      // Fallback: hidden tab, shadow-root sheet not yet adopted, etc.
+      // Fallback: hidden tab, sheet not yet adopted, etc.
       timer = setTimeout(once, REVEAL_MS + 100);
-      if (data) data.cancelReveal = once;
+      data.cancelReveal = once;
     }
 
     // Resume video if it was playing before
     if (element.tagName === 'VIDEO') {
-      resumeVideo(element, data?.wasPlaying, data?.wasMuted);
+      resumeVideo(element, data.wasPlaying, data.wasMuted);
     }
 
     // Restore iframe src if it was blanked
-    if (element.tagName === 'IFRAME' && data?.originalSrc) {
-      element.src = data.originalSrc;
-      element.removeAttribute('data-scaredycat-original-src');
-    }
+    if (element.tagName === 'IFRAME') restoreIframe(element);
 
     // Also check for nested videos
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => resumeVideo(v, false, false));
 
-    // Restore any iframes that were stopped in the container
-    if (data?.stoppedIframes) {
-      data.stoppedIframes.forEach(iframe => {
-        const originalSrc = iframe.getAttribute('data-scaredycat-original-src');
-        if (originalSrc) {
-          iframe.src = originalSrc;
-          iframe.removeAttribute('data-scaredycat-original-src');
-        }
-      });
-    }
+    // Restore any iframes and videos that were stopped in the container
+    data.stoppedIframes.forEach(restoreIframe);
+    data.stoppedIframes = [];
+    data.stoppedVideos.forEach(releaseVideo);
+    data.stoppedVideos = [];
 
     // Add "hide again" button
-    addHideAgainButton(element, wrapper);
+    addRevealedControls(data);
     if (viaKeyboard) {
-      wrapper.querySelector('.scaredycat-hide-again-btn')?.focus({ preventScroll: true });
+      data.frame.querySelector('.scaredycat-hide-again-btn')?.focus({ preventScroll: true });
     }
 
     // Track revealed elements
-    revealedElements.add(id);
-
-    // Update stored data
-    if (data) {
-      data.revealed = true;
-      // Once they've seen it, re-confirming on every re-reveal is nagging.
-      data.everRevealed = true;
-    }
+    revealedElements.add(data.id);
+    data.revealed = true;
+    // Once they've seen it, re-confirming on every re-reveal is nagging.
+    data.everRevealed = true;
+    scheduleBadge(300);
   }
 
   /**
-   * Add a "Hide again" button to revealed content
+   * Add "Hide again" and "This isn't horror" to revealed content
    */
-  function addHideAgainButton(element, wrapper) {
+  function addRevealedControls(data) {
+    removeRevealedControls(data);
     const hideBtn = document.createElement('button');
     hideBtn.className = 'scaredycat-hide-again-btn';
     hideBtn.type = 'button';
     hideBtn.textContent = '🙀 Hide again';
 
     hideBtn.addEventListener('click', (e) => {
+      if (!e.isTrusted) return;
       e.preventDefault();
       e.stopPropagation();
-      hideElementAgain(element, wrapper);
+      hideEntryAgain(data);
     });
 
-    wrapper.appendChild(hideBtn);
-    addFalsePositiveLink(element, wrapper);
+    data.frame.appendChild(hideBtn);
+    data.controls.push(hideBtn);
+    addFalsePositiveLink(data);
+  }
+
+  function removeRevealedControls(data) {
+    data.controls.forEach(node => node.remove());
+    data.controls = [];
   }
 
   /**
@@ -707,7 +871,8 @@ const ScaredyCatBlocker = (function () {
     return {
       type,
       element: {
-        src: element.src || element.poster || '',
+        // A blanked iframe reports its real src, not about:blank.
+        src: blankedIframes.get(element) || element.src || element.poster || '',
         kind,
         matchedTitle: analysisResult?.matchedTitle || null,
         confidence: analysisResult?.confidence || 0,
@@ -723,11 +888,8 @@ const ScaredyCatBlocker = (function () {
    * thing that signals a false positive. It never auto-appears over the blur and
    * never nags.
    */
-  function addFalsePositiveLink(element, wrapper) {
-    if (wrapper.querySelector('.scaredycat-fp-link')) return;
-    const id = wrapper.getAttribute('data-scaredycat-id');
-    const data = blockedElements.get(id);
-
+  function addFalsePositiveLink(data) {
+    const { element } = data;
     const link = document.createElement('button');
     link.className = 'scaredycat-fp-link';
     link.type = 'button';
@@ -735,16 +897,18 @@ const ScaredyCatBlocker = (function () {
     link.title = 'Tell us this was wrongly blurred';
 
     link.addEventListener('click', async (e) => {
+      // A synthetic click must not be able to undo a user's report.
+      if (!e.isTrusted) return;
       e.preventDefault();
       e.stopPropagation();
       link.disabled = true;
       // A user-reported block is undone right away (it's their own report);
       // ML/text blocks stay signal-only, "Allow" is the explicit unblur.
       const reason = window.ScaredyCat?.USER_REPORTED_REASON;
-      if (reason && data?.analysisResult?.reasons?.includes(reason)) {
+      if (reason && data.analysisResult?.reasons?.includes(reason)) {
         window.ScaredyCat?.unblockReported?.(element.src || element.poster || '');
       }
-      const report = buildReport('false_positive', element, data?.analysisResult);
+      const report = buildReport('false_positive', element, data.analysisResult);
       const ok = await window.ScaredyCatFeedbackUI?.submit(report);
       if (ok) {
         link.textContent = 'Thanks, noted';
@@ -754,28 +918,24 @@ const ScaredyCatBlocker = (function () {
       }
     });
 
-    wrapper.appendChild(link);
+    data.frame.appendChild(link);
+    data.controls.push(link);
   }
 
   /**
    * Hide a previously revealed element again
    */
-  function hideElementAgain(element, wrapper) {
-    const id = wrapper.getAttribute('data-scaredycat-id');
-
-    // Remove hide button
-    const hideBtn = wrapper.querySelector('.scaredycat-hide-again-btn');
-    if (hideBtn) hideBtn.remove();
+  function hideEntryAgain(data) {
+    const { element } = data;
+    removeRevealedControls(data);
 
     // A re-hide inside the reveal window must not leave a fading overlay
     // behind (the next reveal would find the stale one first).
-    const tracked = blockedElements.get(id);
-    if (tracked?.cancelReveal) tracked.cancelReveal();
-    element.classList.remove('scaredycat-revealing');
+    if (data.cancelReveal) data.cancelReveal();
 
-    // Re-apply blur (instant — no transition on add)
-    element.classList.add('scaredycat-blurred');
-    hideFromAT(element, tracked);
+    // Re-apply the hidden styles (instant: no transition on add)
+    applyBlockedStyle(element, data);
+    hideFromAT(element, data);
 
     // Pause video again if it's a video element
     if (element.tagName === 'VIDEO') {
@@ -784,74 +944,52 @@ const ScaredyCatBlocker = (function () {
 
     // Re-blank iframe src if it's an iframe
     if (element.tagName === 'IFRAME') {
-      const originalSrc = element.src;
-      if (originalSrc && originalSrc !== 'about:blank') {
-        element.setAttribute('data-scaredycat-original-src', originalSrc);
-        element.src = 'about:blank';
-        // Update stored data with new src
-        if (blockedElements.has(id)) {
-          blockedElements.get(id).originalSrc = originalSrc;
-        }
-      }
+      blankIframe(element);
     }
 
     const nestedVideos = element.querySelectorAll ? element.querySelectorAll('video') : [];
     nestedVideos.forEach(v => pauseVideo(v));
 
-    // Re-create overlay through the shared renderer
-    const overlay = document.createElement('div');
-    overlay.className = 'scaredycat-overlay';
-
-    // The tracked entry keeps the summary resolved at block time (or the one
-    // that arrived while revealed). An untracked wrapper has no title match,
-    // so no summary.
-    const data = blockedElements.get(id) || {
-      element,
-      wrapper,
-      analysisResult: null,
-      synopsisInfo: null,
-      everRevealed: true
-    };
-    data.overlay = overlay;
-    data.cardState = 'blocked';
-    attachEscapeHandler(overlay, data);
-    renderCard(data);
-
-    wrapper.appendChild(overlay);
+    // Re-create overlay through the shared renderer. The entry keeps the
+    // summary resolved at block time (or the one that arrived while revealed).
+    mountOverlay(data);
 
     // Update tracking
-    revealedElements.delete(id);
-    if (blockedElements.has(id)) {
-      blockedElements.get(id).revealed = false;
-    }
+    revealedElements.delete(data.id);
+    data.revealed = false;
+    scheduleBadge(300);
   }
 
   /**
    * Remove blur completely (for allowlisted content or disabled extension)
    */
   function removeBlur(element) {
-    const wrapper = element.closest('.scaredycat-wrapper');
+    const wrapper = wrapperOf(element);
     if (!wrapper) return;
 
-    const id = wrapper.getAttribute('data-scaredycat-id');
-    const data = blockedElements.get(id);
+    const data = wrapperData.get(wrapper);
     if (data?.cancelReveal) data.cancelReveal();
 
-    // Move element back out of wrapper
-    wrapper.parentNode.insertBefore(element, wrapper);
-
-    // Remove wrapper
+    // Move element back out of wrapper, then remove the wrapper
+    if (wrapper.parentNode) {
+      wrapper.parentNode.insertBefore(element, wrapper);
+    }
     wrapper.remove();
 
     // Clean up element
-    element.classList.remove('scaredycat-blurred');
-    element.classList.remove('scaredycat-revealing');
-    restoreAT(element, data);
-    element.removeAttribute('data-scaredycat-processed');
-
-    // Remove from tracking
-    blockedElements.delete(id);
-    revealedElements.delete(id);
+    if (data) {
+      restoreBlockedStyle(element, data, false);
+      restoreAT(element, data);
+      if (element.tagName === 'VIDEO') releaseVideo(element);
+      if (element.tagName === 'IFRAME') restoreIframe(element);
+      if (element.querySelectorAll) element.querySelectorAll('video').forEach(releaseVideo);
+      data.stoppedIframes.forEach(restoreIframe);
+      data.stoppedVideos.forEach(releaseVideo);
+      blockedElements.delete(data.id);
+      revealedElements.delete(data.id);
+    }
+    ScaredyCatState.clear(element);
+    scheduleBadge(300);
   }
 
   /**
@@ -866,18 +1004,32 @@ const ScaredyCatBlocker = (function () {
     [...blockedElements.values()].forEach(data => {
       if (data.element) removeBlur(data.element);
     });
-    document.querySelectorAll('.scaredycat-wrapper').forEach(wrapper => {
-      const element = wrapper.querySelector('img, video, [data-scaredycat-processed]');
-      if (element) removeBlur(element);
-    });
     blockedElements.clear();
     revealedElements.clear();
 
-    // Restore all blanked iframes
-    document.querySelectorAll('iframe[data-scaredycat-original-src]').forEach(iframe => {
-      iframe.src = iframe.getAttribute('data-scaredycat-original-src');
-      iframe.removeAttribute('data-scaredycat-original-src');
+    // Restore all blanked iframes (from our own record of their src)
+    [...blankedIframes.keys()].forEach(restoreIframe);
+  }
+
+  /**
+   * Drop entries whose wrapper left the document (infinite feeds recycle
+   * their DOM). Returns how many entries remain. Called from content.js's
+   * periodic prune.
+   */
+  function pruneDetached() {
+    let changed = false;
+    blockedElements.forEach((data, id) => {
+      if (!data.wrapper.isConnected) {
+        blockedElements.delete(id);
+        revealedElements.delete(id);
+        changed = true;
+      }
     });
+    for (const iframe of [...blankedIframes.keys()]) {
+      if (!iframe.isConnected) blankedIframes.delete(iframe);
+    }
+    if (changed) scheduleBadge(300);
+    return blockedElements.size;
   }
 
   /**
@@ -907,7 +1059,7 @@ const ScaredyCatBlocker = (function () {
         reasons: data.analysisResult?.reasons || [],
         context: data.analysisResult?.context || '',
         title: data.analysisResult?.matchedTitle || null,
-        src: data.element?.src || data.element?.poster || ''
+        src: blankedIframes.get(data.element) || data.element?.src || data.element?.poster || ''
       });
     });
     return items;
@@ -926,11 +1078,11 @@ const ScaredyCatBlocker = (function () {
    * blocked thumbnail.
    */
   function getBlockedWrappers() {
-    const wrappers = [];
+    const list = [];
     blockedElements.forEach((data) => {
-      if (data.wrapper && data.wrapper.isConnected) wrappers.push(data.wrapper);
+      if (data.wrapper && data.wrapper.isConnected) list.push(data.wrapper);
     });
-    return wrappers;
+    return list;
   }
 
   /**
@@ -940,17 +1092,9 @@ const ScaredyCatBlocker = (function () {
   function revealAll() {
     blockedElements.forEach((data) => {
       if (!data.revealed && data.element && data.wrapper?.isConnected) {
-        revealElement(data.element, data.wrapper);
+        revealEntry(data);
       }
     });
-  }
-
-  /**
-   * Check if an element is currently blocked
-   */
-  function isBlocked(element) {
-    return element.classList.contains('scaredycat-blurred') ||
-      element.closest('.scaredycat-wrapper') !== null;
   }
 
   /**
@@ -961,12 +1105,19 @@ const ScaredyCatBlocker = (function () {
     const sizes = [];
     blockedElements.forEach((data) => {
       const { element, wrapper } = data;
-      if (wrapper && element) sizes.push([wrapper, element.offsetWidth, element.offsetHeight]);
+      if (wrapper && element && wrapper.style.getPropertyValue('width')) {
+        sizes.push([wrapper, element.offsetWidth, element.offsetHeight]);
+      }
     });
     for (const [wrapper, w, h] of sizes) {
-      wrapper.style.width = w + 'px';
-      wrapper.style.height = h + 'px';
+      wrapper.style.setProperty('width', w + 'px', 'important');
+      if (wrapper.style.getPropertyValue('height')) wrapper.style.setProperty('height', h + 'px', 'important');
     }
+  }
+
+  function looksLikeVideoSrc(src) {
+    return src.includes('youtube') || src.includes('vimeo') || src.includes('player') ||
+      src.includes('video') || src.includes('embed');
   }
 
   /**
@@ -975,7 +1126,7 @@ const ScaredyCatBlocker = (function () {
   function stopAllPageVideos() {
     // Stop and cover all video elements
     document.querySelectorAll('video').forEach(v => {
-      if (!v.closest('.scaredycat-wrapper')) {
+      if (!isInsideWrapper(v)) {
         pauseVideo(v);
         // Also create a blur overlay on the video
         createBlurOverlay(v, { isHorror: true, confidence: 100, reasons: ['Video on horror page'] });
@@ -985,13 +1136,9 @@ const ScaredyCatBlocker = (function () {
     // Cover and blank all video iframes (YouTube, Vimeo, etc.)
     document.querySelectorAll('iframe').forEach(iframe => {
       const src = iframe.src || '';
-      if (src && src !== 'about:blank' &&
-          (src.includes('youtube') || src.includes('vimeo') || src.includes('player') ||
-           src.includes('video') || src.includes('embed'))) {
-        if (!iframe.closest('.scaredycat-wrapper')) {
-          // Create blur overlay first, then blank the src
-          createBlurOverlay(iframe, { isHorror: true, confidence: 100, reasons: ['Video iframe on horror page'] });
-        }
+      if (src && src !== 'about:blank' && looksLikeVideoSrc(src) && !isInsideWrapper(iframe)) {
+        // Create blur overlay first, then blank the src
+        createBlurOverlay(iframe, { isHorror: true, confidence: 100, reasons: ['Video iframe on horror page'] });
       }
     });
   }
@@ -1011,7 +1158,7 @@ const ScaredyCatBlocker = (function () {
 
       // Find and cover any videos not already wrapped
       document.querySelectorAll('video').forEach(v => {
-        if (!v.closest('.scaredycat-wrapper')) {
+        if (!isInsideWrapper(v)) {
           pauseVideo(v);
           createBlurOverlay(v, { isHorror: true, confidence: 100, reasons: ['Video on horror page'] });
         }
@@ -1019,10 +1166,8 @@ const ScaredyCatBlocker = (function () {
 
       // Find and cover any video iframes not already wrapped
       document.querySelectorAll('iframe').forEach(iframe => {
-        const src = iframe.src || iframe.getAttribute('data-scaredycat-original-src') || '';
-        if (!iframe.closest('.scaredycat-wrapper') &&
-            (src.includes('youtube') || src.includes('vimeo') || src.includes('player') ||
-             src.includes('video') || src.includes('embed'))) {
+        const src = blankedIframes.get(iframe) || iframe.src || '';
+        if (!isInsideWrapper(iframe) && looksLikeVideoSrc(src)) {
           createBlurOverlay(iframe, { isHorror: true, confidence: 100, reasons: ['Video iframe on horror page'] });
         }
       });
@@ -1059,13 +1204,17 @@ const ScaredyCatBlocker = (function () {
     revealAll,
     removeBlur,
     removeAllBlurs,
+    pruneDetached,
     getBlockedCount,
     getBlockedItems,
     getBlockedData,
     getBlockedWrappers,
     buildReport,
-    isBlocked,
-    warmFonts
+    isBlocked: isInsideWrapper,
+    isInsideWrapper,
+    wrapperOf,
+    warmUi,
+    setEntryListener: (fn) => { onEntryAdded = fn; }
   };
 })();
 

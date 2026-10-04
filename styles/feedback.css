@@ -1,9 +1,10 @@
 /**
  * Scaredy Cat - Feedback UI (content side)
- * Lives on arbitrary third-party pages, so every rule is defensive: explicit
- * values (no reliance on page :root tokens), !important to resist host styles,
- * and very high z-indexes. Palette mirrors the Scaredy Cat design system
- * (plum #2E2447, cream #FFFCF5, lavender #F1EBFA).
+ * In the extension these rules are adopted inside closed shadow roots
+ * (content/ui-kit.js); the welcome page links the file directly. Every rule
+ * stays defensive anyway: explicit values (no reliance on page :root tokens),
+ * !important to resist host styles, and very high z-indexes. Palette mirrors
+ * the Scaredy Cat design system (plum #2E2447, cream #FFFCF5, lavender #F1EBFA).
  */
 
 /* ---- "This isn't horror" pill on a revealed blur ----------------------- */
@@ -153,9 +154,9 @@
 }
 
 /* ---- Element picker ---------------------------------------------------- */
-html.scaredycat-picking, html.scaredycat-picking * { cursor: crosshair !important; }
-/* The box tracks the pointer via rAF in picker.js; no CSS transition, which
-   only read as lag. */
+/* The page-wide crosshair cursor is a sheet content/picker.js adopts only
+   while the picker runs. The box tracks the pointer via rAF in picker.js;
+   no CSS transition, which only read as lag. */
 .scaredycat-picker-box {
   position: fixed !important;
   top: 0 !important;

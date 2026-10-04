@@ -14,6 +14,7 @@
   let protectionStarted = false;
   let warmRequested = false;
   const currentHostname = window.location.hostname;
+  const State = ScaredyCatState;
 
   // Canonical image keys the user reported as missed horror (see
   // ADD_TO_BLOCKLIST in background.js). Checked before everything else in
@@ -22,16 +23,24 @@
   let blockedKeys = new Set();
   const USER_REPORTED_REASON = 'You reported this';
 
+  // The allowlist: canonical image keys (chrome.storage.local.allowedImages)
+  // and normalized titles (settings.allowedTitles). Exact matches only.
+  let allowedImages = new Set();
+  let allowedTitles = new Set();
+
   // Per-element trace logging. Even when the console hides the debug level,
   // the template strings are still built — keep it off unless debugging.
   const SC_DEBUG = false;
 
-  const DEFAULT_SETTINGS = { enabled: true, sensitivity: 'medium', allowedItems: [], disabledSites: [] };
-
-  // Lightweight timing marks. Each mark is a User Timing entry plus a mirror
-  // on <html data-sc-perf> (JSON), which eval/browser-latency.mjs reads from
-  // the main world. Counting is O(1); the attribute write is debounced.
+  // Lightweight timing marks for eval/browser-latency.mjs, off unless
+  // chrome.storage.local.scDebugPerf === true (the harness sets it). When
+  // on, each mark is a User Timing entry plus a mirror on <html data-sc-perf>
+  // (JSON) that the harness reads from the main world. When off, nothing
+  // reaches the page: no performance entries, no attribute. Marks made
+  // before init has read the flag wait in memory and are replayed or dropped.
   const Perf = (function () {
+    let mode = 'pending';  // 'pending' | 'on' | 'off'
+    const early = [];      // [name, t] while pending (memory only)
     const marks = {};      // name -> [ms since timeOrigin, ...] (capped)
     const counts = {};     // name -> total count
     const CAP = 64;
@@ -42,15 +51,29 @@
         document.documentElement.dataset.scPerf = JSON.stringify({ marks, counts });
       } catch (e) { /* no documentElement yet */ }
     }
-    function mark(name) {
-      const t = performance.now();
-      try { performance.mark(name); } catch (e) { /* ignore */ }
+    function record(name, t) {
+      try { performance.mark(name, { startTime: t }); } catch (e) { /* ignore */ }
       counts[name] = (counts[name] || 0) + 1;
       const list = marks[name] || (marks[name] = []);
       if (list.length < CAP) list.push(Math.round(t * 10) / 10);
       if (!flushTimer) flushTimer = setTimeout(flush, 250);
     }
-    return { mark, flush };
+    function mark(name) {
+      if (mode === 'off') return;
+      const t = performance.now();
+      if (mode === 'pending') {
+        if (early.length < CAP) early.push([name, t]);
+        return;
+      }
+      record(name, t);
+    }
+    function setEnabled(on) {
+      if (mode !== 'pending') return;
+      mode = on ? 'on' : 'off';
+      if (on) early.forEach(([name, t]) => record(name, t));
+      early.length = 0;
+    }
+    return { mark, setEnabled };
   })();
   window.ScaredyCatPerf = Perf;
 
@@ -67,6 +90,27 @@
   }
 
   /**
+   * Settings straight from chrome.storage.sync. The worker sanitizes them
+   * on every read and write; this side only makes sure each field has the
+   * type the code below assumes, so a bad stored value can't throw here.
+   */
+  function coerceSettings(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    const strings = (v) => (Array.isArray(v) ? v.filter(x => typeof x === 'string') : []);
+    return {
+      enabled: s.enabled !== false,
+      sensitivity: typeof s.sensitivity === 'string' ? s.sensitivity : 'medium',
+      disabledSites: strings(s.disabledSites),
+      allowedTitles: strings(s.allowedTitles),
+      feedbackConsent: s.feedbackConsent === true
+    };
+  }
+
+  function computeEnabled() {
+    return !!settings && settings.enabled && !settings.disabledSites.includes(currentHostname);
+  }
+
+  /**
    * Initialize the extension
    */
   async function init() {
@@ -75,6 +119,7 @@
 
     // Skip on trusted domains
     if (isTrustedDomain()) {
+      Perf.setEnabled(false);
       isInitialized = true;
       isEnabled = false;
       revealAllEarlyHidden();
@@ -86,23 +131,33 @@
       window.__scaredycatStopEarlyObserver();
     }
 
-    // Settings and the (background-seeded) horror database both live in
-    // chrome.storage, which content scripts can read directly: no service
-    // worker wake-up, and both reads run in parallel.
+    // Settings and the small user lists live in chrome.storage, which content
+    // scripts read directly: no service worker wake-up, reads in parallel.
+    // The ~270 KB title database is read up front only on media sites, where
+    // almost every page has posters to judge. Elsewhere it waits until the
+    // first element is worth analyzing (ensureDatabase), and pages with no
+    // candidate media never read or compile it.
+    const mediaSite = ScaredyCatDetector.isMediaSite();
+    const localKeys = ['blockedItems', 'allowedImages', 'scDebugPerf'];
+    if (mediaSite) localKeys.push('horrorDatabase');
     let storedDb;
     try {
       const [syncRes, localRes] = await Promise.all([
         chrome.storage.sync.get('settings').catch(() => ({})),
-        chrome.storage.local.get(['horrorDatabase', 'blockedItems']).catch(() => ({}))
+        chrome.storage.local.get(localKeys).catch(() => ({}))
       ]);
-      settings = syncRes?.settings || { ...DEFAULT_SETTINGS };
+      settings = coerceSettings(syncRes?.settings);
+      Perf.setEnabled(localRes?.scDebugPerf === true);
       storedDb = localRes?.horrorDatabase;
       setBlockedKeys(localRes?.blockedItems);
+      setAllowedImages(localRes?.allowedImages);
     } catch (e) {
-      settings = { ...DEFAULT_SETTINGS };
+      settings = coerceSettings(null);
+      Perf.setEnabled(false);
     }
-    isEnabled = settings.enabled !== false && !settings.disabledSites?.includes(currentHostname);
-    if (settings.sensitivity) ScaredyCatDetector.setSensitivity(settings.sensitivity);
+    setAllowedTitles(settings.allowedTitles);
+    isEnabled = computeEnabled();
+    ScaredyCatDetector.setSensitivity(settings.sensitivity);
 
     isInitialized = true;
 
@@ -119,22 +174,28 @@
   }
 
   /**
-   * Compile the database and begin scanning. Idempotent; also used when the
-   * extension is switched on after the page loaded.
+   * Begin scanning. Idempotent; also used when the extension is switched on
+   * after the page loaded. Media sites compile the database first; elsewhere
+   * that waits for the first element that needs it.
    */
   async function startProtection(storedDb) {
     if (protectionStarted) return;
     protectionStarted = true;
+    setEarlyBlockActive(true);
 
-    await ScaredyCatDetector.loadDatabase(storedDb);
-    Perf.mark('sc:db-ready');
-    if (!isEnabled) { protectionStarted = false; return; }
+    const mediaSite = ScaredyCatDetector.isMediaSite();
+    if (mediaSite) {
+      await ensureDatabase(storedDb);
+      if (!isEnabled) { protectionStarted = false; return; }
+    }
 
     // Start scanning and observing
     ScaredyCatObserver.init(scanElements);
+    ScaredyCatObserver.setDeep(mediaSite || pageHasShadowHosts());
     ScaredyCatObserver.startObserving();
+    ScaredyCatBlocker.setEntryListener(armPrune);
     performInitialScan();
-    scheduleShadowSweeps();
+    if (mediaSite) scheduleShadowSweeps();
 
     // Suppress YouTube's shared hover-preview player over blocked thumbnails
     // (no-op off YouTube).
@@ -143,10 +204,58 @@
     console.log('Scaredy Cat: Initialized');
   }
 
+  function stopProtection() {
+    ScaredyCatBlocker.removeAllBlurs();
+    ScaredyCatObserver.stopObserving();
+    stopViewportTracking();
+    window.ScaredyCatYouTubeGuard?.stop();
+    awaitingDb.forEach(el => State.clear(el));
+    awaitingDb.clear();
+    revealAllEarlyHidden();
+  }
+
+  // ---- Title database (lazy) ---------------------------------------------------
+
+  let dbPromise = null;
+  function ensureDatabase(storedDb) {
+    if (!dbPromise) {
+      dbPromise = ScaredyCatDetector.loadDatabase(storedDb).then(() => {
+        Perf.mark('sc:db-ready');
+      });
+    }
+    return dbPromise;
+  }
+
+  // Elements that passed the cheap filters before the database was ready.
+  // They wait as 'pending' (still pre-hidden on media sites) and are judged
+  // as soon as it compiles.
+  const awaitingDb = new Set();
+
+  function deferUntilDatabase(element) {
+    State.set(element, 'pending');
+    const first = awaitingDb.size === 0;
+    awaitingDb.add(element);
+    if (!first) return;
+    ensureDatabase().then(() => {
+      const list = [...awaitingDb];
+      awaitingDb.clear();
+      if (!isEnabled) return;
+      // The page signal needs the compiled index: settle it before the first
+      // verdicts so they use the right image bar.
+      if (ScaredyCatDetector.refreshPageSignal()) State.resetSafe();
+      for (const element of list) {
+        if (State.get(element) !== 'pending') continue;
+        State.clear(element);
+        if (element.isConnected) scanOne(element);
+      }
+    });
+  }
+
   /**
    * Ask the background to load the image classifier now, so the first
    * ambiguous poster on this page doesn't pay the model load + shader compile.
-   * Fire-and-forget; only sent where ML is likely to be needed.
+   * Fire-and-forget; sent once, when the first element on a protected page
+   * enters the classify path.
    */
   function requestWarm() {
     if (warmRequested) return;
@@ -154,27 +263,48 @@
     try { chrome.runtime.sendMessage({ type: 'WARM_ML' }).catch(() => {}); } catch (e) { /* ignore */ }
   }
 
+  function sameList(a, b) {
+    if (a.length !== b.length) return false;
+    const set = new Set(a);
+    return b.every(x => set.has(x));
+  }
+
   /**
    * Handle messages from popup
    */
   function handleMessage(message, sender, sendResponse) {
     switch (message.type) {
-      case 'SETTINGS_UPDATED':
-        settings = message.settings;
-        isEnabled = settings.enabled && !settings.disabledSites?.includes(currentHostname);
-        if (settings.sensitivity) ScaredyCatDetector.setSensitivity(settings.sensitivity);
-        if (!isEnabled) {
-          ScaredyCatBlocker.removeAllBlurs();
-          ScaredyCatObserver.stopObserving();
-          stopViewportTracking();
-          window.ScaredyCatYouTubeGuard?.stop();
-        } else if (!protectionStarted) {
-          startProtection();
-        } else {
-          ScaredyCatObserver.startObserving();
-          window.ScaredyCatYouTubeGuard?.init();
-          performInitialScan();
+      case 'SETTINGS_UPDATED': {
+        const prev = settings;
+        settings = coerceSettings(message.settings);
+        setAllowedTitles(settings.allowedTitles);
+        const wasEnabled = isEnabled;
+        isEnabled = computeEnabled();
+        ScaredyCatDetector.setSensitivity(settings.sensitivity);
+        // Only what changes verdicts on this page warrants a rescan: on/off
+        // here, sensitivity, the title allowlist. A consent toggle or another
+        // site's switch does not.
+        const relevant = !prev || isEnabled !== wasEnabled ||
+          prev.sensitivity !== settings.sensitivity ||
+          !sameList(prev.allowedTitles, settings.allowedTitles);
+        if (relevant) {
+          if (!isEnabled) {
+            if (wasEnabled) stopProtection();
+          } else if (!protectionStarted) {
+            startProtection();
+          } else {
+            setEarlyBlockActive(true);
+            ScaredyCatObserver.startObserving();
+            window.ScaredyCatYouTubeGuard?.init();
+            performInitialScan();
+          }
         }
+        sendResponse({ success: true });
+        break;
+      }
+      case 'ALLOWLIST_UPDATED':
+        // Another tab (or this one, echoed) changed the image allowlist.
+        setAllowedImages(message.allowedImages);
         sendResponse({ success: true });
         break;
       case 'GET_PAGE_STATS':
@@ -195,7 +325,7 @@
         break;
       case 'RESCAN_PAGE':
         if (isEnabled) {
-          clearProcessedDeep(document);
+          State.resetAll();
           performInitialScan();
         }
         sendResponse({ success: true });
@@ -250,33 +380,59 @@
     return true;
   }
 
+  // ---- Allowlist -----------------------------------------------------------------
+
+  // The worker caps message strings at this length.
+  const MAX_ITEM_LENGTH = 2048;
+
+  function sendItem(type, item) {
+    if (!item || item.length > MAX_ITEM_LENGTH) return;
+    try {
+      chrome.runtime.sendMessage({ type, item }).catch(() => {});
+    } catch (e) { /* worker unavailable; the in-page change still applies */ }
+  }
+
+  function setAllowedImages(list) {
+    allowedImages = new Set(Array.isArray(list) ? list.filter(x => typeof x === 'string') : []);
+  }
+
+  function setAllowedTitles(list) {
+    allowedTitles = new Set(Array.isArray(list) ? list : []);
+  }
+
+  function isImageAllowed(element) {
+    if (!allowedImages.size) return false;
+    return mediaUrls(element).some(u => ScaredyCatDetector.isAllowed(u, allowedImages));
+  }
+
   /**
-   * Allow a blocked item: persist it to the allowlist (by URL, and by matched
-   * title so allowing "The Exorcist" once allows it everywhere), then unblur.
+   * Allow a blocked item: persist it to the allowlist (by image, and by
+   * matched title so allowing "The Exorcist" once allows it everywhere),
+   * then unblur. The worker files each item where it belongs: image URLs as
+   * canonical keys, titles as normalized text.
    */
   function allowBlockedItem(id) {
     const data = ScaredyCatBlocker.getBlockedData(id);
     if (!data) return false;
+    const element = data.element;
 
-    const items = [];
-    const src = data.element?.src || data.element?.poster || '';
-    if (src) items.push(src);
+    const src = element?.src || element?.poster || '';
+    if (src) {
+      sendItem('ADD_TO_ALLOWLIST', src);
+      for (const url of mediaUrls(element)) allowedImages.add(canonicalKey(url));
+    }
     const title = data.analysisResult?.matchedTitle;
-    if (title) items.push(ScaredyCatDetector.normalizeText(title));
-
-    for (const item of items) {
-      chrome.runtime.sendMessage({ type: 'ADD_TO_ALLOWLIST', item }).catch(() => {});
-      if (settings && !settings.allowedItems?.includes(item)) {
-        settings.allowedItems = [...(settings.allowedItems || []), item];
-      }
+    if (title) {
+      const normalized = ScaredyCatDetector.normalizeText(title);
+      sendItem('ADD_TO_ALLOWLIST', normalized);
+      allowedTitles.add(normalized);
     }
     // "Allow" on a user-reported item undoes the report for good; otherwise
     // the blocklist would re-blur it on the next scan.
     if (src) unblockReported(src);
 
-    const element = data.element;
     ScaredyCatBlocker.removeBlur(element);
-    if (element) element.setAttribute('data-scaredycat-processed', 'allowed');
+    if (element) State.set(element, 'allowed');
     return true;
   }
 
@@ -286,13 +442,8 @@
     blockedKeys = new Set(Array.isArray(list) ? list : []);
   }
 
-  // image-key.js declares a top-level const (shared content-script scope,
-  // not a window property), so reference it bare and guard with typeof.
   function canonicalKey(url) {
-    try {
-      if (typeof ScaredyCatImageKey !== 'undefined') return ScaredyCatImageKey.canonicalImageKey(url);
-    } catch (e) { /* fall through */ }
-    return String(url || '');
+    return ScaredyCatDetector.canonicalImageKey(url);
   }
 
   /**
@@ -303,7 +454,7 @@
   function mediaUrls(element) {
     const urls = [];
     for (const u of [element.currentSrc, element.src, element.poster]) {
-      if (u && !urls.includes(u)) urls.push(u);
+      if (u && typeof u === 'string' && !urls.includes(u)) urls.push(u);
     }
     return urls;
   }
@@ -314,7 +465,7 @@
   }
 
   function blockUserReported(element) {
-    element.setAttribute('data-scaredycat-processed', 'blocked');
+    State.set(element, 'blocked');
     ScaredyCatBlocker.createBlurOverlay(element, {
       isHorror: true,
       confidence: 100,
@@ -330,11 +481,11 @@
    */
   function applyBlocklistToPage() {
     if (!blockedKeys.size) return;
-    const media = collectMediaDeep(document, [], 'img, video, iframe');
+    const media = collectMedia(document, [], true);
     for (const el of media) {
-      if (el.getAttribute('data-scaredycat-processed') === 'blocked') continue;
+      if (State.get(el) === 'blocked') continue;
       if (!isUserBlocked(el)) continue;
-      el.removeAttribute('data-scaredycat-processed');
+      State.clear(el);
       scanOne(el);
     }
   }
@@ -348,12 +499,8 @@
     if (!src) return;
     const key = canonicalKey(src);
     blockedKeys.add(key);
-    if (settings?.allowedItems?.length) {
-      settings.allowedItems = settings.allowedItems.filter(i => canonicalKey(i) !== key);
-    }
-    try {
-      chrome.runtime.sendMessage({ type: 'ADD_TO_BLOCKLIST', item: src }).catch(() => {});
-    } catch (e) { /* worker unavailable; the in-page block still applies */ }
+    allowedImages.delete(key);
+    sendItem('ADD_TO_BLOCKLIST', src);
     if (isEnabled && protectionStarted) applyBlocklistToPage();
   }
 
@@ -362,21 +509,24 @@
     const key = canonicalKey(src);
     if (!blockedKeys.has(key)) return;
     blockedKeys.delete(key);
-    try {
-      chrome.runtime.sendMessage({ type: 'REMOVE_FROM_BLOCKLIST', item: src }).catch(() => {});
-    } catch (e) { /* ignore */ }
+    sendItem('REMOVE_FROM_BLOCKLIST', src);
   }
 
+  // ---- Finding media ---------------------------------------------------------
+
   /**
-   * Collect media elements from a root INCLUDING open shadow roots — sites
+   * Collect media elements from a root, including open shadow roots once the
+   * page is known to use them (media sites, or a shadow host seen): sites
    * like Rotten Tomatoes render nearly all imagery inside web components,
    * invisible to plain document.querySelectorAll. Discovered shadow roots
-   * are also registered with the mutation observer.
+   * are also registered with the mutation observer. Elsewhere one
+   * querySelectorAll is the whole cost.
    */
-  const UNPROCESSED_MEDIA = 'img:not([data-scaredycat-processed]), video:not([data-scaredycat-processed]), iframe:not([data-scaredycat-processed])';
-
-  function collectMediaDeep(root, out = [], selector = UNPROCESSED_MEDIA) {
-    root.querySelectorAll(selector).forEach(el => out.push(el));
+  function collectMedia(root, out = [], includeProcessed = false) {
+    for (const el of root.querySelectorAll('img, video, iframe')) {
+      if (includeProcessed || !State.has(el)) out.push(el);
+    }
+    if (!ScaredyCatObserver.isDeep()) return out;
     // TreeWalker instead of querySelectorAll('*'): same visit order, no
     // NodeList of the entire document.
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
@@ -384,10 +534,24 @@
     while ((el = walker.nextNode())) {
       if (el.shadowRoot) {
         ScaredyCatObserver.observeRoot(el.shadowRoot);
-        collectMediaDeep(el.shadowRoot, out, selector);
+        collectMedia(el.shadowRoot, out, includeProcessed);
       }
     }
     return out;
+  }
+
+  /**
+   * One walk at startup (stops at the first hit) decides whether this page
+   * uses shadow DOM at all. Our own card wrappers don't count.
+   */
+  function pageHasShadowHosts() {
+    if (!document.documentElement) return false;
+    const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT);
+    let el;
+    while ((el = walker.nextNode())) {
+      if (el.shadowRoot) return true;
+    }
+    return false;
   }
 
   // ---- Viewport gating -------------------------------------------------------
@@ -407,11 +571,15 @@
     return io;
   }
 
+  function armPrune() {
+    if (!pruneTimer) pruneTimer = setTimeout(pruneTracked, TRACKED_PRUNE_MS);
+  }
+
   function track(element) {
     if (tracked.has(element)) return;
     tracked.add(element);
     getIO().observe(element);
-    if (!pruneTimer) pruneTimer = setTimeout(pruneTracked, TRACKED_PRUNE_MS);
+    armPrune();
   }
 
   function untrack(element) {
@@ -430,13 +598,17 @@
   /**
    * IntersectionObserver holds strong references to its targets, so elements
    * removed before they ever came near the viewport must be dropped by hand.
+   * Blocks whose wrapper left the page (infinite feeds) are dropped here too.
+   * Re-arms only while something is left to watch.
    */
   function pruneTracked() {
+    clearTimeout(pruneTimer);
     pruneTimer = null;
     for (const element of tracked) {
       if (!element.isConnected) untrack(element);
     }
-    if (tracked.size && !pruneTimer) pruneTimer = setTimeout(pruneTracked, TRACKED_PRUNE_MS);
+    const blocksLeft = ScaredyCatBlocker.pruneDetached();
+    if (tracked.size || blocksLeft) armPrune();
   }
 
   function stopViewportTracking() {
@@ -446,6 +618,8 @@
     clearTimeout(pruneTimer);
     pruneTimer = null;
   }
+
+  // ---- Scanning ----------------------------------------------------------------
 
   /**
    * Initial scan - keep it fast
@@ -457,54 +631,27 @@
 
     // SPA media sites hydrate title/genre/JSON-LD after init, so re-evaluate
     // the page-level horror signal against the current DOM before scoring.
-    if (ScaredyCatDetector.refreshPageSignal()) clearSafeProcessedDeep(document);
-    if (ScaredyCatDetector.isMediaSite() || ScaredyCatDetector.hasPageHorrorSignal()) requestWarm();
+    // (A no-op until the database is compiled.)
+    if (ScaredyCatDetector.refreshPageSignal()) State.resetSafe();
 
     // Scan early-hidden elements first (media sites only)
-    const earlyHidden = document.querySelectorAll('[data-scaredycat-early-hidden]');
-    if (earlyHidden.length > 0) {
-      scanElements(Array.from(earlyHidden), { immediate: true });
+    const earlyHidden = window.__scaredycatEarlyHidden;
+    if (earlyHidden && earlyHidden.size > 0) {
+      scanElements([...earlyHidden.keys()], { immediate: true });
     }
 
     pruneTracked();
-    const media = collectMediaDeep(document);
+    const media = collectMedia(document);
     if (media.length > 0) {
       scanElements(media, { viewportFirst: true });
     }
   }
 
-  /** Clear processed markers everywhere, including inside shadow roots. */
-  function clearProcessedDeep(root) {
-    root.querySelectorAll('[data-scaredycat-processed]').forEach(el => {
-      if (el.getAttribute('data-scaredycat-processed') !== 'blocked') {
-        el.removeAttribute('data-scaredycat-processed');
-      }
-    });
-    root.querySelectorAll('*').forEach(el => {
-      if (el.shadowRoot) clearProcessedDeep(el.shadowRoot);
-    });
-  }
-
-  /**
-   * Clear only 'safe' markers (leave blocked/allowed/pending/skip intact) so
-   * those elements get re-judged. Used when the page horror signal turns on
-   * after the first pass: the lowered image bar may now block posters that
-   * were revealed under the higher neutral-page bar. Image verdicts are cached
-   * in IndexedDB, so re-judging is a cache hit — no re-download or re-inference.
-   */
-  function clearSafeProcessedDeep(root) {
-    root.querySelectorAll('[data-scaredycat-processed="safe"]').forEach(el => {
-      el.removeAttribute('data-scaredycat-processed');
-    });
-    root.querySelectorAll('*').forEach(el => {
-      if (el.shadowRoot) clearSafeProcessedDeep(el.shadowRoot);
-    });
-  }
-
   /**
    * Custom elements often attach their shadow roots after our first pass and
    * shadow-root attachment fires no mutation. A couple of cheap delayed
-   * sweeps catch late-rendering component trees.
+   * sweeps catch late-rendering component trees. Media sites only: they are
+   * where late-hydrating component trees hold posters.
    */
   function scheduleShadowSweeps() {
     [2000, 6000].forEach(delay => {
@@ -513,11 +660,16 @@
         // The genre line / listing filter may only now be in the DOM. If it
         // just flipped the page signal on, re-judge elements already marked
         // safe under the old (higher) image bar.
-        if (ScaredyCatDetector.refreshPageSignal()) { clearSafeProcessedDeep(document); requestWarm(); }
-        const media = collectMediaDeep(document);
+        if (ScaredyCatDetector.refreshPageSignal()) State.resetSafe();
+        const media = collectMedia(document);
         if (media.length > 0) scanElements(media);
       }, delay);
     });
+  }
+
+  function markSkip(element) {
+    State.set(element, 'skip');
+    revealEarlyHidden(element);
   }
 
   /**
@@ -528,13 +680,15 @@
    *                  synchronously (no one-frame flash), the rest are tracked.
    *   default:       everything is tracked; the IntersectionObserver scores
    *                  each element when it comes within a viewport of view.
+   * Elements the cheap filters already rule out (logos, small decoded images)
+   * are marked skip instead of being tracked.
    */
   function scanElements(elements, { immediate = false, viewportFirst = false } = {}) {
     if (!isEnabled || !isInitialized || !settings || elements.length === 0) return;
 
     if (immediate) {
       for (const element of elements) {
-        if (element.hasAttribute('data-scaredycat-processed')) continue;
+        if (State.has(element)) continue;
         untrack(element);
         scanOne(element);
       }
@@ -543,7 +697,11 @@
 
     const viewportHeight = viewportFirst ? window.innerHeight : 0;
     for (const element of elements) {
-      if (element.hasAttribute('data-scaredycat-processed') || tracked.has(element)) continue;
+      if (State.has(element) || tracked.has(element)) continue;
+      if (!isUserBlocked(element) && ScaredyCatDetector.isCheapSkip(element)) {
+        markSkip(element);
+        continue;
+      }
       if (viewportFirst) {
         const rect = element.getBoundingClientRect();
         if (rect.bottom > -200 && rect.top < viewportHeight + 200 && (rect.width || rect.height)) {
@@ -555,16 +713,8 @@
     }
   }
 
-  /**
-   * Whether the analysis result matches an allowlisted title.
-   */
-  function isAllowedByTitle(result, allowedItems) {
-    if (!allowedItems?.length || !result.matchedTitle) return false;
-    return allowedItems.includes(ScaredyCatDetector.normalizeText(result.matchedTitle));
-  }
-
   function scanOne(element, rect) {
-    if (element.hasAttribute('data-scaredycat-processed')) return;
+    if (State.has(element)) return;
 
     // User-reported images outrank everything: size/skip filters, the
     // allowlist, text scoring and the classifier.
@@ -574,16 +724,21 @@
     }
 
     if (!ScaredyCatDetector.shouldAnalyzeElement(element, rect)) {
-      element.setAttribute('data-scaredycat-processed', 'skip');
+      markSkip(element);
+      return;
+    }
+
+    // Check allowlist by image (exact canonical key)
+    if (isImageAllowed(element)) {
+      State.set(element, 'allowed');
       revealEarlyHidden(element);
       return;
     }
 
-    // Check allowlist by URL
-    const src = element.src || element.poster || '';
-    if (settings.allowedItems?.length && ScaredyCatDetector.isAllowed(src, settings.allowedItems)) {
-      element.setAttribute('data-scaredycat-processed', 'allowed');
-      revealEarlyHidden(element);
+    // First element worth analyzing on a page that hasn't loaded the title
+    // database yet: load it now, judge this element when it's ready.
+    if (!ScaredyCatDetector.isReady()) {
+      deferUntilDatabase(element);
       return;
     }
 
@@ -593,18 +748,18 @@
 
       // Verbose-level trace for debugging band routing (hidden by default;
       // enable "Verbose" in the DevTools console level filter to see it).
-      if (SC_DEBUG) console.debug(`Scaredy Cat: band=${result.band} score=${result.confidence} ${(src || '(no src)').slice(0, 80)}`);
+      if (SC_DEBUG) console.debug(`Scaredy Cat: band=${result.band} score=${result.confidence} ${(element.src || element.poster || '(no src)').slice(0, 80)}`);
 
       // Allowlist by matched title ("allow The Exorcist everywhere")
-      if (isAllowedByTitle(result, settings.allowedItems)) {
-        element.setAttribute('data-scaredycat-processed', 'allowed');
+      if (ScaredyCatDetector.isTitleAllowed(result.matchedTitle, allowedTitles)) {
+        State.set(element, 'allowed');
         revealEarlyHidden(element);
         return;
       }
 
       if (result.band === BANDS.DEFINITE_HORROR) {
         // Strong title match: blur immediately, no ML latency.
-        element.setAttribute('data-scaredycat-processed', 'blocked');
+        State.set(element, 'blocked');
         ScaredyCatBlocker.createBlurOverlay(element, result);
         return;
       }
@@ -623,12 +778,28 @@
         return;
       }
 
-      element.setAttribute('data-scaredycat-processed', 'safe');
+      State.set(element, 'safe');
       revealEarlyHidden(element);
     } catch (e) {
-      element.setAttribute('data-scaredycat-processed', 'error');
+      State.set(element, 'error');
       revealEarlyHidden(element);
     }
+  }
+
+  // A throttled classify request (the worker's per-tab rate limit) gets the
+  // no-image verdict now and, if that left it visible, one more try later,
+  // when (or if) it is near the viewport again.
+  const THROTTLE_RETRY_MS = 15000;
+  const throttleRetried = new WeakSet();
+
+  function scheduleThrottleRetry(element) {
+    if (throttleRetried.has(element)) return;
+    throttleRetried.add(element);
+    setTimeout(() => {
+      if (!isEnabled || !element.isConnected || State.get(element) !== 'safe') return;
+      State.clear(element);
+      track(element);
+    }, THROTTLE_RETRY_MS + Math.random() * THROTTLE_RETRY_MS);
   }
 
   /**
@@ -636,23 +807,30 @@
    * until the image classifier weighs in.
    */
   function classifyAndApply(element, textResult, url) {
-    element.setAttribute('data-scaredycat-processed', 'pending');
+    State.set(element, 'pending');
+    requestWarm();
     Perf.mark('sc:classify-request');
-    // Fetch the brand fonts while the classifier runs so a block lands in
-    // brand type on its first frame (no system-font swap).
-    ScaredyCatBlocker.warmFonts?.();
+    // Fetch the card stylesheet while the classifier runs so a block lands
+    // styled on its first frame.
+    ScaredyCatBlocker.warmUi();
 
-    ScaredyCatMLBridge.classifyUrl(url).then((imageScore) => {
-      Perf.mark(imageScore === null ? 'sc:ml-verdict-null' : 'sc:ml-verdict');
-      if (!element.isConnected) return;
-      if (SC_DEBUG) console.debug(`Scaredy Cat: image score=${imageScore === null ? 'n/a' : Math.round(imageScore)} ${url.slice(0, 80)}`);
-      const verdict = ScaredyCatMLBridge.combineVerdict(textResult, imageScore, {
-        pageHasHorrorSignal: ScaredyCatDetector.hasPageHorrorSignal(),
-        isHorrorGenreListing: ScaredyCatDetector.isHorrorGenreListing(),
-        authoritativeHorrorGenre: ScaredyCatDetector.hasStructuredHorrorGenre(),
-        authoritativeNonHorrorGenre: ScaredyCatDetector.hasStructuredNonHorrorGenre()
-      });
+    ScaredyCatMLBridge.classify(url).then(({ score, throttled }) => {
+      Perf.mark(score === null ? 'sc:ml-verdict-null' : 'sc:ml-verdict');
+      if (!element.isConnected) {
+        if (State.get(element) === 'pending') State.clear(element);
+        return;
+      }
+      if (SC_DEBUG) console.debug(`Scaredy Cat: image score=${score === null ? 'n/a' : Math.round(score)} ${url.slice(0, 80)}`);
+      const verdict = score === null
+        ? ScaredyCatMLBridge.combineVerdict(textResult, null)
+        : ScaredyCatMLBridge.combineVerdict(textResult, score, {
+          pageHasHorrorSignal: ScaredyCatDetector.hasPageHorrorSignal(),
+          isHorrorGenreListing: ScaredyCatDetector.isHorrorGenreListing(),
+          authoritativeHorrorGenre: ScaredyCatDetector.hasStructuredHorrorGenre(),
+          authoritativeNonHorrorGenre: ScaredyCatDetector.hasStructuredNonHorrorGenre()
+        });
       applyVerdict(element, textResult, verdict);
+      if (throttled && !verdict.isHorror) scheduleThrottleRetry(element);
     }).catch(() => {
       if (!element.isConnected) return;
       applyVerdict(element, textResult, ScaredyCatMLBridge.combineVerdict(textResult, null));
@@ -662,8 +840,8 @@
   function applyVerdict(element, textResult, verdict) {
     // A report landed while the classifier was running: the block already
     // applied, don't let a "safe" verdict relabel it.
-    if (element.getAttribute('data-scaredycat-processed') === 'blocked') return;
-    element.setAttribute('data-scaredycat-processed', verdict.isHorror ? 'blocked' : 'safe');
+    if (State.get(element) === 'blocked') return;
+    State.set(element, verdict.isHorror ? 'blocked' : 'safe');
     if (verdict.isHorror) {
       ScaredyCatBlocker.createBlurOverlay(element, {
         ...textResult,
@@ -676,20 +854,25 @@
     }
   }
 
+  // ---- Early hiding (media sites) ------------------------------------------------
+
+  // On a media site early-init.js hides posters inline and early-block.css
+  // hides known poster containers until they have a verdict. Switched off
+  // here (data-scaredycat-off on <html>) when the site isn't protected, so
+  // nothing stays hidden waiting for a verdict that will never come.
+  function setEarlyBlockActive(active) {
+    if (!window.__scaredycatMediaSite || !document.documentElement) return;
+    if (active) document.documentElement.removeAttribute('data-scaredycat-off');
+    else document.documentElement.setAttribute('data-scaredycat-off', '');
+  }
+
   function revealAllEarlyHidden() {
-    document.querySelectorAll('[data-scaredycat-early-hidden]').forEach(el => {
-      el.removeAttribute('data-scaredycat-early-hidden');
-      el.style.opacity = '1';
-    });
+    window.__scaredycatRevealAll?.();
+    setEarlyBlockActive(false);
   }
 
   function revealEarlyHidden(element) {
-    if (window.__scaredycatRevealElement) {
-      window.__scaredycatRevealElement(element);
-    } else if (element.hasAttribute('data-scaredycat-early-hidden')) {
-      element.removeAttribute('data-scaredycat-early-hidden');
-      element.style.opacity = '1';
-    }
+    window.__scaredycatRevealElement?.(element);
   }
 
   // Initialize when DOM is ready

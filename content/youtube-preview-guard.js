@@ -21,7 +21,12 @@
  */
 
 const ScaredyCatYouTubeGuard = (function () {
-  const SUPPRESSED_CLASS = 'scaredycat-preview-suppressed';
+  // Suppression is inline !important (no extension stylesheet in the page).
+  // Hidden via visibility (not display) so YouTube can still reposition it
+  // and the guard can recompute overlap when it moves to the next thumbnail.
+  // The preview's own inline values are kept to restore on release.
+  const SUPPRESSED_STYLE = { visibility: 'hidden', 'pointer-events': 'none' };
+  const suppressed = new Map(); // host -> { prop: [value, priority] }
   // Fraction of the preview that must sit over a blocked thumbnail to count.
   const OVERLAP_THRESHOLD = 0.4;
   const PREVIEW_SELECTOR = 'ytd-video-preview, #video-preview, #inline-preview-player';
@@ -56,23 +61,24 @@ const ScaredyCatYouTubeGuard = (function () {
    * the title and its thumbnail). The bound keeps us from ever reaching a whole
    * shelf/grid of items.
    */
-  function isOverBlockedItem(target) {
+  function isOverBlockedItem(target, wrappers) {
     let el = target;
     for (let i = 0; i < 10 && el && el.nodeType === 1; i++, el = el.parentElement) {
-      if (el.classList && el.classList.contains('scaredycat-wrapper')) return true;
-      if (el.querySelector && el.querySelector('.scaredycat-wrapper')) return true;
+      for (const wrapper of wrappers) {
+        if (el === wrapper || el.contains(wrapper)) return true;
+      }
     }
     return false;
   }
 
-  /** Blocked thumbnail wrappers, preferring the blocker's live tracking. */
+  /** Blocked thumbnail wrappers, from the blocker's live tracking. */
   function blockedWrappers() {
-    const blocker = window.ScaredyCatBlocker;
-    if (blocker && blocker.getBlockedWrappers) {
-      const wrappers = blocker.getBlockedWrappers();
-      if (wrappers && wrappers.length) return wrappers;
-    }
-    return document.querySelectorAll('.scaredycat-wrapper');
+    return window.ScaredyCatBlocker?.getBlockedWrappers?.() || [];
+  }
+
+  /** Nothing blocked on the page: the guard has nothing to protect. */
+  function nothingBlocked() {
+    return !window.ScaredyCatBlocker?.getBlockedCount?.();
   }
 
   /** Does `rect` overlap any blocked wrapper by more than the threshold? */
@@ -91,7 +97,14 @@ const ScaredyCatYouTubeGuard = (function () {
 
   function suppress(host) {
     if (!host) return;
-    host.classList.add(SUPPRESSED_CLASS);
+    if (!suppressed.has(host)) {
+      const saved = {};
+      for (const [prop, value] of Object.entries(SUPPRESSED_STYLE)) {
+        saved[prop] = [host.style.getPropertyValue(prop), host.style.getPropertyPriority(prop)];
+        host.style.setProperty(prop, value, 'important');
+      }
+      suppressed.set(host, saved);
+    }
     const video = host.querySelector('video');
     if (video) {
       try {
@@ -104,7 +117,13 @@ const ScaredyCatYouTubeGuard = (function () {
   }
 
   function release(host) {
-    if (host) host.classList.remove(SUPPRESSED_CLASS);
+    const saved = host && suppressed.get(host);
+    if (!saved) return;
+    suppressed.delete(host);
+    for (const [prop, [value, priority]] of Object.entries(saved)) {
+      if (value) host.style.setProperty(prop, value, priority);
+      else host.style.removeProperty(prop);
+    }
   }
 
   /**
@@ -115,10 +134,17 @@ const ScaredyCatYouTubeGuard = (function () {
    */
   function onPointer(e) {
     if (!active) return;
+    if (nothingBlocked()) {
+      if (hoveredBlocked) {
+        hoveredBlocked = false;
+        release(currentPreviewHost());
+      }
+      return;
+    }
     const t = e.target;
     if (!t || !t.closest) return;
     if (t.closest(PREVIEW_SELECTOR)) return;
-    const nowBlocked = isOverBlockedItem(t);
+    const nowBlocked = isOverBlockedItem(t, blockedWrappers());
     if (nowBlocked === hoveredBlocked) return;
     hoveredBlocked = nowBlocked;
     const host = currentPreviewHost();
@@ -134,11 +160,11 @@ const ScaredyCatYouTubeGuard = (function () {
    * here while hoveredBlocked is true keeps the preview from ever flashing.
    */
   function onPreviewActivity(e) {
-    if (!active) return;
+    if (!active || nothingBlocked()) return;
     const video = e.target;
     if (!(video instanceof HTMLVideoElement)) return;
     // Videos inside our wrapper are the blocker's responsibility.
-    if (video.closest('.scaredycat-wrapper')) return;
+    if (window.ScaredyCatBlocker.isInsideWrapper(video)) return;
     const host = previewHostOf(video);
     if (!host) return;
     if (hoveredBlocked || overlapsBlocked(host.getBoundingClientRect())) {
@@ -165,7 +191,7 @@ const ScaredyCatYouTubeGuard = (function () {
     document.removeEventListener('play', onPreviewActivity, true);
     document.removeEventListener('playing', onPreviewActivity, true);
     document.removeEventListener('loadstart', onPreviewActivity, true);
-    document.querySelectorAll('.' + SUPPRESSED_CLASS).forEach(el => el.classList.remove(SUPPRESSED_CLASS));
+    [...suppressed.keys()].forEach(release);
   }
 
   return { init, stop };

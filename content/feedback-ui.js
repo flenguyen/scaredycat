@@ -6,14 +6,22 @@
  * route through. The popup has its own copies of consent/toast for its context.
  *
  * Consent and the actual network send live in the service worker; this file only
- * owns the page-level UI and message round-trips. Styles are in
- * styles/feedback.css (injected via content_scripts).
+ * owns the page-level UI and message round-trips. Both surfaces render in closed
+ * shadow roots (ui-kit.js) styled by styles/feedback.css, so the page can't
+ * read them or click them. The consent sheet also refuses clicks the page could
+ * have engineered: synthetic events, clicks in the first moments after it
+ * appears, and clicks while the page has hidden or restyled it.
  */
 
 window.ScaredyCatFeedbackUI = (function () {
   'use strict';
 
   let consentInFlight = null; // de-dupe concurrent consent prompts
+
+  // A real click on "Share feedback" only counts once the sheet has been on
+  // screen this long: a page can't open it under a click the user had already
+  // started (or a key they were already pressing).
+  const CONSENT_ARM_MS = 600;
 
   async function getConsent() {
     try {
@@ -36,17 +44,23 @@ window.ScaredyCatFeedbackUI = (function () {
   }
 
   // ---- Toast --------------------------------------------------------------
+  let toastHost = null;
   let toastEl = null;
   let toastTimer = null;
 
   function toast(message) {
-    if (!document.body) return;
-    if (!toastEl) {
+    if (!document.documentElement) return;
+    if (!toastHost || !toastHost.isConnected) {
+      // A zero-size fixed host; the toast inside positions against the viewport.
+      const { host, root } = ScaredyCatUI.createFloatingHost({
+        style: { inset: 'auto', left: '0', bottom: '0', width: '0', height: '0', 'z-index': '2147483646', 'pointer-events': 'none' }
+      });
+      toastHost = host;
       toastEl = document.createElement('div');
       toastEl.className = 'scaredycat-toast';
       toastEl.setAttribute('role', 'status');
       toastEl.setAttribute('aria-live', 'polite');
-      document.body.appendChild(toastEl);
+      root.appendChild(toastEl);
     }
     toastEl.textContent = message;
     // Reflow so the same toast re-animates on repeat sends.
@@ -60,11 +74,23 @@ window.ScaredyCatFeedbackUI = (function () {
   }
 
   // ---- Consent sheet ------------------------------------------------------
+  // The sheet takes focus itself (not "Share feedback"), so a key the user is
+  // already holding can't land on the opt-in button.
+  const CONSENT_POST_CSS = '.scaredycat-consent:focus { outline: none !important; }';
+
   // Resolves true if the user opts in, false otherwise. Focus is trapped to the
   // two buttons; Escape declines.
   function showConsentSheet() {
     return new Promise((resolve) => {
-      if (!document.body) { resolve(false); return; }
+      if (!document.documentElement) { resolve(false); return; }
+
+      // Full-viewport host in the top layer: above any page z-index, and out
+      // of reach of ancestor opacity, transforms and filters.
+      const { host, root, styleText } = ScaredyCatUI.createFloatingHost({
+        style: { inset: '0', 'z-index': '2147483647', 'pointer-events': 'auto' },
+        topLayer: true,
+        post: CONSENT_POST_CSS
+      });
 
       const backdrop = document.createElement('div');
       backdrop.className = 'scaredycat-consent-backdrop';
@@ -74,6 +100,7 @@ window.ScaredyCatFeedbackUI = (function () {
       sheet.setAttribute('role', 'dialog');
       sheet.setAttribute('aria-modal', 'true');
       sheet.setAttribute('aria-label', 'Share feedback with Scaredy Cat');
+      sheet.tabIndex = -1;
 
       sheet.innerHTML = `
         <div class="scaredycat-consent-icon">🙀</div>
@@ -107,28 +134,54 @@ window.ScaredyCatFeedbackUI = (function () {
       actions.appendChild(decline);
       actions.appendChild(accept);
 
+      const shownAt = performance.now();
+
+      // Opt-in is the one click here that changes what leaves the device, so
+      // it must be a real click on a sheet that is really there: armed for a
+      // moment, untouched by page script (same inline style, still in the
+      // document) and visible.
+      function acceptCountable(e) {
+        if (!e.isTrusted) return false;
+        if (performance.now() - shownAt < CONSENT_ARM_MS) return false;
+        if (!host.isConnected || host.getAttribute('style') !== styleText) return false;
+        try {
+          if (!host.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+        } catch (err) {
+          return false;
+        }
+        return true;
+      }
+
+      let closed = false;
       function close(result) {
+        if (closed) return;
+        closed = true;
         document.removeEventListener('keydown', onKey, true);
-        backdrop.remove();
+        ScaredyCatUI.removeHost(host);
         resolve(result);
       }
       function onKey(e) {
+        if (!e.isTrusted) return;
         if (e.key === 'Escape') { e.stopPropagation(); close(false); }
         if (e.key === 'Tab') {
           // Minimal focus trap between the two buttons.
           e.preventDefault();
-          (document.activeElement === accept ? decline : accept).focus();
+          (root.activeElement === accept ? decline : accept).focus();
         }
       }
 
-      decline.addEventListener('click', () => close(false));
-      accept.addEventListener('click', () => close(true));
-      backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
+      decline.addEventListener('click', ScaredyCatUI.trusted(() => close(false)));
+      accept.addEventListener('click', (e) => {
+        if (acceptCountable(e)) close(true);
+      });
+      backdrop.addEventListener('click', ScaredyCatUI.trusted((e) => {
+        if (e.target === backdrop) close(false);
+      }));
       document.addEventListener('keydown', onKey, true);
 
       backdrop.appendChild(sheet);
-      document.body.appendChild(backdrop);
-      accept.focus({ preventScroll: true });
+      root.appendChild(backdrop);
+      sheet.focus({ preventScroll: true });
     });
   }
 

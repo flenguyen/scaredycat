@@ -8,15 +8,17 @@
  *   - "Allow" undoes it for good, and a fresh report re-blocks
  *
  * Uses neutral alt text so nothing is blocked by the detector itself, and no
- * ML is involved. Content-script globals live in the isolated world, so every
- * step goes through the DOM or extension messaging, never page.evaluate on
- * extension objects. Requires: npm install --no-save puppeteer-core sharp, SC_CHROME_BIN.
+ * ML is involved. Verdicts and the card live out of the page's reach, so
+ * state is read in the content script's isolated world over CDP
+ * (browser-smoke-lib.mjs) and actions go through real input or extension
+ * messaging. Requires: npm install --no-save puppeteer-core sharp, SC_CHROME_BIN.
  */
 
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { extensionArgs, focusPage, isolatedWorld, elementStates } from './browser-smoke-lib.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHROME = process.env.SC_CHROME_BIN;
@@ -55,12 +57,7 @@ const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: false,
   defaultViewport: { width: 1300, height: 900 },
-  args: [
-    `--disable-extensions-except=${ROOT}`,
-    `--load-extension=${ROOT}`,
-    '--no-first-run',
-    '--window-size=1300,900'
-  ]
+  args: extensionArgs(ROOT, ['--window-size=1300,900'])
 });
 
 const failures = [];
@@ -69,17 +66,23 @@ function check(name, ok, detail = '') {
   if (!ok) failures.push(name);
 }
 
-const state = (page, id) => page.evaluate((id) => {
+// One isolated-world handle per page (verdicts aren't in the page's DOM).
+const worlds = new Map();
+const worldOf = async (page) => {
+  if (!worlds.has(page)) worlds.set(page, await isolatedWorld(page));
+  return worlds.get(page);
+};
+const state = async (page, id) => {
+  const st = (await elementStates(await worldOf(page), [id]))[id];
+  return { processed: st.state, blurred: st.blurred };
+};
+const waitBlurred = async (page, id, want, timeout = 8000) => (await worldOf(page)).waitFor((id, want) => {
   const el = document.getElementById(id);
-  return { processed: el.getAttribute('data-scaredycat-processed'), blurred: el.classList.contains('scaredycat-blurred') };
-}, id);
-const waitBlurred = (page, id, want, timeout = 8000) => page.waitForFunction(
-  (id, want) => document.getElementById(id)?.classList.contains('scaredycat-blurred') === want,
-  { timeout }, id, want
-);
-const settle = (page) => page.waitForFunction(() =>
-  ['small', 'large', 'other'].every(id => document.getElementById(id)?.hasAttribute('data-scaredycat-processed')),
-  { timeout: 10000 });
+  const hidden = !!el && ScaredyCatBlocker.wrapperOf(el) !== null && el.style.getPropertyValue('opacity') === '0';
+  return hidden === want;
+}, { timeout, args: [id, want] });
+const settle = async (page) => (await worldOf(page)).waitFor(() =>
+  ['small', 'large', 'other'].every(id => ScaredyCatState.has(document.getElementById(id))), { timeout: 10000 });
 const pause = (ms) => new Promise(r => setTimeout(r, ms));
 
 try {
@@ -89,11 +92,13 @@ try {
   const send = (tabId, msg) => worker.evaluate((tabId, msg) => chrome.tabs.sendMessage(tabId, msg), tabId, msg);
   const storage = () => worker.evaluate(async () => ({
     blocked: (await chrome.storage.local.get('blockedItems')).blockedItems || [],
-    allowed: (await chrome.storage.sync.get('settings')).settings?.allowedItems || []
+    allowed: (await chrome.storage.local.get('allowedImages')).allowedImages || []
   }));
 
   console.log('\n-- Baseline: nothing blocked on a plain page --');
   const pageA = await browser.newPage();
+  await focusPage(browser, pageA);
+  await worldOf(pageA);
   await pageA.goto(URL_A, { waitUntil: 'networkidle0' });
   await settle(pageA);
   for (const id of ['small', 'large', 'other']) {
@@ -103,6 +108,7 @@ try {
 
   // A second tab open on the same page, to test fan-out without a reload.
   const pageB = await browser.newPage();
+  await worldOf(pageB);
   await pageB.goto(URL_B, { waitUntil: 'networkidle0' });
   await settle(pageB);
   await pageA.bringToFront();
@@ -120,9 +126,12 @@ try {
   check('same image at another size blurred (canonical key)', (await state(pageA, 'large')).blurred);
   check('unrelated image untouched', !(await state(pageA, 'other')).blurred);
   check('processed marker is "blocked"', (await state(pageA, 'small')).processed === 'blocked');
-  const overlay = await pageA.evaluate(() => !!document.getElementById('small').closest('.scaredycat-wrapper')?.querySelector('.scaredycat-overlay'));
+  const worldA = await worldOf(pageA);
+  const overlay = await worldA.evaluate(() => !!ScaredyCatUI.__testShadowRoot(
+    ScaredyCatBlocker.wrapperOf(document.getElementById('small')))?.querySelector('.scaredycat-overlay'));
   check('overlay card rendered', overlay);
-  const consent = await pageA.evaluate(() => !!document.querySelector('.scaredycat-consent'));
+  const consent = await worldA.evaluate(() => [...document.documentElement.children].some(n =>
+    ScaredyCatUI.isOwnHost(n) && !!ScaredyCatUI.__testShadowRoot(n)?.querySelector('.scaredycat-consent')));
   check('consent sheet shown after the block (block did not wait on it)', consent);
 
   console.log('\n-- Fan-out: other open tab --');
@@ -140,18 +149,18 @@ try {
   await settle(pageA);
   check('blocked after reload', (await state(pageA, 'small')).blurred && (await state(pageA, 'large')).blurred);
   check('unrelated still safe after reload', (await state(pageA, 'other')).processed === 'safe');
-  const noMl = await pageA.evaluate(() => document.getElementById('small').getAttribute('data-scaredycat-processed'));
+  const noMl = (await state(pageA, 'small')).processed;
   check('blocked without classifier (never "pending")', noMl === 'blocked');
 
   console.log('\n-- Allow undoes the report --');
-  const ids = await pageA.evaluate(() => [...document.querySelectorAll('.scaredycat-wrapper[data-scaredycat-id]')].map(w => w.getAttribute('data-scaredycat-id')));
+  const ids = ((await send(tabA, { type: 'GET_PAGE_STATS' }))?.blockedItems || []).map(item => item.id);
   check('popup would list both blocked items', ids.length === 2, `${ids.length}`);
   const allowRes = await send(tabA, { type: 'ALLOW_ITEM', id: ids[0] });
   check('ALLOW_ITEM succeeds', allowRes?.success === true);
   await pause(400);
   const st2 = await storage();
   check('blocklist emptied by Allow', st2.blocked.length === 0, JSON.stringify(st2.blocked));
-  check('allowlist has the URL', st2.allowed.some(i => i.includes('/img/rose.jpg')), JSON.stringify(st2.allowed));
+  check('allowlist has the canonical key', st2.allowed.includes('http://localhost:8903/img/rose.jpg'), JSON.stringify(st2.allowed));
   await pageA.reload({ waitUntil: 'networkidle0' });
   await settle(pageA);
   const s1 = await state(pageA, 'small');
@@ -168,7 +177,7 @@ try {
   await pause(400);
   const st3 = await storage();
   check('blocklist has the key again', st3.blocked.length === 1, JSON.stringify(st3.blocked));
-  check('allowlist entries for that poster (any size) removed', !st3.allowed.some(i => i.includes('/img/rose.jpg')), JSON.stringify(st3.allowed));
+  check('allowlist entries for that poster (any size) removed', !st3.allowed.includes('http://localhost:8903/img/rose.jpg'), JSON.stringify(st3.allowed));
   await waitBlurred(pageB, 'large', true);
   check('other tab re-blocked too', (await state(pageB, 'large')).blurred);
 
