@@ -291,6 +291,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const anchor = newest ? WhatsNew.anchorFor(newest.version) : '';
       chrome.tabs.create({ url: `https://www.scaredycat.app/changelog${anchor ? '#' + anchor : ''}` });
     });
+    // The welcome page from first install, for anyone who closed it.
+    document.getElementById('howItWorks')?.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+      window.close();
+    });
   }
 
   /**

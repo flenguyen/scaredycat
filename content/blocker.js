@@ -747,7 +747,7 @@ const ScaredyCatBlocker = (function () {
       const report = buildReport('false_positive', element, data?.analysisResult);
       const ok = await window.ScaredyCatFeedbackUI?.submit(report);
       if (ok) {
-        link.textContent = 'Thanks — noted';
+        link.textContent = 'Thanks, noted';
         link.classList.add('scaredycat-fp-link--done');
       } else {
         link.disabled = false;

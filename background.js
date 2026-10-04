@@ -177,6 +177,9 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     // older version see the marker (popup/whats-new.js).
     await chrome.storage.local.set({ whatsNewSeen: chrome.runtime.getManifest().version });
     console.log('Scaredy Cat installed! Default settings applied.');
+    // First run only: the welcome page shows how blocking, unblocking and
+    // reporting work. Updates and unpacked reloads never reopen it.
+    chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
   } else if (details.reason === 'update') {
     // Merge new default settings with existing ones
     const { settings } = await chrome.storage.sync.get('settings');

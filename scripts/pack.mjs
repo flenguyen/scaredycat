@@ -33,6 +33,7 @@ const INCLUDE = [
   'content',
   'offscreen',
   'popup',
+  'welcome',
   'styles',
   'fonts',
   'data',

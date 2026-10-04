@@ -2,6 +2,26 @@
 
 Chrome MV3 extension that blurs horror pictures and trailers while you browse. Detection runs on the device: text scoring first, then a bundled image model for unclear cases. The website lives in the separate `scared-cat-web` repo. UI work follows [DESIGN.md](DESIGN.md).
 
+## Welcome page
+
+One page, two places: `welcome/welcome.html` in the extension (opened on install by `background.js` and from the popup's "How it works" link) and https://www.scaredycat.app/welcome. Both run the same files from this repo:
+
+| File | Role |
+|---|---|
+| `data/welcome.json` | All of the page's copy. Bold is `**like this**`; nothing else is parsed. |
+| `welcome/welcome.js` | Builds the page from the copy and runs the demo tiles. `data-mode="extension"` adds the real report-sharing switch and note form; `data-mode="web"` shows where to find them in the popup instead. |
+| `welcome/welcome.css` | Layout, scoped under `.wc` with `wc-` class names so it can sit inside the website's CSS. |
+| `styles/blur-overlay.css`, `styles/feedback.css`, `fonts/*.woff2` | The real blur card, toast and fonts, used by the demos. |
+
+The website reads these from this repo's `main` branch through `scared-cat-web/app/welcome/x/[...path]/route.ts` (an allowlist in `lib/welcome/source.ts`). It holds no copy of its own. So:
+- **Change the welcome page here, never in the web repo.** A push to `main` updates the website within 5 minutes, or right away with `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://www.scaredycat.app/api/revalidate/releases`.
+- **Anything on `main` goes live on the website before the extension update ships.** Copy that describes a feature should land on `main` with (or after) the feature.
+- **Keep both modes working.** Run the extension check and look at the page in web mode (`WELCOME_DIR=<this repo> npm run build && npx next start` in `scared-cat-web`, then open `/welcome`).
+- A new file the page loads must be added to `WELCOME_ASSETS` in the web repo, or the website 404s it.
+- `npm run eval` includes `eval/welcome-test.mjs`: every `copy.*` path the script reads must exist in the JSON, and the copy follows the writing rules (no em dashes).
+- The demos mirror `content/blocker.js` card markup and copy ("Something spooky was here.", "Show anyway", "This isn't horror"). When the real card changes, update the mirror in `welcome/welcome.js`.
+- Copy follows "Writing the notes" below.
+
 ## Releases
 
 `data/releases.json` is the single source for the popup's "What's new" view and https://www.scaredycat.app/changelog. Every user-visible change gets a version and a note there.

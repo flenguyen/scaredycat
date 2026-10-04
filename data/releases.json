@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "1.5.0",
+  "current": "1.6.0",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -25,6 +25,43 @@
     }
   ],
   "releases": [
+    {
+      "id": "1.6.0",
+      "surface": "extension",
+      "version": "1.6.0",
+      "level": 2,
+      "date": "2026-10-04",
+      "title": "A short tour when you install",
+      "aside": "The practice posters are made up, and the raccoon in the first one is a professional.",
+      "summary": "New installs open a welcome page that shows how blurring, unblurring and reporting work, with a link to support the project.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "Installing Scaredy Cat now opens a welcome page. It has practice pictures you can unblur, mark as not horror, or block yourself, so you learn the buttons before you need them."
+        },
+        {
+          "type": "new",
+          "text": "The popup footer has a How it works link that opens the welcome page again."
+        },
+        {
+          "type": "new",
+          "text": "The welcome page has the same switch for sharing reports as the popup. It stays off until you turn it on."
+        },
+        {
+          "type": "new",
+          "text": "If you'd like to support the project, the welcome page links to our Ko-fi page."
+        },
+        {
+          "type": "new",
+          "text": "The same tour is on our website at scaredycat.app/welcome, so you can try it before installing or send it to a friend."
+        },
+        {
+          "type": "improved",
+          "text": "After you click \"This isn't horror\", the button now reads \"Thanks, noted\"."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "1.5.0",
       "surface": "extension",

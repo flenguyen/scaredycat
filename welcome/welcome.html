@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en" class="wc-ext">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to Scaredy Cat</title>
+  <link rel="preload" href="../fonts/Inter.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="../fonts/BricolageGrotesque.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- The demo tiles use the real overlay and feedback styles, so what you
+       try here is pixel-for-pixel what you'll see on IMDb or Netflix. -->
+  <link rel="stylesheet" href="../styles/blur-overlay.css">
+  <link rel="stylesheet" href="../styles/feedback.css">
+  <link rel="stylesheet" href="welcome.css">
+</head>
+<body>
+  <!-- welcome.js builds the page from data/welcome.json. scaredycat.app/welcome
+       runs the same script, styles and copy from this repo's main branch, so
+       edit them here and both pages change. -->
+  <main id="welcome" class="wc" data-mode="extension" data-copy="../data/welcome.json"></main>
+  <script src="welcome.js"></script>
+</body>
+</html>

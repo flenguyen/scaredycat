@@ -1,0 +1,878 @@
+/**
+ * Scaredy Cat - Welcome page
+ *
+ * One stylesheet for both copies of the page: the extension's
+ * welcome/welcome.html (opened on install) and scaredycat.app/welcome, which
+ * loads this file from the repo's main branch. Everything is scoped under
+ * .wc and prefixed wc- so it can sit inside the website's own CSS; only
+ * html.wc-ext (the extension page) styles the document itself.
+ *
+ * Follows DESIGN.md §7 "Welcome page": page cream, cards, kickers, giant
+ * #EFE8FA numerals for the steps, and one plum band at the end (the only
+ * element that casts a shadow). The demo tiles are drawn by the real
+ * styles/blur-overlay.css and styles/feedback.css; this file only frames
+ * them and draws the harmless posters underneath.
+ */
+
+/* ---- Brand fonts (same files as popup.css; relative, so they also load
+   from the website's proxy of this repo) ---- */
+@font-face {
+  font-family: 'Bricolage Grotesque';
+  font-style: normal;
+  font-weight: 700 800;
+  font-display: block;
+  src: url(../fonts/BricolageGrotesque.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: block;
+  src: url(../fonts/Inter.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: block;
+  src: url(../fonts/Fraunces.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 400 700;
+  font-display: block;
+  src: url(../fonts/Fraunces-Italic.woff2) format('woff2');
+}
+
+/* ---- Design tokens (names and values match popup/popup.css) ---- */
+:root {
+  --sc-page: #FDF8F0;
+  --sc-card: #FFFCF5;
+  --sc-lavender: #F1EBFA;
+  --sc-numeral-wash: #EFE8FA;
+
+  --sc-plum: #2E2447;
+  --sc-plum-hover: #42365E;
+  --sc-body: #54496E;
+  --sc-serif-body: #42365E;
+  --sc-muted: #8D83A6;
+  --sc-on-dark: #C9BFE0;
+  --sc-on-dark-soft: #A99BCB;
+
+  --sc-chip-bg: #E7F2E7;
+  --sc-chip-ink: #3E6E4A;
+  --sc-border: rgba(46, 36, 71, 0.10);
+  --sc-border-strong: rgba(46, 36, 71, 0.14);
+  --sc-border-ghost: rgba(46, 36, 71, 0.25);
+
+  --sc-shadow-soft: 0 10px 30px rgba(46, 36, 71, 0.10);
+  --sc-shadow-deep: 0 10px 30px rgba(46, 36, 71, 0.18);
+  --sc-radius-card: 16px;
+
+  --sc-ease: cubic-bezier(0.2, 0, 0, 1);
+  --sc-fast: 150ms;
+  --sc-base: 200ms;
+
+  --sc-display: 'Bricolage Grotesque', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sc-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --sc-serif: 'Fraunces', Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+
+  --sc-section: clamp(64px, 9vw, 100px);
+  --sc-gutter: 24px;
+}
+
+/* ---- The extension page's document (the website brings its own) ---- */
+html.wc-ext,
+html.wc-ext body {
+  margin: 0;
+  background: var(--sc-page);
+}
+
+html.wc-ext body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Root ---- */
+.wc {
+  display: block;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 var(--sc-gutter) 56px;
+  overflow-x: clip;
+  font-family: var(--sc-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--sc-body);
+  background: var(--sc-page);
+}
+
+.wc *,
+.wc *::before,
+.wc *::after {
+  box-sizing: border-box;
+}
+
+.wc p,
+.wc h1,
+.wc h2,
+.wc h3,
+.wc ol {
+  margin: 0;
+}
+
+.wc strong {
+  color: var(--sc-plum);
+  font-weight: 600;
+}
+
+.wc :focus-visible {
+  outline: 2px solid var(--sc-plum);
+  outline-offset: 2px;
+}
+
+/* ---- Shared type ---- */
+.wc-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--sc-muted);
+}
+
+.wc-aside {
+  font-family: var(--sc-serif);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--sc-muted);
+}
+
+.wc-hint {
+  font-size: 13px;
+  color: var(--sc-muted);
+}
+
+/* ---- Buttons ---- */
+.wc-plum-btn,
+.wc-ghost-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 22px;
+  font: 600 15px/1.2 var(--sc-sans);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform var(--sc-fast) ease,
+              background var(--sc-fast) ease,
+              border-color var(--sc-fast) ease;
+}
+
+.wc-plum-btn {
+  color: var(--sc-card);
+  background: var(--sc-plum);
+  border: 2px solid var(--sc-plum);
+}
+
+.wc-plum-btn:hover:not(:disabled) {
+  background: var(--sc-plum-hover);
+  border-color: var(--sc-plum-hover);
+  transform: translateY(-1px);
+}
+
+.wc-plum-btn:disabled {
+  background: var(--sc-on-dark-soft);
+  border-color: var(--sc-on-dark-soft);
+  cursor: default;
+}
+
+.wc-ghost-btn {
+  color: var(--sc-plum);
+  background: transparent;
+  border: 2px solid var(--sc-border-ghost);
+}
+
+.wc-ghost-btn:hover {
+  border-color: var(--sc-plum);
+  transform: translateY(-1px);
+}
+
+.wc-plum-btn--sm,
+.wc-ghost-btn--sm {
+  padding: 7px 16px;
+  font-size: 13px;
+}
+
+/* ---- Card ---- */
+.wc-card {
+  background: var(--sc-card);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-card);
+}
+
+/* ---- Hero ---- */
+.wc-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding-top: clamp(56px, 8vw, 88px);
+  text-align: center;
+}
+
+.wc-hero-mascot {
+  font-size: clamp(56px, 8vw, 80px);
+  line-height: 1;
+}
+
+.wc-hero-title {
+  font-family: var(--sc-display);
+  font-weight: 800;
+  font-size: clamp(36px, 6vw, 60px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  color: var(--sc-plum);
+}
+
+.wc-hero-lede {
+  max-width: 580px;
+  font-size: clamp(17px, 2vw, 19px);
+}
+
+.wc-hero .wc-aside {
+  max-width: 480px;
+  margin-top: 4px;
+}
+
+/* ---- Steps ---- */
+.wc-step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 48px;
+  margin-top: var(--sc-section);
+}
+
+/* Giant background numeral, tucked behind the copy column */
+.wc-numeral {
+  position: absolute;
+  top: -0.42em;
+  left: -0.06em;
+  z-index: 0;
+  font-family: var(--sc-display);
+  font-weight: 800;
+  font-size: clamp(120px, 17vw, 200px);
+  line-height: 1;
+  color: var(--sc-numeral-wash);
+  pointer-events: none;
+  user-select: none;
+}
+
+.wc-step--flip .wc-numeral {
+  left: auto;
+  right: -0.06em;
+}
+
+.wc-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wc-step--flip .wc-copy {
+  order: 2;
+}
+
+.wc-title {
+  font-family: var(--sc-display);
+  font-weight: 700;
+  font-size: clamp(24px, 3.2vw, 34px);
+  line-height: 1.15;
+  color: var(--sc-plum);
+}
+
+.wc-copy .wc-ghost-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+/* ---- Numbered how-to (step 02): lights up as you try the demo ---- */
+.wc-howto {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+  counter-reset: howto;
+}
+
+.wc-howto li {
+  position: relative;
+  padding: 10px 14px 10px 52px;
+  border-radius: 12px;
+  counter-increment: howto;
+  transition: background var(--sc-base) var(--sc-ease);
+}
+
+.wc-howto li::before {
+  content: counter(howto);
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  font: 700 14px/1 var(--sc-sans);
+  color: var(--sc-plum);
+  border: 1.5px solid var(--sc-border-ghost);
+  border-radius: 50%;
+  background: var(--sc-card);
+}
+
+.wc-howto li.is-current {
+  background: var(--sc-lavender);
+}
+
+.wc-howto li.is-current::before {
+  color: var(--sc-card);
+  background: var(--sc-plum);
+  border-color: var(--sc-plum);
+}
+
+.wc-howto li.is-done::before {
+  content: '✓';
+  color: var(--sc-chip-ink);
+  background: var(--sc-chip-bg);
+  border: 1.5px dashed var(--sc-chip-ink);
+}
+
+/* ---- Demo tiles ---- */
+.wc-stage {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+}
+
+/* The real .scaredycat-wrapper, framed as a poster-sized tile. */
+.scaredycat-wrapper.wc-tile {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 4 / 3;
+  border-radius: 18px;
+  border: 1px solid var(--sc-border);
+  /* No dark fallback ring at the rounded edges once revealed; while
+     blocked, the overlay's scrim covers the whole tile anyway. */
+  background: transparent;
+}
+
+/* The harmless "poster" under the blur. Flat shapes only (DESIGN.md: no
+   gradients, and never real horror imagery). */
+.wc-poster {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
+  padding: 24px;
+  text-align: center;
+}
+
+.wc-poster::before,
+.wc-poster::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  border-radius: 50%;
+  opacity: 0.5;
+}
+
+.wc-poster::before {
+  width: 62%;
+  aspect-ratio: 1;
+  top: -18%;
+  left: -14%;
+}
+
+.wc-poster::after {
+  width: 44%;
+  aspect-ratio: 1;
+  bottom: -16%;
+  right: -10%;
+}
+
+.wc-poster-art {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(56px, 12vw, 88px);
+  line-height: 1;
+}
+
+.wc-poster-title {
+  position: relative;
+  z-index: 1;
+  font-family: var(--sc-display);
+  font-weight: 800;
+  font-size: clamp(20px, 3vw, 28px);
+  line-height: 1.1;
+}
+
+.wc-poster--plum {
+  background: var(--sc-plum);
+  color: var(--sc-card);
+}
+
+.wc-poster--plum::before { background: var(--sc-plum-hover); }
+.wc-poster--plum::after { background: var(--sc-body); }
+
+.wc-poster--lavender {
+  background: var(--sc-lavender);
+  color: var(--sc-plum);
+}
+
+.wc-poster--lavender::before { background: var(--sc-card); }
+.wc-poster--lavender::after { background: var(--sc-numeral-wash); }
+
+.wc-poster--mist {
+  background: var(--sc-on-dark);
+  color: var(--sc-plum);
+}
+
+.wc-poster--mist::before { background: var(--sc-on-dark-soft); }
+.wc-poster--mist::after { background: var(--sc-lavender); }
+
+/* The unblocked tile in step 03 takes a right-click. */
+.wc-tile--open {
+  cursor: context-menu;
+}
+
+/* ---- Mock right-click menu (step 03) ----
+   A stand-in for Chrome's own menu. Floating layers need a shadow to read
+   as floating, so this one carries the soft token shadow. */
+.wc-menu {
+  position: absolute;
+  z-index: 10000;
+  min-width: 270px;
+  padding: 6px 0;
+  background: var(--sc-card);
+  border: 1px solid var(--sc-border-strong);
+  border-radius: 10px;
+  box-shadow: var(--sc-shadow-soft);
+  font: 400 13px/1.3 var(--sc-sans);
+}
+
+.wc-menu[hidden] {
+  display: none;
+}
+
+.wc-menu-item {
+  display: block;
+  width: 100%;
+  padding: 7px 16px;
+  font: inherit;
+  text-align: left;
+  color: var(--sc-on-dark-soft);
+  background: none;
+  border: 0;
+}
+
+.wc-menu-item--sc {
+  font-weight: 600;
+  color: var(--sc-plum);
+  cursor: pointer;
+}
+
+.wc-menu-item--sc:hover,
+.wc-menu-item--sc:focus-visible {
+  background: var(--sc-lavender);
+  outline: none;
+}
+
+.wc-menu-sep {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--sc-border);
+}
+
+/* ---- The feedback loop (step 04) ---- */
+.wc-step--wide {
+  grid-template-columns: 1fr;
+  gap: 32px;
+}
+
+.wc-copy--wide {
+  max-width: 640px;
+}
+
+.wc-loop {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sc-gutter);
+  padding: 0;
+  list-style: none;
+}
+
+.wc-loop-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  background: var(--sc-card);
+  border: 1px solid var(--sc-border);
+  border-radius: var(--sc-radius-card);
+}
+
+.wc-loop-num {
+  font-family: var(--sc-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--sc-on-dark);
+}
+
+.wc-loop-title {
+  font-family: var(--sc-display);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--sc-plum);
+}
+
+.wc-loop-card p {
+  font-size: 15px;
+}
+
+.wc-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 24px;
+}
+
+/* Toggle switch: the popup's small switch */
+.wc-switch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  --knob: 14px;
+  --knob-inset: 3px;
+  --knob-travel: 16px;
+}
+
+.wc-switch-label {
+  font-weight: 600;
+  color: var(--sc-plum);
+}
+
+.wc-toggle-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wc-toggle-slider {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  background: var(--sc-on-dark-soft);
+  border-radius: 999px;
+  transition: background var(--sc-base) var(--sc-ease);
+}
+
+.wc-toggle-slider::before {
+  position: absolute;
+  content: '';
+  height: var(--knob);
+  width: var(--knob);
+  left: var(--knob-inset);
+  bottom: var(--knob-inset);
+  background: var(--sc-card);
+  border-radius: 50%;
+  transition: transform var(--sc-base) var(--sc-ease);
+  box-shadow: 0 2px 4px rgba(46, 36, 71, 0.25);
+}
+
+.wc-toggle-input:checked + .wc-toggle-slider {
+  background: var(--sc-plum);
+}
+
+.wc-toggle-input:checked + .wc-toggle-slider::before {
+  transform: translateX(var(--knob-travel));
+}
+
+.wc-toggle-input:focus-visible + .wc-toggle-slider {
+  outline: 2px solid var(--sc-plum);
+  outline-offset: 2px;
+}
+
+.wc-consent-detail {
+  font-size: 14px;
+  color: var(--sc-muted);
+}
+
+.wc-status {
+  font-size: 14px;
+  color: var(--sc-body);
+}
+
+.wc-status:empty {
+  display: none;
+}
+
+/* ---- Note form (extension) / pointer card (website) ---- */
+.wc-note-form,
+.wc-webcard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+
+.wc-cats {
+  display: flex;
+  gap: 8px;
+}
+
+.wc-cat {
+  flex: 1;
+  padding: 8px 6px;
+  font: 600 13px var(--sc-sans);
+  color: var(--sc-body);
+  background: var(--sc-page);
+  border: 1.5px solid var(--sc-border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color var(--sc-fast) var(--sc-ease),
+              background var(--sc-fast) var(--sc-ease),
+              color var(--sc-fast) var(--sc-ease);
+}
+
+.wc-cat:hover {
+  background: var(--sc-lavender);
+}
+
+.wc-cat.active {
+  color: var(--sc-plum);
+  background: var(--sc-lavender);
+  border-color: var(--sc-plum);
+}
+
+.wc-input {
+  width: 100%;
+  padding: 10px 12px;
+  font: 400 15px/1.5 var(--sc-sans);
+  color: var(--sc-body);
+  background: var(--sc-page);
+  border: 1.5px solid var(--sc-border);
+  border-radius: 12px;
+  resize: vertical;
+  transition: border-color var(--sc-fast) var(--sc-ease);
+}
+
+.wc-input::placeholder {
+  color: var(--sc-muted);
+}
+
+.wc-input:focus-visible {
+  outline: none;
+  border-color: var(--sc-plum);
+}
+
+.wc-note-consent {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  font-size: 13px;
+  background: var(--sc-lavender);
+  border-radius: 12px;
+}
+
+.wc-note-consent[hidden] {
+  display: none;
+}
+
+.wc-note-consent-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.wc-note-form > .wc-plum-btn {
+  align-self: flex-start;
+}
+
+.wc-webcard {
+  font-size: 15px;
+}
+
+/* ---- The plum band: the page's one high-contrast moment ---- */
+.wc-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: var(--sc-section);
+  padding: clamp(40px, 6vw, 64px) clamp(24px, 5vw, 64px);
+  text-align: center;
+  color: var(--sc-on-dark);
+  background: var(--sc-plum);
+  border-radius: 24px;
+  box-shadow: var(--sc-shadow-deep);
+}
+
+.wc-band-mascot {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.wc-band-title {
+  font-family: var(--sc-display);
+  font-weight: 800;
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.1;
+  color: var(--sc-page);
+}
+
+.wc-band-body {
+  max-width: 520px;
+  font-size: 17px;
+}
+
+.wc-band-btn {
+  margin-top: 8px;
+  padding: 12px 24px;
+  font: 600 15px/1.2 var(--sc-sans);
+  color: var(--sc-plum);
+  text-decoration: none;
+  background: var(--sc-card);
+  border-radius: 999px;
+  transition: transform var(--sc-fast) ease, background var(--sc-fast) ease;
+}
+
+.wc-band-btn:hover {
+  background: var(--sc-lavender);
+  transform: translateY(-1px);
+}
+
+.wc .wc-band-btn:focus-visible,
+.wc .wc-band-link:focus-visible {
+  outline-color: var(--sc-card);
+}
+
+.wc-band-install {
+  font-size: 14px;
+  color: var(--sc-on-dark-soft);
+}
+
+.wc-band-link {
+  color: var(--sc-page);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+/* ---- Footer ---- */
+.wc-footer {
+  padding-top: 40px;
+  text-align: center;
+}
+
+.wc-version {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--sc-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wc-version:empty {
+  display: none;
+}
+
+/* ---- Narrow windows ---- */
+@media (max-width: 760px) {
+  :root {
+    --sc-gutter: 16px;
+  }
+
+  .wc-step {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .wc-step--flip .wc-copy {
+    order: 0;
+  }
+
+  .wc-step--flip .wc-numeral {
+    left: -0.06em;
+    right: auto;
+  }
+
+  .wc-loop {
+    grid-template-columns: 1fr;
+  }
+
+  .wc-menu {
+    min-width: 0;
+    max-width: calc(100% - 16px);
+  }
+}
+
+/* ---- Accessibility ---- */
+@media (prefers-contrast: high) {
+  .wc-card,
+  .wc-loop-card,
+  .scaredycat-wrapper.wc-tile,
+  .wc-input,
+  .wc-cat {
+    border-color: var(--sc-plum);
+  }
+
+  .wc-numeral {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wc-plum-btn,
+  .wc-ghost-btn,
+  .wc-band-btn,
+  .wc-cat,
+  .wc-input,
+  .wc-howto li,
+  .wc-toggle-slider,
+  .wc-toggle-slider::before {
+    transition: none;
+  }
+
+  .wc-plum-btn:hover:not(:disabled),
+  .wc-ghost-btn:hover,
+  .wc-band-btn:hover {
+    transform: none;
+  }
+}

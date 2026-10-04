@@ -124,4 +124,5 @@ The popup opens already settled: `html.sc-preload` holds the body invisible and 
 | **Blur card (all tiers)** | Card surface on dark scrim · plum pill + ghost pill · Bricolage heading at the large tier. [styles/blur-overlay.css](styles/blur-overlay.css). |
 | **Synopsis state** | Fraunces title/body in serif-body ink · Inter muted meta · "Spoiled safely" dashed stamp. |
 | **Landing page** | The full set, including green install CTAs, giant `#EFE8FA` numerals, Verdict Box, cat ratings, dark plum final band. |
-| **Future: options page / onboarding** | Page cream + cards + kickers; onboarding may use the giant background numerals for steps; final "you're all set" screen earns the plum band. Still zero green unless it's literally an install/upgrade action. |
+| **Welcome page** (opens on install, from the popup's "How it works", and at scaredycat.app/welcome; one set of files, see CLAUDE.md "Welcome page") | Page cream + cards + kickers · giant background numerals for the four steps · live demo tiles drawn by the real blur-card CSS · the final "You're all set" band is the page's one plum moment and carries the Ko-fi link as a cream pill. Zero green. [welcome/welcome.css](welcome/welcome.css). |
+| **Future: options page** | Page cream + cards + kickers. Still zero green unless it's literally an install/upgrade action. |

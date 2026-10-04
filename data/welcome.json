@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "meta": {
+    "title": "Welcome to Scaredy Cat",
+    "description": "How Scaredy Cat blurs horror before you see it, how to unblur a mistake, and how to block something it missed."
+  },
+  "hero": {
+    "kicker": "Welcome to Scaredy Cat",
+    "title": "The cat read it so you don't have to.",
+    "lede": "Scaredy Cat blurs horror posters, thumbnails and trailers before they reach your screen. When you're curious, it tells you what happens instead.",
+    "aside": "Pin the cat to your toolbar: click the puzzle piece next to the address bar, then the pin beside Scaredy Cat."
+  },
+  "see": {
+    "kicker": "See it work",
+    "title": "This is what a blocked picture looks like.",
+    "paragraphs": [
+      "It works on IMDb, Netflix, YouTube, Letterboxd and most other sites. Detection runs on your computer, and the blur lands before the picture is drawn, so you never get a flash of the scary frame.",
+      "Click **Just tell me what happens** to read the plot without seeing a single frame, or **Show anyway** if you're feeling brave."
+    ],
+    "hint": "Try the buttons. Nothing scary is under there.",
+    "demo": {
+      "posterArt": "🦝",
+      "posterTitle": "The Thing in the Attic",
+      "year": 2024,
+      "synopsis": "A family moves into an old farmhouse where the attic door swings open every night at 3 a.m. The thing in the attic turns out to be a raccoon named Gary, who has lived there since 1987 and treats the family as his tenants. Nobody is hurt, and the dog and Gary end the film as close friends.",
+      "revealToast": "It was a raccoon the whole time."
+    }
+  },
+  "mistake": {
+    "kicker": "Blurred by mistake?",
+    "title": "If we blur something harmless, tell us.",
+    "steps": [
+      "Click **Show anyway** to see it.",
+      "Point at the picture and click **This isn't horror**. That sends us a report, so the cat stops making the same mistake.",
+      "To keep it visible on every visit, click the Scaredy Cat icon in your toolbar and press **Allow** next to it under Hidden items."
+    ],
+    "demo": {
+      "posterArt": "🐈🥐",
+      "posterTitle": "Kittens in Paris",
+      "reportToast": "That's it. On a real page, this sends us the report."
+    }
+  },
+  "missed": {
+    "kicker": "Something slipped through?",
+    "title": "If something scary gets past the cat, block it yourself.",
+    "paragraphs": [
+      "Right-click the picture or video and choose **Report missed horror**. It's blurred right away and stays blurred on this computer from then on.",
+      "You can also click the Scaredy Cat icon in your toolbar, press **Report missed horror**, and then click the picture."
+    ],
+    "tryButton": "Try it: open the right-click menu",
+    "resetButton": "Reset this demo",
+    "menuItems": ["Open image in new tab", "Save image as…", "Copy image"],
+    "menuReport": "🙀 Scaredy Cat: Report missed horror",
+    "demo": {
+      "posterArt": "🛶",
+      "posterTitle": "Definitely Fine Lake",
+      "reportToast": "Blurred. On a real page, it stays blurred on this computer from now on.",
+      "undoToast": "On a real page, this undoes your report and lets us know."
+    }
+  },
+  "loop": {
+    "kicker": "Why your reports matter",
+    "title": "Every report makes the cat a little smarter.",
+    "body": "The cat learns from the mistakes you point out. One report about a wrong blur can fix that film for everybody who uses Scaredy Cat.",
+    "cards": [
+      { "title": "You flag a mistake", "text": "A picture we blurred for no reason, or one we should have caught." },
+      { "title": "We read every report", "text": "A person looks at each one and corrects the title list or tunes detection for that kind of picture." },
+      { "title": "Everyone gets the fix", "text": "Scaredy Cat checks for a new title list every 6 hours, so corrections arrive without an update to install." }
+    ],
+    "consentLabel": "Share reports to improve detection",
+    "consentDetail": "Reports include the page and picture addresses, what we matched, your settings and any note you add. We never send the picture itself or your browsing history. You can turn this off anytime in the popup.",
+    "consentOn": "Sharing is on. Thanks for helping the cat.",
+    "consentOff": "Sharing is off. Nothing will be sent.",
+    "consentError": "Couldn't save that. Try again in a moment.",
+    "webConsent": "To turn sharing on, click the Scaredy Cat icon in your toolbar and switch on **Share reports to improve detection**. It's off until you do."
+  },
+  "note": {
+    "kicker": "Say hello",
+    "title": "Tell the cat what you think.",
+    "body": "Bugs, wrong blurs, sites you'd like covered: we read every note. Add your email if you'd like a reply.",
+    "categories": [
+      { "id": "bug", "label": "Bug" },
+      { "id": "idea", "label": "Idea" },
+      { "id": "praise", "label": "Praise" },
+      { "id": "other", "label": "Other" }
+    ],
+    "placeholder": "What should the cat know?",
+    "emailPlaceholder": "Email (optional, if you'd like a reply)",
+    "consentText": "We'll send your note, your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report database. We never send images or your browsing history. Sending also turns on report sharing, which you can turn off above or in the popup.",
+    "consentDecline": "Not now",
+    "consentAccept": "Share & send",
+    "send": "Send",
+    "status": {
+      "empty": "Add a quick note first 🙂",
+      "sent": "Thanks! The cat's taking notes 🙀",
+      "queued": "Saved. We'll send it when you're back online 🙀",
+      "deduped": "Already noted, thanks 🙀",
+      "rateLimited": "Easy there. Give it a moment.",
+      "failed": "Couldn't send right now. Try again later.",
+      "declined": "No worries, nothing was sent 🐾"
+    },
+    "webCard": "Notes go through the extension. Click the Scaredy Cat icon in your toolbar and press **Send a note**."
+  },
+  "band": {
+    "title": "You're all set. Go browse bravely.",
+    "body": "Scaredy Cat is free and has no ads. If it saved you from a jump scare, you can buy the cat a coffee.",
+    "cta": "Buy the cat a coffee on Ko-fi",
+    "url": "https://ko-fi.com/francoislenguyen",
+    "webInstall": "Don't have Scaredy Cat yet?",
+    "webInstallLink": "Join the free beta",
+    "webInstallHref": "/"
+  },
+  "footer": {
+    "aside": "Keeping you safe from spooky stuff! 👻"
+  }
+}
