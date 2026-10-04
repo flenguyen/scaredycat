@@ -48,7 +48,10 @@
           "text": "Reports that can't be sent right away wait on your computer and go out a few at a time, no faster than the server allows."
         }
       ],
-      "commits": []
+      "commits": [
+        "08edf8d",
+        "01fd154"
+      ]
     },
     {
       "id": "1.6.1",

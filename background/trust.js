@@ -45,6 +45,10 @@ const ScaredyCatTrust = (function () {
   // eval/browser-smoke-remote-db.mjs rewrites this object in a temporary copy
   // of the extension; it never edits this file.
   const TRUSTED_KEYS = Object.freeze({
+    // Live signing key (TITLES_SIGNING_KID=1 on scaredycat.app).
+    '1': '/NGeKQKPVU8jXpKp11qoUkD+ZbDkfR8Ts6FTeyd4b8U=',
+    // Backup for rotation. Its private half is kept offline, not on Vercel.
+    '2': 'hGlm3k3binibOU+y3bATcc0D/0LVBEd0xxbVU0rGD8A='
   });
 
   // Keep true. False would accept downloads that carry no signature at all
