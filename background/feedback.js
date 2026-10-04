@@ -5,8 +5,11 @@
  * nothing here is allowed to break detection or surface a hard error to the page.
  *
  * Privacy: reports carry URLs + metadata ONLY. No image pixels and no browsing
- * history ever leave the device. The page URL is reduced to origin + path
- * (query string and hash are dropped, since they often carry session tokens).
+ * history ever leave the device. The page URL and the element's src are
+ * reduced to origin + path (query string and hash are dropped, since they
+ * often carry session tokens), and data:/blob: sources are never sent.
+ * Every field is type-checked and capped here: the report arrives from a
+ * content script, which a hostile page can try to forge.
  *
  * Consent: a report is only sent when settings.feedbackConsent is true. The
  * caller (content/popup) gates on consent too, but we re-check here so a UI bug
@@ -24,7 +27,7 @@ const ScaredyCatFeedback = (function () {
 
   // Kept in sync with ml-router.js's default; reported so corrections can be
   // tied to the model that produced (or missed) the verdict.
-  const MODEL_VERSION = 'mobileclip_s0-fp32-v2';
+  const MODEL_VERSION = 'mobileclip_s0-fp16-v3';
 
   const OUTBOX_KEY = 'feedbackOutbox';     // reports awaiting a retry
   const RECENT_KEY = 'feedbackRecent';     // hash -> ts, for dedupe
@@ -34,6 +37,14 @@ const ScaredyCatFeedback = (function () {
   const DEDUPE_TTL_MS = 24 * 60 * 60 * 1000;
   const RATE_LIMIT = 10;                    // sends per rolling minute
   const RATE_WINDOW_MS = 60 * 1000;
+
+  // Field caps (the popup and in-page forms cap note/email the same way).
+  const NOTE_MAX = 2000;
+  const CONTACT_MAX = 200;
+  const TITLE_MAX = 200;
+  const URL_MAX = 2048;
+  const REASONS_MAX = 10;
+  const REASON_MAX = 100;
 
   // In-memory rate-limit window; resetting on worker restart is acceptable.
   let recentSendTimes = [];
@@ -53,14 +64,36 @@ const ScaredyCatFeedback = (function () {
   }
 
   // origin + pathname only — drop query/hash (session tokens) and never the
-  // full href.
+  // full href. Only web and extension-page URLs; data:, blob: and anything
+  // else become ''.
   function trimUrl(url) {
+    if (typeof url !== 'string' || !/^(https?|chrome-extension):/i.test(url)) return '';
     try {
       const u = new URL(url);
-      return u.origin + u.pathname;
+      return (u.origin + u.pathname).slice(0, URL_MAX);
     } catch (e) {
       return '';
     }
+  }
+
+  function cap(v, max) {
+    return typeof v === 'string' ? v.slice(0, max) : '';
+  }
+
+  // A reply address the user typed, or '' when it doesn't look like one.
+  function cleanContact(v) {
+    const s = cap(v, CONTACT_MAX).trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) ? s : '';
+  }
+
+  function cleanReasons(v) {
+    if (!Array.isArray(v)) return [];
+    return v.filter(r => typeof r === 'string' && r).slice(0, REASONS_MAX).map(r => r.slice(0, REASON_MAX));
+  }
+
+  function cleanConfidence(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : 0;
   }
 
   async function getDbVersion() {
@@ -124,33 +157,35 @@ const ScaredyCatFeedback = (function () {
     }
   }
 
-  // Fill in the parts only the worker knows: ids, versions, trimmed URL.
+  // Fill in the parts only the worker knows: ids, versions, trimmed URLs.
+  // Everything else is copied field by field, typed and capped.
   async function enrich(partial) {
     const manifest = chrome.runtime.getManifest();
     const dbVersion = await getDbVersion();
+    const el = partial.element && typeof partial.element === 'object' ? partial.element : {};
     return {
-      type: partial.type,
+      type: /^[a-z_]{1,40}$/.test(partial.type) ? partial.type : 'general',
       reportId: (crypto.randomUUID && crypto.randomUUID()) ||
         `r-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       ts: Date.now(),
       pageUrl: trimUrl(partial.pageUrl),
       element: {
-        src: partial.element?.src || '',
-        kind: partial.element?.kind || '',
-        matchedTitle: partial.element?.matchedTitle || null,
-        confidence: partial.element?.confidence || 0,
-        band: partial.element?.band || '',
-        reasons: partial.element?.reasons || []
+        src: trimUrl(el.src),
+        kind: cap(el.kind, 20),
+        matchedTitle: cap(el.matchedTitle, TITLE_MAX) || null,
+        confidence: cleanConfidence(el.confidence),
+        band: cap(el.band, 40),
+        reasons: cleanReasons(el.reasons)
       },
       context: {
-        sensitivity: partial.sensitivity || '',
+        sensitivity: cap(partial.sensitivity, 10),
         modelVersion: MODEL_VERSION,
         dbVersion
       },
       ext: { version: manifest.version },
-      note: partial.note || '',
-      title: partial.title || '',
-      contact: partial.contact || ''
+      note: cap(partial.note, NOTE_MAX),
+      title: cap(partial.title, TITLE_MAX),
+      contact: cleanContact(partial.contact)
     };
   }
 
@@ -197,7 +232,10 @@ const ScaredyCatFeedback = (function () {
     } catch (e) {
       return;
     }
-    if (!outbox.length) return;
+    if (!outbox.length) {
+      try { await chrome.alarms.clear(ALARM_NAME); } catch (e) { /* ignore */ }
+      return;
+    }
 
     const survivors = [];
     for (const report of outbox) {
@@ -211,6 +249,8 @@ const ScaredyCatFeedback = (function () {
     }
     try {
       await chrome.storage.local.set({ [OUTBOX_KEY]: survivors });
+      // Nothing left to retry: stop waking the worker for it.
+      if (!survivors.length) await chrome.alarms.clear(ALARM_NAME);
     } catch (e) {
       // ignore
     }
@@ -227,12 +267,12 @@ const ScaredyCatFeedback = (function () {
     }
   }
 
+  // Retries run from the alarm only (it exists while the outbox has reports,
+  // and survives worker restarts), plus right after a successful send. No
+  // flush on worker start: that read ran on every wake.
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === ALARM_NAME) flush();
   });
-  // Try to drain on every worker spin-up (cheap; no-op when the outbox is empty).
-  chrome.runtime.onStartup.addListener(flush);
-  flush();
 
   return { submit, flush, ENDPOINT };
 })();
