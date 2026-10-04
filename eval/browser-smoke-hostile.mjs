@@ -103,7 +103,14 @@ const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: false,
   defaultViewport: { width: 1400, height: 1000 },
-  args: extensionArgs(ROOT, [`--host-resolver-rules=MAP ${HOST} 127.0.0.1`, '--window-size=1400,1100'])
+  // The consent control below grants consent; feedback hosts don't resolve
+  // in this browser, so no report can reach a real endpoint even if the
+  // worker restarts and loses the in-worker stub.
+  args: extensionArgs(ROOT, [
+    `--host-resolver-rules=MAP ${HOST} 127.0.0.1, MAP *.airtable.com ~NOTFOUND, ` +
+      'MAP airtable.com ~NOTFOUND, MAP *.scaredycat.app ~NOTFOUND, MAP scaredycat.app ~NOTFOUND',
+    '--window-size=1400,1100'
+  ])
 });
 
 const failures = [];
