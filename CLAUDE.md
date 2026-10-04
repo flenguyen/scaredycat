@@ -36,7 +36,7 @@ d. Run **`npm run release:check`** (`npm run pack` runs it as well and refuses t
 e. Code, version bump and note go in the **same commit**.
 f. Tag it locally: `git tag vX.Y.Z`. **Ask before pushing** the tag or `main`.
 
-Pushing to `main` is what updates scaredycat.app/changelog: the website reads `https://raw.githubusercontent.com/flenguyen/scaredycat/main/data/releases.json`. A user-facing website launch gets a `"surface": "website"` entry here (`version` and `level` null, id `web-YYYY-MM-DD-slug`). Never hand-edit release text in the web repo.
+Pushing to `main` is what updates scaredycat.app/changelog: the website reads `https://raw.githubusercontent.com/flenguyen/scaredycat/main/data/releases.json`. The page re-reads it every 5 minutes; to update it immediately after a push, run `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://www.scaredycat.app/api/revalidate/releases` (secret in `.env.local`). A user-facing website launch gets a `"surface": "website"` entry here (`version` and `level` null, id `web-YYYY-MM-DD-slug`). Never hand-edit release text in the web repo.
 
 A commit with no user-visible effect (tests, tooling, docs, comments) puts **`[no-release]`** in its message. The guard hook in `.claude/settings.json` (`scripts/release-guard.mjs`) blocks a `git commit` that stages runtime files (`manifest.json`, `background*`, `content/`, `popup/`, `offscreen/`, `styles/`, `fonts/`, `icons/`) without `data/releases.json` or `[no-release]`.
 
