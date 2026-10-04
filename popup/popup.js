@@ -56,15 +56,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   let releases = null;      // parsed data/releases.json, null if it didn't load
   let whatsNewSeen = null;  // version whose notes the user last opened
 
-  // Mirrors background.js DEFAULT_SETTINGS: the popup reads storage directly
-  // (no service-worker round trip), so it must tolerate a missing key.
-  const DEFAULT_SETTINGS = {
-    enabled: true,
-    sensitivity: 'medium',
-    disabledSites: [],
-    allowedItems: [],
-    feedbackConsent: false
-  };
+  // The popup reads storage directly (no service-worker round trip), so it
+  // runs the worker's own sanitizer (background/guards.js): a missing or
+  // corrupt key falls back to the defaults instead of breaking the popup.
+  const sanitizeSettings = (obj) => ScaredyCatGuards.sanitizeSettings(obj);
 
   const withTimeout = (promise, ms) => Promise.race([
     promise,
@@ -125,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentHostname = '';
       }
 
-      settings = { ...DEFAULT_SETTINGS, ...(syncRes?.settings || {}) };
+      settings = sanitizeSettings(syncRes?.settings);
       updateUI();
       totalBlocked.textContent = formatCount(localRes?.stats?.totalBlockedAllTime || 0);
 
@@ -378,35 +373,41 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /**
-   * Render the list of blocked items
+   * Render the list of blocked items. Built with createElement + textContent
+   * only: every field comes from the page's content script.
    */
   function renderBlockedItems(items) {
-    blockedList.innerHTML = '';
+    blockedList.replaceChildren();
 
-    items.forEach((item, index) => {
-      const li = document.createElement('li');
-      li.className = 'blocked-item';
+    items.forEach((item) => {
+      const li = el('li', 'blocked-item');
 
-      let reason = item.title || item.reasons?.[0];
-      if (!reason && item.src) {
+      let reason = typeof item.title === 'string' && item.title ? item.title
+        : (typeof item.reasons?.[0] === 'string' ? item.reasons[0] : '');
+      if (!reason && typeof item.src === 'string' && item.src) {
         try {
           reason = decodeURIComponent(new URL(item.src).pathname.split('/').pop() || '');
         } catch (e) { /* fall through */ }
       }
       reason = reason || 'Horror content detected';
-      const confidence = item.confidence || 0;
+      const confidence = Math.max(0, Math.min(100, Math.round(Number(item.confidence) || 0)));
+      const id = String(item.id ?? '');
 
-      li.innerHTML = `
-        <div class="blocked-item-info">
-          <span class="blocked-item-title">${escapeHtml(reason)}</span>
-          <span class="blocked-item-confidence">${confidence}% confidence</span>
-        </div>
-        <div class="blocked-item-actions">
-          <button class="wrong-btn" data-id="${item.id}" title="Tell us this isn't horror">Not horror?</button>
-          <button class="allow-btn" data-id="${item.id}">Allow</button>
-        </div>
-      `;
+      const info = el('div', 'blocked-item-info');
+      info.appendChild(el('span', 'blocked-item-title', reason));
+      info.appendChild(el('span', 'blocked-item-confidence', `${confidence}% confidence`));
 
+      const actions = el('div', 'blocked-item-actions');
+      const wrong = el('button', 'wrong-btn', 'Not horror?');
+      wrong.type = 'button';
+      wrong.dataset.id = id;
+      wrong.title = "Tell us this isn't horror";
+      const allow = el('button', 'allow-btn', 'Allow');
+      allow.type = 'button';
+      allow.dataset.id = id;
+      actions.append(wrong, allow);
+
+      li.append(info, actions);
       blockedList.appendChild(li);
     });
 
@@ -500,7 +501,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       if (response?.success) {
-        settings = response.settings;
+        settings = sanitizeSettings(response.settings);
         renderStatus();
         // The worker already broadcast SETTINGS_UPDATED to every tab; give the
         // page a beat to (un)blur, then refresh the list.
@@ -527,7 +528,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (response?.success) {
-          settings = response.settings;
+          settings = sanitizeSettings(response.settings);
           if (!currentTab) return;
 
           // Trigger rescan on current page. The rescan acks synchronously
@@ -558,7 +559,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Reload settings
         const settingsResponse = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
         if (settingsResponse?.success) {
-          settings = { ...DEFAULT_SETTINGS, ...settingsResponse.settings };
+          settings = sanitizeSettings(settingsResponse.settings);
         }
         renderStatus();
         if (!currentTab) return;
@@ -607,7 +608,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await chrome.tabs.sendMessage(currentTab.id, { type: 'START_PICK_MODE' });
         window.close();
       } catch (e) {
-        feedbackStatus.textContent = "Can't pick on this page — try the right-click menu.";
+        feedbackStatus.textContent = "Can't pick on this page. Try the right-click menu instead.";
       }
     });
 
@@ -643,7 +644,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         type: 'UPDATE_SETTINGS',
         settings: { feedbackConsent: feedbackConsentToggle.checked }
       });
-      if (res?.success) settings = { ...DEFAULT_SETTINGS, ...res.settings };
+      if (res?.success) settings = sanitizeSettings(res.settings);
     });
 
     function buildGeneralReport() {
@@ -661,17 +662,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const report = buildGeneralReport();
       const res = await chrome.runtime.sendMessage({ type: 'SUBMIT_FEEDBACK', report });
       if (res?.deduped) {
-        feedbackStatus.textContent = 'Already noted — thanks 🙀';
+        feedbackStatus.textContent = 'Already noted. Thanks! 🙀';
       } else if (res?.success) {
         feedbackStatus.textContent = res.queued
-          ? "Saved — we'll send it when you're back online 🙀"
+          ? "Saved. We'll send it when you're back online. 🙀"
           : "Thanks! The cat's taking notes 🙀";
         feedbackText.value = '';
         feedbackEmail.value = '';
       } else if (res?.rateLimited) {
-        feedbackStatus.textContent = 'Easy there — give it a moment.';
+        feedbackStatus.textContent = 'Easy there. Give it a moment.';
       } else {
-        feedbackStatus.textContent = "Couldn't send right now — try again later.";
+        feedbackStatus.textContent = "Couldn't send right now. Try again later.";
       }
     }
 
@@ -701,7 +702,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         settings: { feedbackConsent: true }
       });
       if (res?.success) {
-        settings = res.settings;
+        settings = sanitizeSettings(res.settings);
         if (feedbackConsentToggle) feedbackConsentToggle.checked = true;
       }
       popupConsentRow.setAttribute('hidden', '');
@@ -712,7 +713,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     popupConsentDecline?.addEventListener('click', () => {
       popupConsentRow.setAttribute('hidden', '');
-      feedbackStatus.textContent = 'No worries — nothing was sent 🐾';
+      feedbackStatus.textContent = 'No worries. Nothing was sent. 🐾';
     });
   }
 
@@ -721,15 +722,6 @@ document.addEventListener('DOMContentLoaded', async () => {
    */
   function capitalizeFirst(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-
-  /**
-   * Utility: Escape HTML
-   */
-  function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   // Initialize

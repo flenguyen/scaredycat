@@ -68,7 +68,58 @@ const ScaredyCatImageKey = (function () {
     return `${u.origin}${p}${u.search}`;
   }
 
-  return { canonicalImageKey };
+  // Smaller renditions the classifier could fetch instead of the page's URL.
+  // The model only ever sees a 256x256 center crop, so the target is the
+  // smallest size whose short side stays at or above 256 for both posters
+  // (2:3) and stills (16:9), without knowing which one a URL is.
+  const TMDB_SIZE = 'w500';           // 500x750 poster, 500x281 backdrop
+  const TMDB_WIDTHS = { w92: 92, w154: 154, w185: 185, w300: 300, w342: 342, w500: 500, w780: 780, w1280: 1280, original: Infinity };
+  const AMZN_WIDTH = 512;             // ._V1_UX512_ -> 512x758 poster, 512x288 still
+  const YT_SMALL = 'hqdefault';       // 480x360 (letterboxed for 16:9 videos)
+  const YT_LARGE = new Set(['maxresdefault', 'sddefault', 'hq720']);
+
+  /**
+   * Same image at a smaller size on the same CDN, or the URL unchanged when
+   * there is no safe rewrite. Never asks for a bigger image than the page
+   * did, and leaves Amazon URLs with crop ops alone (the crop changes what
+   * the model sees). `cdns` picks which rules apply.
+   */
+  function smallVariantUrl(url, { cdns = ['tmdb', 'amzn', 'yt'] } = {}) {
+    let u;
+    try {
+      u = new URL(url);
+    } catch (e) {
+      return url;
+    }
+    const host = u.hostname.toLowerCase();
+    let m;
+    if (cdns.includes('tmdb') && host === 'image.tmdb.org' && (m = /^\/t\/p\/([^/]+)\/(.+)$/.exec(u.pathname))) {
+      const width = TMDB_WIDTHS[m[1]];
+      if (width && width > TMDB_WIDTHS[TMDB_SIZE]) {
+        return `${u.origin}/t/p/${TMDB_SIZE}/${m[2]}`;
+      }
+      return url;
+    }
+    if (cdns.includes('amzn') && host === 'm.media-amazon.com' &&
+        (m = /^(\/images\/M\/[^./]+\.)_V1_(.*?)\.(jpe?g|png|webp)$/i.exec(u.pathname))) {
+      const ops = m[2].replace(/_+$/, '');
+      // Plain resize/quality ops only (or none, the full-size original).
+      if (ops && !/^((QL|UX|UY|SX|SY)\d+_?)+$/i.test(ops + '_')) return url;
+      const w = /(?:UX|SX)(\d+)/i.exec(ops);
+      if (w && parseInt(w[1], 10) <= AMZN_WIDTH) return url;
+      if (/(?:UY|SY)\d+/i.test(ops) && !w) return url; // height-bound: aspect unknown, leave it
+      return `${u.origin}${m[1]}_V1_UX${AMZN_WIDTH}_.${m[3]}`;
+    }
+    if (cdns.includes('yt') && /(^|\.)ytimg\.com$/.test(host) &&
+        (m = /^\/vi(_webp)?\/([^/]+)\/([a-z0-9]+)\.(jpg|webp)$/i.exec(u.pathname))) {
+      // Signed crop params (sqp/rs) describe the page's crop; keep those.
+      if (u.search || !YT_LARGE.has(m[3])) return url;
+      return `${u.origin}/vi/${m[2]}/${YT_SMALL}.jpg`;
+    }
+    return url;
+  }
+
+  return { canonicalImageKey, smallVariantUrl };
 })();
 
 if (typeof module !== 'undefined' && module.exports) {

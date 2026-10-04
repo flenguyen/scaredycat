@@ -1,0 +1,13 @@
+# sha256 of every shipped runtime and model file (shasum -a 256 format).
+# Checked by `npm run pack` / `pack:check` and `npm run setup:model -- --verify`.
+# vendor/: @huggingface/transformers 4.3.0, onnxruntime-web 1.31.0-dev.20260914-8d85527a0
+# (a dev prerelease; move to a stable 1.31.x when one is published).
+# models/: Xenova/mobileclip_s0 at revision 757d59c9c6870a76a4b0306f05f5061bca15c39f.
+# After an intentional update, regenerate with:
+#   shasum -a 256 vendor/*.js vendor/*.mjs vendor/*.wasm models/Xenova/mobileclip_s0/*.json models/Xenova/mobileclip_s0/onnx/*.onnx
+6b37a3974dbd96a752fdc1805e1bdc2dca3ead7e380703c092240c2352c71dbf  vendor/ort-wasm-simd-threaded.jspi.mjs
+173146c55eb8c7e01f8be3f7b7376fbde14118d91607583ab7caf4feac98e59c  vendor/ort-wasm-simd-threaded.jspi.wasm
+1475fd440e9932ab206682ee42cb18f6097403e9ee77ea62084c592d0f83597d  vendor/transformers.min.js
+8e33c1f2634a33de3e38715f9809ef86742aacbe31c310c66fc2636755458d56  models/Xenova/mobileclip_s0/config.json
+b031f09fbd69e22a605b6cc7433993249ee893b7fc1b79321f669cd015493dd4  models/Xenova/mobileclip_s0/preprocessor_config.json
+22b1d36ecc6837e8205aee05003440a25e1c1ee0c7e2945dbb9dd597211c59dc  models/Xenova/mobileclip_s0/onnx/vision_model_fp16.onnx

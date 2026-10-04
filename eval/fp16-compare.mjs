@@ -30,6 +30,7 @@ const ONLY = args.includes('--only') ? args[args.indexOf('--only') + 1].split(',
 const CALIB_DIR = '/tmp/scaredycat-fixtures/calib';
 const BARS = [41, 40, 65, 76, 80]; // ml-bridge.js decision bars
 const PORT = 8906;
+const HOST = 'calib.scaredycat.test';
 
 for (const f of ['onnx/vision_model.onnx', 'onnx/vision_model_fp16.onnx']) {
   if (!fs.existsSync(path.join(ROOT, 'models/Xenova/mobileclip_s0', f))) {
@@ -52,7 +53,9 @@ await new Promise(r => server.listen(PORT, r));
 async function run(dtype, device) {
   const browser = await puppeteer.launch({
     executablePath: CHROME, headless: false,
-    args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run']
+    args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run',
+      // The classifier refuses localhost URLs; serve the posters on a mapped name.
+      `--host-resolver-rules=MAP ${HOST} 127.0.0.1`]
   });
   try {
     const swTarget = await browser.waitForTarget(t => t.type() === 'service_worker' && t.url().includes('background.js'), { timeout: 20000 });
@@ -97,12 +100,12 @@ async function run(dtype, device) {
     if (info.dtype !== dtype || info.device !== device) throw new Error(`wanted ${dtype}/${device}, got ${info.dtype}/${info.device}`);
     const scores = {};
     for (const img of images) {
-      scores[img] = await evalIn(`__scEval.classify(${JSON.stringify(`http://localhost:${PORT}/${encodeURIComponent(img)}`)})`);
+      scores[img] = await evalIn(`__scEval.classify(${JSON.stringify(`http://${HOST}:${PORT}/${encodeURIComponent(img)}`)})`);
     }
     // Steady-state per-image latency: rerun a few (fetch is local).
     const timings = [];
     for (const img of images.slice(0, 6)) {
-      const r = await evalIn(`__scEval.classify(${JSON.stringify(`http://localhost:${PORT}/${encodeURIComponent(img)}`)})`);
+      const r = await evalIn(`__scEval.classify(${JSON.stringify(`http://${HOST}:${PORT}/${encodeURIComponent(img)}`)})`);
       timings.push(r.ms);
     }
     return { info, scores, medianMs: timings.sort((a, b) => a - b)[Math.floor(timings.length / 2)] };
