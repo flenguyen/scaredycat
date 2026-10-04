@@ -495,8 +495,12 @@ const ScaredyCatDetector = (function () {
 
   // YouTube card containers (classic polymer renderers and the newer
   // lockup view models) and where the title lives inside them.
-  const YT_CARD_SELECTOR = 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, ytd-playlist-video-renderer, ytd-reel-item-renderer, yt-lockup-view-model, ytd-rich-grid-media';
+  const YT_CARD_SELECTOR = 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, ytd-playlist-video-renderer, ytd-reel-item-renderer, yt-lockup-view-model, ytd-rich-grid-media, ytd-ad-slot-renderer';
   const YT_TITLE_SELECTOR = '#video-title, a#video-title-link, h3 a[title], h3 a[aria-label], .yt-lockup-metadata-view-model-wiz__title, [class*="lockup-metadata"] a[aria-label]';
+  // Sponsored cards (search results, home feed) have no #video-title: the
+  // advertiser's headline and description sit in feed-ad-metadata-view-model,
+  // and the thumbnail is a googlesyndication image whose URL says nothing.
+  const YT_AD_TEXT_SELECTOR = 'feed-ad-metadata-view-model [class*="Headline"], feed-ad-metadata-view-model [class*="Description"]';
   let _isYouTubeCached = null;
   function isYouTubeCached() {
     if (_isYouTubeCached === null) {
@@ -564,6 +568,11 @@ const ScaredyCatDetector = (function () {
         const titleEl = card.querySelector(YT_TITLE_SELECTOR);
         const text = titleEl && (titleEl.getAttribute('title') || titleEl.getAttribute('aria-label') || titleEl.textContent || '').trim();
         if (text) parts.push(text.slice(0, 200));
+        const adTexts = card.querySelectorAll(YT_AD_TEXT_SELECTOR);
+        for (let i = 0; i < adTexts.length && i < 2; i++) {
+          const adText = adTexts[i].textContent.replace(/\s+/g, ' ').trim();
+          if (adText) parts.push(adText.slice(0, 200));
+        }
       }
     }
 

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "1.6.2",
+  "current": "1.6.3",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -25,6 +25,27 @@
     }
   ],
   "releases": [
+    {
+      "id": "1.6.3",
+      "surface": "extension",
+      "version": "1.6.3",
+      "level": 3,
+      "date": "2026-10-04",
+      "title": "Sponsored trailers on YouTube get blurred",
+      "aside": "Paying for the spot does not get you past the cat.",
+      "summary": "Scaredy Cat now reads the title on YouTube's sponsored cards, so paid horror trailers in search results get blurred.",
+      "changes": [
+        {
+          "type": "fixed",
+          "text": "Sponsored cards in YouTube search results and feeds were not blurred, because Scaredy Cat could not find their title. It now reads the ad's headline and description, so a horror trailer ad is caught like any other video."
+        },
+        {
+          "type": "fixed",
+          "text": "Other Mommy (2026) is now on the reviewed title list, so it is blurred on its name alone."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "1.6.2",
       "surface": "extension",

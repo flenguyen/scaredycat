@@ -1,5 +1,5 @@
 {
-  "version": "1.3.4",
+  "version": "1.3.5",
   "lastUpdated": "2026-10-04",
   "safeTitlesNote": "Known non-horror titles that lexically contain a horror title variant or keyword. Matches become suppression spans in scoring-core (longest-match-wins). Every entry must genuinely collide — eval/lint-database.mjs rejects dead weight and entries that equal a horror title. Deliberately blocked mild-spooky titles (Hocus Pocus, Scary Movie, Wicked, Ghostbusters) must NOT be listed here.",
   "safeTitles": [
@@ -539,6 +539,7 @@
     { "title": "M3GAN 2.0", "year": 2025, "variations": ["megan 2", "m3gan 2", "m3gan sequel"] },
     { "title": "MaXXXine", "year": 2024, "variations": ["maxxxine", "maxine horror", "x trilogy"] },
     { "title": "Oddity", "year": 2024, "variations": ["oddity movie", "oddity horror", "wooden man"] },
+    { "title": "Other Mommy", "year": 2026, "definite": true, "variations": ["the other mommy"], "type": "movie" },
     { "title": "Presence", "year": 2025, "variations": ["presence movie", "presence soderbergh"] },
     { "title": "Primate", "year": 2025, "variations": ["primate movie", "primate horror", "primate chimp"] },
     { "title": "Psycho Killer", "year": 2026, "variations": ["psycho killer movie"] },
