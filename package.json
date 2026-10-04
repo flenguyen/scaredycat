@@ -5,9 +5,10 @@
   "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
   "type": "module",
   "scripts": {
-    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs && node eval/image-key-test.mjs && node eval/auto-titles-test.mjs && node eval/synopses-test.mjs && node eval/releases-test.mjs && node eval/welcome-test.mjs && node eval/guards-test.mjs && node eval/db-validate-test.mjs && node eval/allowlist-test.mjs",
+    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs && node eval/image-key-test.mjs && node eval/auto-titles-test.mjs && node eval/synopses-test.mjs && node eval/releases-test.mjs && node eval/welcome-test.mjs && node eval/guards-test.mjs && node eval/db-validate-test.mjs && node eval/allowlist-test.mjs && node eval/quiet-skip-eval.mjs --examples 0",
     "eval:genre": "node eval/genre-signal-eval.mjs",
     "eval:combined": "node eval/combined-eval.mjs",
+    "eval:quiet-skip": "node eval/quiet-skip-eval.mjs",
     "eval:image": "node eval/run-eval.mjs --image",
     "bench": "node eval/run-eval.mjs --bench",
     "setup:model": "node eval/setup-model.mjs",
