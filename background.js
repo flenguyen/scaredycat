@@ -13,6 +13,7 @@ importScripts(
   'background/ml-router.js',
   'content/scoring-core.js',
   'background/synopses.js',
+  'background/trust.js',
   'background/db-updater.js',
   'background/feedback.js'
 );

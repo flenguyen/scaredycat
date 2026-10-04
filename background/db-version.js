@@ -143,16 +143,17 @@ const ScaredyCatDBVersion = (function () {
   }
 
   /**
-   * Read a fetch Response body as text, refusing anything over `maxBytes`
-   * (by Content-Length up front, then by a running count while streaming).
-   * Null when over the cap.
+   * Read a fetch Response body as raw bytes (a Uint8Array), refusing
+   * anything over `maxBytes` (by Content-Length up front, then by a running
+   * count while streaming). Null when over the cap. The signature check
+   * (trust.js) runs on these bytes before they are decoded.
    */
-  async function readCappedText(res, maxBytes = MAX_BODY_BYTES) {
+  async function readCappedBytes(res, maxBytes = MAX_BODY_BYTES) {
     const declared = parseInt(res.headers.get('Content-Length') || '', 10);
     if (Number.isFinite(declared) && declared > maxBytes) return null;
     if (!res.body || !res.body.getReader) {
-      const text = await res.text();
-      return text.length > maxBytes ? null : text;
+      const bytes = new Uint8Array(await res.arrayBuffer());
+      return bytes.byteLength > maxBytes ? null : bytes;
     }
     const reader = res.body.getReader();
     const chunks = [];
@@ -170,7 +171,13 @@ const ScaredyCatDBVersion = (function () {
     const bytes = new Uint8Array(total);
     let offset = 0;
     for (const c of chunks) { bytes.set(c, offset); offset += c.byteLength; }
-    return new TextDecoder().decode(bytes);
+    return bytes;
+  }
+
+  /** readCappedBytes decoded as UTF-8 text; null when over the cap. */
+  async function readCappedText(res, maxBytes = MAX_BODY_BYTES) {
+    const bytes = await readCappedBytes(res, maxBytes);
+    return bytes === null ? null : new TextDecoder().decode(bytes);
   }
 
   function isJsonResponse(res) {
@@ -185,6 +192,7 @@ const ScaredyCatDBVersion = (function () {
     sanitizeDatabase,
     getBundledDatabase,
     maxAllowedMajor,
+    readCappedBytes,
     readCappedText,
     isJsonResponse
   };

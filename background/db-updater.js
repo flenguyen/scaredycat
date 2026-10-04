@@ -10,13 +10,22 @@
  * the worker reads (see synopses.js). The two fetches are independent: one
  * failing never blocks the other.
  *
- * Both payloads must be application/json under 2 MB, and the title list goes
- * through db-version.js sanitizeDatabase (typed entries, bad ones dropped,
- * version sanity) before it is stored.
+ * Both payloads must be application/json under 2 MB and carry a valid
+ * X-Scaredy-Signature from a key in trust.js. The signature is checked on the
+ * raw bytes before they are decoded or parsed; an unsigned, tampered or
+ * wrongly signed download is refused and the last good copy stays. While
+ * trust.js has no keys, no download is attempted at all. A copy stored by an
+ * older version (before the website signed its files) stays in use until a
+ * signed one arrives: the website's ETag gains the kid when it starts
+ * signing, so that first request is a 200 with a signature instead of a 304.
+ * After the signature, the title list goes through db-version.js
+ * sanitizeDatabase (typed entries, bad ones dropped, version sanity) before
+ * it is stored.
  *
- * All failures are silent: a dead host, offline user, or malformed payload just
- * leaves the last good cache (or the bundled file) in place — detection never
- * breaks. Loaded into the service worker via importScripts.
+ * Failures leave the last good cache (or the bundled file) in place, so
+ * detection never breaks. A dead host, offline user or malformed payload is
+ * silent; a refused signature logs one console.warn. Loaded into the service
+ * worker via importScripts, after trust.js.
  */
 
 const ScaredyCatDBUpdater = (function () {
@@ -42,7 +51,7 @@ const ScaredyCatDBUpdater = (function () {
   const SYNOPSES_ETAG_KEY = 'synopsesEtag';
   const SYNOPSES_FETCHED_AT_KEY = 'synopsesFetchedAt';
 
-  const { sanitizeDatabase, compareDbVersion, maxAllowedMajor, readCappedText, isJsonResponse } = ScaredyCatDBVersion;
+  const { sanitizeDatabase, compareDbVersion, maxAllowedMajor, readCappedBytes, isJsonResponse } = ScaredyCatDBVersion;
   // The verdict cache (IndexedDB) is trimmed from this alarm, at most once a
   // day, instead of on every worker start.
   const PRUNED_AT_KEY = 'verdictsPrunedAt';
@@ -77,7 +86,37 @@ const ScaredyCatDBUpdater = (function () {
     }
   }
 
+  /**
+   * The body of a 200 JSON response as text, once its signature checks out
+   * for `url` (the URL we requested, which names the file in the signed
+   * message). Null for a non-200, a non-JSON type, a body over 2 MB, a
+   * missing or bad signature, or bytes that aren't UTF-8. The signature is
+   * checked on the raw bytes before anything is decoded.
+   */
+  async function readVerifiedText(res, url) {
+    if (!res.ok || !isJsonResponse(res)) return null;
+    const bytes = await readCappedBytes(res);
+    if (bytes === null) return null;
+    const verdict = await ScaredyCatTrust.verifyArtifact({
+      url,
+      header: res.headers.get(ScaredyCatTrust.SIGNATURE_HEADER),
+      body: bytes
+    });
+    if (!verdict.ok) {
+      console.warn(`Scaredy Cat: refused a downloaded ${url.slice(url.lastIndexOf('/') + 1)} ` +
+        `(${verdict.reason}); keeping the last good copy`);
+      return null;
+    }
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function refreshDatabase() {
+    // No trusted key built in: don't download what would be refused.
+    if (!ScaredyCatTrust.canAcceptRemote()) return;
     try {
       const { [ETAG_KEY]: etag } = await chrome.storage.local.get(ETAG_KEY);
       const headers = {};
@@ -85,10 +124,7 @@ const ScaredyCatDBUpdater = (function () {
 
       const res = await fetch(REMOTE_URL, { headers, cache: 'no-cache', credentials: 'omit' });
       if (res.status === 304) return;        // unchanged — cheap path
-      if (!res.ok || !isJsonResponse(res)) return;
-
-      // Size cap before parsing: a huge body is refused unread.
-      const text = await readCappedText(res);
+      const text = await readVerifiedText(res, REMOTE_URL);
       if (text === null) return;
       let db;
       try {
@@ -122,6 +158,7 @@ const ScaredyCatDBUpdater = (function () {
   }
 
   async function refreshSynopses() {
+    if (!ScaredyCatTrust.canAcceptRemote()) return;
     try {
       const { [SYNOPSES_ETAG_KEY]: etag } = await chrome.storage.local.get(SYNOPSES_ETAG_KEY);
       // Only revalidate a copy we still hold: a 304 must never leave us empty.
@@ -135,10 +172,10 @@ const ScaredyCatDBUpdater = (function () {
         await chrome.storage.local.set({ [SYNOPSES_FETCHED_AT_KEY]: Date.now() });
         return;
       }
-      if (!res.ok || !isJsonResponse(res)) return; // 404 (not deployed) / 5xx — keep what's stored
-
-      const text = await readCappedText(res);
-      if (text === null) return; // over the size cap
+      // 404 (not deployed), 5xx, over the size cap or not signed by us:
+      // keep what's stored.
+      const text = await readVerifiedText(res, SYNOPSES_URL);
+      if (text === null) return;
       let payload;
       try {
         payload = ScaredyCatSynopses.sanitizePayload(JSON.parse(text));
@@ -166,6 +203,9 @@ const ScaredyCatDBUpdater = (function () {
   });
   // Also ensure the alarm exists on every worker spin-up (cheap; no-op if set).
   ensureAlarm();
+  // A build without signing keys says so on every worker start, not only
+  // when the 6-hour alarm fires.
+  ScaredyCatTrust.canAcceptRemote();
 
   return { refresh, refreshDatabase, refreshSynopses, ensureAlarm, REMOTE_URL, SYNOPSES_URL, ALARM_NAME };
 })();
