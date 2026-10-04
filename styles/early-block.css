@@ -2,27 +2,25 @@
  * Scaredy Cat - Early Block CSS
  * Minimal CSS that only targets specific known selectors on media sites.
  * Uses specific selectors to avoid performance impact on regular sites.
+ *
+ * A poster stays hidden until content.js has a final verdict for it (or for
+ * the image inside it) and sets the valueless data-scaredycat-processed
+ * marker (content/element-state.js, which lists these selectors too); the
+ * verdict itself never appears in the DOM. On a site the user switched off,
+ * content.js sets data-scaredycat-off on <html> and nothing is hidden.
  */
 
 /* IMDB hero content - specific selectors only */
-.ipc-media--poster:not([data-scaredycat-processed]),
-.ipc-poster:not([data-scaredycat-processed]),
-[data-testid="hero-media__slate"]:not([data-scaredycat-processed]),
-[data-testid="hero-title-block__poster"]:not([data-scaredycat-processed]) {
+html:not([data-scaredycat-off]) .ipc-media--poster:not([data-scaredycat-processed]),
+html:not([data-scaredycat-off]) .ipc-poster:not([data-scaredycat-processed]),
+html:not([data-scaredycat-off]) [data-testid="hero-media__slate"]:not([data-scaredycat-processed]),
+html:not([data-scaredycat-off]) [data-testid="hero-title-block__poster"]:not([data-scaredycat-processed]) {
   opacity: 0;
   transition: opacity 0.15s;
 }
 
 /* Rotten Tomatoes specific */
-[data-qa="poster-image"]:not([data-scaredycat-processed]) {
+html:not([data-scaredycat-off]) [data-qa="poster-image"]:not([data-scaredycat-processed]) {
   opacity: 0;
   transition: opacity 0.15s;
-}
-
-/* Reveal once processed */
-[data-scaredycat-processed="safe"],
-[data-scaredycat-processed="skip"],
-[data-scaredycat-processed="allowed"],
-[data-scaredycat-processed="blocked"] {
-  opacity: 1 !important;
 }

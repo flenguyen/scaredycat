@@ -7,22 +7,41 @@
  *
  * It reuses the detector's text-context extraction so the report carries the
  * same nearby-text signal a real detection would. Submission and all
- * acknowledgement UI go through ScaredyCatFeedbackUI. Styles: feedback.css.
+ * acknowledgement UI go through ScaredyCatFeedbackUI. The highlight box and
+ * hint render in a closed shadow root (styles: feedback.css). Only real input
+ * drives it: a page can't pick (and so block) an element by dispatching
+ * synthetic mouse or key events.
  */
 
 window.ScaredyCatPicker = (function () {
   'use strict';
 
   let active = false;
+  let host = null;      // closed-root host holding the box and the hint
   let box = null;       // the floating highlight rectangle
-  let hint = null;      // the "click the thing we missed" banner
   let lastTarget = null;
 
+  // The crosshair cursor, page-wide, only while the picker runs: a
+  // constructed sheet adopted by the document and dropped on stop().
+  let cursorSheet = null;
+  function setPageCursor(on) {
+    try {
+      if (on) {
+        if (!cursorSheet) {
+          cursorSheet = new CSSStyleSheet();
+          cursorSheet.replaceSync('*, *::before, *::after { cursor: crosshair !important; }');
+        }
+        document.adoptedStyleSheets = [...document.adoptedStyleSheets, cursorSheet];
+      } else if (cursorSheet) {
+        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(s => s !== cursorSheet);
+      }
+    } catch (e) { /* cosmetic only */ }
+  }
+
+  // Hit tests from the document see our shadow hosts, never their insides.
+  // A blur card's wrapper is a host too, but picking it means its media.
   function isOwnUi(el) {
-    return !!el && !!el.closest && !!el.closest(
-      '.scaredycat-picker-box, .scaredycat-picker-hint, .scaredycat-toast, ' +
-      '.scaredycat-consent, .scaredycat-consent-backdrop'
-    );
+    return !!el && ScaredyCatUI.isOwnHost(el) && !window.ScaredyCatBlocker?.isInsideWrapper?.(el);
   }
 
   function positionBox(el) {
@@ -39,6 +58,7 @@ window.ScaredyCatPicker = (function () {
   let lastX = 0;
   let lastY = 0;
   function onMove(e) {
+    if (!e.isTrusted) return;
     lastX = e.clientX;
     lastY = e.clientY;
     if (moveRaf) return;
@@ -53,6 +73,7 @@ window.ScaredyCatPicker = (function () {
   }
 
   function onKey(e) {
+    if (!e.isTrusted) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
@@ -92,6 +113,7 @@ window.ScaredyCatPicker = (function () {
   }
 
   async function onClick(e) {
+    if (!e.isTrusted) return;
     if (isOwnUi(e.target)) return;
     e.preventDefault();
     e.stopPropagation();
@@ -120,20 +142,28 @@ window.ScaredyCatPicker = (function () {
 
   function start() {
     if (active) return;
-    if (!document.body) return;
+    if (!document.documentElement) return;
     active = true;
+
+    const floating = ScaredyCatUI.createFloatingHost({
+      style: { inset: '0', 'z-index': '2147483646', 'pointer-events': 'none' },
+      // The hint takes clicks (they are ignored as our own UI); the box and
+      // the rest of the full-viewport host let them through to the page.
+      post: '.scaredycat-picker-hint { pointer-events: auto !important; }'
+    });
+    host = floating.host;
 
     box = document.createElement('div');
     box.className = 'scaredycat-picker-box';
     box.style.display = 'none';
-    document.body.appendChild(box);
+    floating.root.appendChild(box);
 
-    hint = document.createElement('div');
+    const hint = document.createElement('div');
     hint.className = 'scaredycat-picker-hint';
     hint.textContent = 'Click the horror we missed · Esc to cancel';
-    document.body.appendChild(hint);
+    floating.root.appendChild(hint);
 
-    document.documentElement.classList.add('scaredycat-picking');
+    setPageCursor(true);
     document.addEventListener('mousemove', onMove, true);
     document.addEventListener('click', onClick, true);
     document.addEventListener('keydown', onKey, true);
@@ -145,10 +175,11 @@ window.ScaredyCatPicker = (function () {
     document.removeEventListener('mousemove', onMove, true);
     document.removeEventListener('click', onClick, true);
     document.removeEventListener('keydown', onKey, true);
-    document.documentElement.classList.remove('scaredycat-picking');
+    setPageCursor(false);
     if (moveRaf) { cancelAnimationFrame(moveRaf); moveRaf = 0; }
-    box?.remove(); box = null;
-    hint?.remove(); hint = null;
+    ScaredyCatUI.removeHost(host);
+    host = null;
+    box = null;
     lastTarget = null;
   }
 

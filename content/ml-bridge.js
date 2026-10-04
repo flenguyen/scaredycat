@@ -47,41 +47,51 @@ const ScaredyCatMLBridge = (function () {
   // text clears it.
   const UNVERIFIED_BLOCK_SCORE = 80;
 
+  // The worker rejects longer URLs; such an element gets the no-pixels path.
+  const MAX_URL_LENGTH = 2048;
+
+  // Request counters, read by eval/browser-smoke-hostile.mjs over CDP.
+  const stats = { requests: 0, scored: 0, throttled: 0 };
+
   /**
    * URL whose pixels represent this element, or null if there are none we
    * can classify (e.g. iframes).
    */
   function getClassifiableUrl(element) {
     const tag = element.tagName;
-    if (tag === 'IMG') {
-      const url = element.currentSrc || element.src || '';
-      return /^https?:/.test(url) ? url : null;
-    }
-    if (tag === 'VIDEO') {
-      const poster = element.poster || '';
-      return /^https?:/.test(poster) ? poster : null;
-    }
-    return null;
+    let url = '';
+    if (tag === 'IMG') url = element.currentSrc || element.src || '';
+    else if (tag === 'VIDEO') url = element.poster || '';
+    return /^https?:/.test(url) && url.length <= MAX_URL_LENGTH ? url : null;
   }
 
   /**
-   * Ask the background for an image score (0-100). Resolves null when the
-   * classifier can't help (unavailable, fetch failure, invalid image).
+   * Ask the background for an image score (0-100). Resolves
+   * { score, throttled }: score is null when the classifier can't help
+   * (unavailable, fetch failure, invalid image). `throttled` means the
+   * worker's rate limit turned the request away: no verdict this time, but
+   * the classifier is fine and the caller may ask again later.
    */
-  async function classifyUrl(url) {
-    if (mlUnavailable) return null;
+  async function classify(url) {
+    if (mlUnavailable) return { score: null, throttled: false };
+    stats.requests++;
     try {
       const response = await chrome.runtime.sendMessage({ type: 'CLASSIFY_IMAGE', url });
       if (response?.success && typeof response.score === 'number') {
-        return response.score;
+        stats.scored++;
+        return { score: response.score, throttled: false };
+      }
+      if (response?.throttled) {
+        stats.throttled++;
+        return { score: null, throttled: true };
       }
       if (response?.unavailable) {
         mlUnavailable = true;
       }
-      return null;
+      return { score: null, throttled: false };
     } catch (e) {
       // Extension context invalidated or background asleep mid-request.
-      return null;
+      return { score: null, throttled: false };
     }
   }
 
@@ -175,10 +185,11 @@ const ScaredyCatMLBridge = (function () {
 
   return {
     getClassifiableUrl,
-    classifyUrl,
+    classify,
     combineVerdict,
     UNVERIFIED_BLOCK_SCORE,
-    isUnavailable: () => mlUnavailable
+    isUnavailable: () => mlUnavailable,
+    getStats: () => ({ ...stats })
   };
 })();
 

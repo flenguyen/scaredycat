@@ -58,6 +58,8 @@
         "background/image-key.js",
         "content/scoring-core.js",
         "content/genre-signal.js",
+        "content/element-state.js",
+        "content/ui-kit.js",
         "content/detector.js",
         "content/feedback-ui.js",
         "content/blocker.js",
@@ -66,10 +68,6 @@
         "content/youtube-preview-guard.js",
         "content/picker.js",
         "content/content.js"
-      ],
-      "css": [
-        "styles/blur-overlay.css",
-        "styles/feedback.css"
       ],
       "run_at": "document_end",
       "exclude_matches": [
@@ -101,17 +99,5 @@
       "128": "icons/icon128.png"
     },
     "default_title": "Scaredy Cat - Horror Content Blocker"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "data/horror-database.json",
-        "styles/blur-overlay.css",
-        "fonts/*.woff2"
-      ],
-      "matches": [
-        "<all_urls>"
-      ]
-    }
-  ]
+  }
 }

@@ -7,8 +7,10 @@
 (function() {
   'use strict';
 
-  // Only run on known media sites - exit immediately otherwise
-  const MEDIA_SITES = /^(www\.)?(imdb\.com|rottentomatoes\.com|themoviedb\.org|letterboxd\.com|shudder\.com|netflix\.com|hulu\.com|disneyplus\.com|hbomax\.com|max\.com|primevideo\.com|fandango\.com)/i;
+  // Only run on known media sites - exit immediately otherwise. Anchored to
+  // the end of the hostname so subdomains (m.imdb.com) match and look-alikes
+  // (imdb.com.example.net) don't.
+  const MEDIA_SITES = /(^|\.)(imdb\.com|rottentomatoes\.com|themoviedb\.org|letterboxd\.com|shudder\.com|netflix\.com|hulu\.com|disneyplus\.com|hbomax\.com|max\.com|primevideo\.com|fandango\.com)$/i;
 
   if (!MEDIA_SITES.test(window.location.hostname)) {
     return; // Exit immediately - no overhead on regular sites
@@ -17,10 +19,14 @@
   console.log('Scaredy Cat: Media site detected, enabling early protection');
   window.__scaredycatMediaSite = true;
 
-  // Media pages almost always route posters to the image classifier: start
-  // loading the model now so it overlaps with the page's own load instead of
-  // adding to it. Fire-and-forget.
-  try { chrome.runtime.sendMessage({ type: 'WARM_ML' }).catch(() => {}); } catch (e) { /* ignore */ }
+  // No model warm-up from here: content.js asks for it only once settings
+  // say this site is protected and an element actually needs the classifier.
+
+  // Pre-hidden elements -> their own inline opacity (value, priority), put
+  // back on reveal. Kept here in the isolated world rather than as a DOM
+  // attribute, so a page can't plant or read it.
+  const hidden = new Map();
+  window.__scaredycatEarlyHidden = hidden;
 
   // Simple observer that just hides hero content as it appears
   // Will be stopped once main script takes over
@@ -38,12 +44,12 @@
   });
 
   function hideIfHero(el) {
-    if (!el || !el.matches) return;
+    if (!el || !el.matches || hidden.has(el)) return;
 
     // Quick check for hero/poster elements
     if (el.matches('[data-testid*="hero"], [data-testid*="poster"], .ipc-poster, .ipc-media--poster, [class*="hero-media"], [data-qa*="poster"]')) {
+      hidden.set(el, [el.style.getPropertyValue('opacity'), el.style.getPropertyPriority('opacity')]);
       el.style.opacity = '0';
-      el.setAttribute('data-scaredycat-early-hidden', '1');
     }
   }
 
@@ -59,10 +65,16 @@
   };
 
   // Reveal function for main script
-  window.__scaredycatRevealElement = function(el) {
-    if (el.hasAttribute('data-scaredycat-early-hidden')) {
-      el.removeAttribute('data-scaredycat-early-hidden');
-      el.style.opacity = '1';
-    }
+  function reveal(el) {
+    const prev = hidden.get(el);
+    if (!prev) return;
+    hidden.delete(el);
+    const [value, priority] = prev;
+    if (value) el.style.setProperty('opacity', value, priority);
+    else el.style.removeProperty('opacity');
+  }
+  window.__scaredycatRevealElement = reveal;
+  window.__scaredycatRevealAll = function() {
+    [...hidden.keys()].forEach(reveal);
   };
 })();
