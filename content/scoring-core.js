@@ -48,49 +48,6 @@ const ScaredyCatScoring = (function () {
   // Near-miss window below the block threshold that still gets an ML look.
   const NEAR_MISS_WINDOW = 20;
 
-  // Titled-quiet split (experiment, off by default; see
-  // eval/quiet-skip-eval.mjs). A quiet element (text score 0) whose PAGE text
-  // (alt, link text, card title, aria-label; never URL path tokens) still
-  // names something has been read and carries no horror signal: "The Crown",
-  // "How to bake sourdough". A textless one (URL tokens only, or a generic
-  // label like "movie still") gives the text layer nothing to read. With
-  // opts.skipTitledQuiet, only textless quiet elements go to the classifier.
-  const TITLED_MIN_WORD_CHARS = 3;
-  // Labels that describe the picture's role, not what it shows.
-  const GENERIC_LABEL_WORDS = new Set([
-    'a', 'an', 'the', 'of', 'and', 'for', 'to', 'in', 'on', 'with', 'by',
-    'image', 'images', 'img', 'photo', 'photos', 'picture', 'pic', 'pics',
-    'poster', 'posters', 'thumbnail', 'thumbnails', 'thumb', 'still', 'stills',
-    'gallery', 'video', 'videos', 'clip', 'clips', 'trailer', 'trailers',
-    'teaser', 'official', 'play', 'watch', 'now', 'more', 'see', 'all', 'view',
-    'untitled', 'project', 'promotional', 'promo', 'behind', 'scenes', 'cover',
-    'art', 'artwork', 'banner', 'hero', 'card', 'media', 'preview', 'hd', 'new',
-    'movie', 'movies', 'film', 'films', 'jpg', 'jpeg', 'png', 'webp', 'gif',
-    'loading', 'placeholder', 'background', 'slide', 'button', 'link', 'open'
-  ]);
-
-  /**
-   * Word characters of real page text: tokens that are pure numbers,
-   * hash-like (letters and digits mixed: "MV5BYzQ", "vi1053476889", "UX500")
-   * or generic role labels don't count.
-   */
-  function titledTextLength(pageText) {
-    if (!pageText) return 0;
-    let total = 0;
-    for (const token of String(pageText).toLowerCase().split(/[^\p{L}\p{N}]+/u)) {
-      if (!token) continue;
-      const hasDigit = /\p{N}/u.test(token);
-      if (hasDigit) continue; // numeric or hash-like
-      if (GENERIC_LABEL_WORDS.has(token)) continue;
-      total += token.length;
-    }
-    return total;
-  }
-
-  function isTitledText(pageText) {
-    return titledTextLength(pageText) >= TITLED_MIN_WORD_CHARS;
-  }
-
   // Known non-horror phrasings that collide with horror titles/keywords.
   // NOTE: only structural/idiom patterns belong here. Title-shaped entries
   // (LOTR etc.) live in the database's safeTitles list, which suppresses
@@ -661,10 +618,6 @@ const ScaredyCatScoring = (function () {
    *   scanQuietElements: boolean, // route zero-signal elements to the image
    *                               // classifier (horror-signal pages and media
    *                               // sites); does NOT imply the page is horror
-   *   pageText: string,           // optional: the part of `context` that came
-   *                               // from page text (not URL path tokens)
-   *   skipTitledQuiet: boolean,   // optional, default off: a quiet element
-   *                               // whose pageText is titled bands LIKELY_SAFE
    * }
    *
    * Returns {
@@ -686,7 +639,6 @@ const ScaredyCatScoring = (function () {
         titleScore: 0, titleMatched: false, matchedTitle: null, keywordScore: 0,
         titleMatchStrength: null, titleAuto: false, requiresPositiveImage: false,
         band: BANDS.AMBIGUOUS,
-        quietKind: 'textless',
         isHorrorTextOnly: false
       };
     }
@@ -739,8 +691,6 @@ const ScaredyCatScoring = (function () {
 
     let band;
     let requiresPositiveImage = false;
-    // Set only for quiet elements when the caller passed pageText.
-    let quietKind = null;
     if (isHorrorTextOnly && titleMatch.matched && !partialTitle &&
         (titleMatch.score >= DEFINITE_TITLE_SCORE || titleMatch.fastDefinite)) {
       band = BANDS.DEFINITE_HORROR;
@@ -763,13 +713,8 @@ const ScaredyCatScoring = (function () {
       band = BANDS.AMBIGUOUS;
     } else if (finalScore === 0 && opts.scanQuietElements) {
       // Quiet element on a horror-signal page or media site: worth a look
-      // at the pixels, unless the experiment skips titled ones.
-      if (typeof opts.pageText === 'string') {
-        quietKind = isTitledText(opts.pageText) ? 'titled' : 'textless';
-      }
-      band = (opts.skipTitledQuiet && quietKind === 'titled')
-        ? BANDS.LIKELY_SAFE
-        : BANDS.AMBIGUOUS;
+      // at the pixels.
+      band = BANDS.AMBIGUOUS;
     } else {
       band = BANDS.LIKELY_SAFE;
     }
@@ -789,7 +734,6 @@ const ScaredyCatScoring = (function () {
       titleAuto: autoTitle,
       requiresPositiveImage,
       band,
-      quietKind,
       isHorrorTextOnly
     };
   }
@@ -803,9 +747,7 @@ const ScaredyCatScoring = (function () {
     normalizeNumbers,
     pickEntryByYear,
     similarity,
-    isNonHorrorContent,
-    titledTextLength,
-    isTitledText
+    isNonHorrorContent
   };
 })();
 

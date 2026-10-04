@@ -16,7 +16,7 @@
  * (model/cache may be cold), second = warm.
  *
  *   SC_CHROME_BIN=<chrome-for-testing> node eval/browser-latency.mjs [--rounds N] [--live] [--json out.json] [--db merged.json]
- *     [--wakes N] [--wake-gap 35] [--skip-titled-quiet all|youtube,streaming,...]
+ *     [--wakes N] [--wake-gap 35]
  *
  * Content-script perf marks (data-sc-perf) are off by default; the harness
  * turns them on by setting chrome.storage.local.scDebugPerf = true through
@@ -28,12 +28,6 @@
  * ~30 s idle timeout, or one start covers several navigations. The worker
  * is not attached to in this pass (DevTools would keep it alive).
  *
- * --skip-titled-quiet <contexts> loads a patched copy of the extension with
- * detector.js SKIP_TITLED_QUIET turned on for those contexts (comma list of
- * youtube, streaming, database, horrorSignal, or "all"), so classify
- * requests per page can be compared with the skip off and on. The copy lives
- * in a temp dir; the shipped table is never edited.
- *
  * --db <path> installs that database (e.g. the merged curated + auto artifact
  * from scared-cat-web's `titles:refresh -- --out`) into chrome.storage.local
  * before the first page of each round, so init→db and verdict latency are
@@ -43,7 +37,6 @@
  */
 
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
@@ -63,7 +56,6 @@ const SETTLE_MS = parseInt(argVal('--settle', '12000'), 10);
 const DB_PATH = argVal('--db', null);
 const WAKES = parseInt(argVal('--wakes', '0'), 10);
 const WAKE_GAP_S = parseFloat(argVal('--wake-gap', '35'));
-const SKIP_ARG = argVal('--skip-titled-quiet', null);
 const DB_OVERRIDE = DB_PATH ? JSON.parse(fs.readFileSync(path.resolve(DB_PATH), 'utf8')) : null;
 if (DB_OVERRIDE && (!Array.isArray(DB_OVERRIDE.titles) || typeof DB_OVERRIDE.version !== 'string')) {
   throw new Error(`--db ${DB_PATH}: not a horror database (needs titles[] and version)`);
@@ -72,28 +64,6 @@ console.log(DB_OVERRIDE
   ? `DB: ${path.resolve(DB_PATH)} (v${DB_OVERRIDE.version}, ${DB_OVERRIDE.titles.length} titles, ${DB_OVERRIDE.titles.filter(t => t.auto === true).length} auto)`
   : 'DB: bundled data/horror-database.json');
 const PORT = 8905;
-
-// ---- extension under test ------------------------------------------------------
-const QUIET_CONTEXTS = ['youtube', 'streaming', 'database', 'horrorSignal'];
-function patchedExtension(list) {
-  const contexts = list === 'all' ? QUIET_CONTEXTS : list.split(',').map(s => s.trim()).filter(Boolean);
-  for (const c of contexts) if (!QUIET_CONTEXTS.includes(c)) throw new Error(`--skip-titled-quiet: unknown context ${c}`);
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-quiet-skip-'));
-  const skip = new Set(['node_modules', 'chrome', '.git', 'eval', 'dist', '.claude', '.cache', 'tools', 'scripts']);
-  fs.cpSync(ROOT, dir, { recursive: true, filter: (src) => !skip.has(path.relative(ROOT, src).split(path.sep)[0]) });
-  const file = path.join(dir, 'content/detector.js');
-  let src = fs.readFileSync(file, 'utf8');
-  for (const c of contexts) {
-    const before = src;
-    src = src.replace(new RegExp(`(SKIP_TITLED_QUIET = Object\\.freeze\\(\\{[^}]*?\\b${c}: )false`), '$1true');
-    if (src === before) throw new Error(`could not turn on SKIP_TITLED_QUIET.${c} in the copy`);
-  }
-  fs.writeFileSync(file, src);
-  console.log(`extension: patched copy at ${dir}, SKIP_TITLED_QUIET on for ${contexts.join(', ')}`);
-  return dir;
-}
-const EXT_DIR = SKIP_ARG ? patchedExtension(SKIP_ARG) : ROOT;
-if (!SKIP_ARG) console.log('extension: working tree (SKIP_TITLED_QUIET as shipped)');
 
 // ---- fixtures ---------------------------------------------------------------
 const sharp = (await import('sharp')).default;
@@ -175,67 +145,15 @@ function imdbPage() {
   </body></html>`;
 }
 
-function youtubePage(pageTitle = 'horror trailer 2026 - YouTube') {
+function youtubePage() {
   const items = Array.from({ length: 40 }, (_, i) => `
     <ytd-video-renderer class="style-scope">
       <a id="thumbnail" href="/watch?v=vid${i}"><yt-image><img src="/img/thumb-${i}.jpg" width="360" height="202" alt=""></yt-image></a>
       <div id="meta"><h3><a id="video-title" title="${YT_TITLES[i % YT_TITLES.length]}" href="/watch?v=vid${i}">${YT_TITLES[i % YT_TITLES.length]}</a></h3></div>
     </ytd-video-renderer>`).join('');
-  return `<!DOCTYPE html><html><head><title>${pageTitle}</title>
+  return `<!DOCTYPE html><html><head><title>horror trailer 2026 - YouTube</title>
   <style>body{margin:0}ytd-video-renderer{display:flex;gap:16px;padding:8px 24px}img{display:block}</style></head>
   <body><ytd-app><div id="contents">${items}</div></ytd-app></body></html>`;
-}
-
-// Netflix-style browse page: boxart links whose only text is the title
-// (fallback-text), a numeric /watch/<id> link, no page-level horror signal.
-const NETFLIX_TITLES = [
-  'The Crown', 'Bridgerton', 'Squid Game', 'Ozark', 'Narcos', 'Emily in Paris',
-  "The Queen's Gambit", 'Money Heist', 'Lupin', 'Glass Onion', 'Extraction', 'Red Notice',
-  'The Gray Man', 'Enola Holmes', 'Purple Hearts', 'Leave the World Behind', 'Nimona',
-  'Rebel Moon', 'Damsel', 'Back in Action', 'Happy Gilmore 2', 'The Night Agent',
-  'Beef', 'Wednesday', 'Hereditary', 'The Conjuring', 'Hush', "Gerald's Game",
-  'The Ritual', 'Veronica', 'His House', 'Incantation', 'Talk to Me', 'Bird Box',
-  'The Platform', 'It Follows', 'Fear Street: 1994', 'The Perfection', 'Apostle', 'Cam'
-];
-function netflixPage() {
-  const rows = [0, 1, 2, 3].map(r => {
-    const cards = NETFLIX_TITLES.slice(r * 10, r * 10 + 10).map((t, i) => {
-      const n = r * 10 + i;
-      return `
-      <div class="slider-item"><div class="title-card"><a href="/watch/${81000000 + n * 7919}" class="slider-refocus" tabindex="0">
-        <div class="boxart-size-16x9 boxart-container"><img class="boxart-image boxart-image-in-padded-container" src="/img/box-${n}.jpg" alt="" width="200" height="112">
-        <div class="fallback-text-container"><p class="fallback-text">${t}</p></div></div></a></div></div>`;
-    }).join('');
-    return `<div class="lolomoRow"><h2 class="rowHeader">Row ${r + 1}</h2><div class="sliderContent">${cards}</div></div>`;
-  }).join('');
-  return `<!DOCTYPE html><html><head><title>Home - Netflix</title>
-  <style>body{margin:0;background:#141414;color:#fff;font-family:sans-serif}.sliderContent{display:flex;gap:8px;padding:8px 24px}.fallback-text{position:absolute;opacity:0}.boxart-container{position:relative}img{display:block}</style></head>
-  <body><div class="mainView">${rows}</div></body></html>`;
-}
-
-// IMDb chart/list page: poster img (alt "Title (Year)") outside the overlay
-// link, ipc-title "N. Title" in the item; no page-level horror signal.
-const IMDB_LIST_TITLES = [
-  ['One Battle After Another', 2025], ['Weapons', 2025], ['The Conjuring: Last Rites', 2025], ['Superman', 2025],
-  ['F1', 2025], ['Sinners', 2025], ['The Fantastic Four: First Steps', 2025], ['Jurassic World Rebirth', 2025],
-  ['Freakier Friday', 2025], ['The Naked Gun', 2025], ['Tron: Ares', 2025], ['Him', 2025],
-  ['Bring Her Back', 2025], ['The Long Walk', 2025], ['Materialists', 2025], ['Mission: Impossible - The Final Reckoning', 2025],
-  ['Thunderbolts*', 2025], ['28 Years Later', 2025], ['The Housemaid', 2025], ['Wicked: For Good', 2025],
-  ['Zootopia 2', 2025], ['Frankenstein', 2025], ['Bugonia', 2025], ['Black Phone 2', 2025],
-  ['Roofman', 2025], ['A House of Dynamite', 2025], ['Springsteen: Deliver Me from Nowhere', 2025], ['Good Boy', 2025],
-  ['The Smashing Machine', 2025], ['Caught Stealing', 2025]
-];
-function imdbListPage() {
-  const items = IMDB_LIST_TITLES.map(([t, y], i) => `
-    <li class="ipc-metadata-list-summary-item"><div class="cli-parent">
-      <div class="ipc-poster ipc-poster--base" data-testid="poster-${i}"><div class="ipc-media ipc-media--poster-27x40">
-        <img alt="${t} (${y})" class="ipc-image" loading="eager" src="/img/list-${i}.jpg" width="140" height="207"></div>
-        <a class="ipc-lockup-overlay" href="/title/tt${30000000 + i}/" aria-label="View title page for ${t}"></a></div>
-      <div class="cli-children"><div class="ipc-title"><a href="/title/tt${30000000 + i}/" class="ipc-title-link-wrapper"><h3 class="ipc-title__text">${i + 1}. ${t}</h3></a></div></div>
-    </div></li>`).join('');
-  return `<!DOCTYPE html><html><head><title>Most Popular Movies - IMDb</title>
-  <style>body{margin:0;font-family:sans-serif}ul{list-style:none;display:grid;grid-template-columns:repeat(5,220px);gap:16px;padding:24px}img{display:block}</style></head>
-  <body><h1>Most popular movies</h1><ul class="ipc-metadata-list">${items}</ul></body></html>`;
 }
 
 function neutralPage() {
@@ -253,21 +171,19 @@ const server = http.createServer(async (req, res) => {
     if (url.startsWith('/img/')) {
       const name = url.slice(5);
       if (name === 'poster.png') { res.writeHead(200, { 'content-type': 'image/png' }); return res.end(POSTER); }
-      const m = /^(card|thumb|photo|box|list)-(\d+)\.jpg$/.exec(name);
+      const m = /^(card|thumb|photo)-(\d+)\.jpg$/.exec(name);
       if (m) {
         const n = parseInt(m[2], 10);
-        const dims = { card: [200, 296], thumb: [360, 202], photo: [400, 300], box: [342, 192], list: [140, 207] }[m[1]];
-        const offset = { card: 0, thumb: 100, photo: 200, box: 300, list: 400 }[m[1]];
-        const buf = await cardImage(n + offset, ...dims);
+        const dims = m[1] === 'card' ? [200, 296] : m[1] === 'thumb' ? [360, 202] : [400, 300];
+        const buf = await cardImage(n + (m[1] === 'thumb' ? 100 : m[1] === 'photo' ? 200 : 0), ...dims);
         res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'max-age=3600' });
         return res.end(buf);
       }
       res.writeHead(404); return res.end();
     }
     res.writeHead(200, { 'content-type': 'text/html' });
-    if (host.endsWith('imdb.com')) return res.end(url.startsWith('/chart/') ? imdbListPage() : imdbPage());
-    if (host.endsWith('youtube.com')) return res.end(url === '/' ? youtubePage('YouTube') : youtubePage());
-    if (host.endsWith('netflix.com')) return res.end(netflixPage());
+    if (host.endsWith('imdb.com')) return res.end(imdbPage());
+    if (host.endsWith('youtube.com')) return res.end(youtubePage());
     return res.end(neutralPage());
   } catch (e) {
     res.writeHead(500); res.end(String(e));
@@ -282,12 +198,7 @@ const PAGES = LIVE ? [
 ] : [
   { id: 'imdb', url: `http://www.imdb.com:${PORT}/title/tt7784604/` },
   { id: 'youtube', url: `http://www.youtube.com:${PORT}/results?search_query=horror+trailer+2026` },
-  { id: 'neutral', url: `http://dogblog.test:${PORT}/golden-retriever` },
-  // Titled-quiet fixtures (Phase 5): a streaming catalog, an IMDb chart and
-  // the YouTube home feed, none with a page-level horror signal.
-  { id: 'netflix', url: `http://www.netflix.com:${PORT}/browse` },
-  { id: 'imdb-list', url: `http://www.imdb.com:${PORT}/chart/moviemeter/` },
-  { id: 'youtube-home', url: `http://www.youtube.com:${PORT}/` }
+  { id: 'neutral', url: `http://dogblog.test:${PORT}/golden-retriever` }
 ];
 
 // ---- measurement --------------------------------------------------------------
@@ -301,25 +212,18 @@ async function readPerf(page, world) {
   const perf = await page.evaluate(() => {
     try { return JSON.parse(document.documentElement.dataset.scPerf || '{}'); } catch (e) { return {}; }
   });
-  let states = {}, overlays = 0, quiet = {};
+  let states = {}, overlays = 0;
   try {
-    ({ states, overlays, quiet } = await world.evaluate(() => {
+    ({ states, overlays } = await world.evaluate(() => {
       const states = {};
-      const quiet = {};
       document.querySelectorAll('img, video, iframe').forEach(el => {
         const s = ScaredyCatState.get(el);
         if (s) states[s] = (states[s] || 0) + 1;
-        // Quiet kind of the elements the scan judged (memoized, no new work).
-        if (s && s !== 'skip') {
-          const k = ScaredyCatDetector.analyzeElement(el).quietKind;
-          if (k) quiet[k] = (quiet[k] || 0) + 1;
-        }
       });
-      quiet.context = ScaredyCatDetector.quietSkipContext ? ScaredyCatDetector.quietSkipContext() : null;
-      return { states, overlays: ScaredyCatBlocker.getBlockedCount(), quiet };
+      return { states, overlays: ScaredyCatBlocker.getBlockedCount() };
     }));
   } catch (e) { /* content script not injected yet */ }
-  return { perf, states, overlays, quiet };
+  return { perf, states, overlays };
 }
 
 async function getSwWorker(browser) {
@@ -413,7 +317,6 @@ async function measure(browser, pageDef, label) {
     lastVerdictMs: verdictTimes.length ? Math.max(...verdictTimes) : null,
     firstRequestMs: requestTimes.length ? Math.min(...requestTimes) : null,
     states: snap.states,
-    quiet: snap.quiet,
     sw: swStats ? { requests: swStats.classifyRequests, cacheHits: swStats.cacheHits, negative: swStats.negativeHits, sends: swStats.offscreenSends, throttled: swStats.throttled, latP50: pct(swStats.lat, 0.5), latP95: pct(swStats.lat, 0.95) } : null,
     offscreen,
     scriptMs: +(metrics.ScriptDuration * 1000).toFixed(0),
@@ -427,8 +330,8 @@ for (let round = 0; round < ROUNDS; round++) {
   const browser = await puppeteer.launch({
     executablePath: CHROME, headless: false,
     args: [
-      `--disable-extensions-except=${EXT_DIR}`, `--load-extension=${EXT_DIR}`, '--no-first-run', '--window-size=1200,900',
-      ...(LIVE ? [] : ['--host-resolver-rules=MAP www.imdb.com 127.0.0.1, MAP www.youtube.com 127.0.0.1, MAP www.netflix.com 127.0.0.1, MAP dogblog.test 127.0.0.1'])
+      `--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run', '--window-size=1200,900',
+      ...(LIVE ? [] : ['--host-resolver-rules=MAP www.imdb.com 127.0.0.1, MAP www.youtube.com 127.0.0.1, MAP dogblog.test 127.0.0.1'])
     ]
   });
   try {
@@ -439,7 +342,7 @@ for (let round = 0; round < ROUNDS; round++) {
         const r = await measure(browser, p, label);
         r.round = round;
         results.push(r);
-        console.log(`[r${round} ${label.padEnd(4)} ${p.id.padEnd(12)}] init→db ${String(r.initToDb).padStart(6)}ms  firstScan ${String(r.firstScanMs).padStart(7)}ms  firstBlur ${String(r.firstBlurMs).padStart(7)}ms  blurs ${String(r.blurs).padStart(2)}  classify ${String(r.classifyRequests).padStart(3)}  verdicts ${String(r.verdicts).padStart(3)} (first ${r.firstVerdictMs}ms, last ${r.lastVerdictMs}ms)  sw ${r.sw ? `req ${r.sw.requests} hit ${r.sw.cacheHits} sends ${r.sw.sends} p50 ${r.sw.latP50}ms p95 ${r.sw.latP95}ms` : 'n/a'}  script ${r.scriptMs}ms  heap ${r.heapMB}MB  offscreen ${r.offscreen ? `${r.offscreen.jsHeapMB}+${r.offscreen.backingMB}MB` : 'none'}  states ${JSON.stringify(r.states)}  quiet ${JSON.stringify(r.quiet)}`);
+        console.log(`[r${round} ${label.padEnd(4)} ${p.id.padEnd(12)}] init→db ${String(r.initToDb).padStart(6)}ms  firstScan ${String(r.firstScanMs).padStart(7)}ms  firstBlur ${String(r.firstBlurMs).padStart(7)}ms  blurs ${String(r.blurs).padStart(2)}  classify ${String(r.classifyRequests).padStart(3)}  verdicts ${String(r.verdicts).padStart(3)} (first ${r.firstVerdictMs}ms, last ${r.lastVerdictMs}ms)  sw ${r.sw ? `req ${r.sw.requests} hit ${r.sw.cacheHits} sends ${r.sw.sends} p50 ${r.sw.latP50}ms p95 ${r.sw.latP95}ms` : 'n/a'}  script ${r.scriptMs}ms  heap ${r.heapMB}MB  offscreen ${r.offscreen ? `${r.offscreen.jsHeapMB}+${r.offscreen.backingMB}MB` : 'none'}  states ${JSON.stringify(r.states)}`);
       }
     }
   } finally {
@@ -465,7 +368,7 @@ if (WAKES > 0 && !LIVE) {
     executablePath: CHROME, headless: false,
     targetFilter: (target) => target.type() !== 'service_worker',
     args: [
-      `--disable-extensions-except=${EXT_DIR}`, `--load-extension=${EXT_DIR}`, '--no-first-run', '--window-size=1200,900',
+      `--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run', '--window-size=1200,900',
       '--host-resolver-rules=MAP dogblog.test 127.0.0.1, MAP otherblog.test 127.0.0.1'
     ]
   });
@@ -492,5 +395,4 @@ if (WAKES > 0 && !LIVE) {
 }
 server.close();
 
-if (EXT_DIR !== ROOT) fs.rmSync(EXT_DIR, { recursive: true, force: true });
-if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify({ skipTitledQuiet: SKIP_ARG, results, wakes: wakeResult }, null, 2));
+if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify({ results, wakes: wakeResult }, null, 2));
