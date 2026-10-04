@@ -7,6 +7,9 @@
 <body>
   <!-- Offscreen document: hosts the on-device CLIP image classifier.
        Created lazily by the background service worker, torn down when idle. -->
+  <!-- Classic script first: defines ScaredyCatGuards (isFetchableImageUrl),
+       the same file the service worker loads, for the module below. -->
+  <script src="../background/guards.js"></script>
   <script type="module" src="classifier.js"></script>
 </body>
 </html>
