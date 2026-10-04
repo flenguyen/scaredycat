@@ -10,6 +10,10 @@
  * the worker reads (see synopses.js). The two fetches are independent: one
  * failing never blocks the other.
  *
+ * Both payloads must be application/json under 2 MB, and the title list goes
+ * through db-version.js sanitizeDatabase (typed entries, bad ones dropped,
+ * version sanity) before it is stored.
+ *
  * All failures are silent: a dead host, offline user, or malformed payload just
  * leaves the last good cache (or the bundled file) in place — detection never
  * breaks. Loaded into the service worker via importScripts.
@@ -38,7 +42,11 @@ const ScaredyCatDBUpdater = (function () {
   const SYNOPSES_ETAG_KEY = 'synopsesEtag';
   const SYNOPSES_FETCHED_AT_KEY = 'synopsesFetchedAt';
 
-  const { isValidDatabase, compareDbVersion } = ScaredyCatDBVersion;
+  const { sanitizeDatabase, compareDbVersion, maxAllowedMajor, readCappedText, isJsonResponse } = ScaredyCatDBVersion;
+  // The verdict cache (IndexedDB) is trimmed from this alarm, at most once a
+  // day, instead of on every worker start.
+  const PRUNED_AT_KEY = 'verdictsPrunedAt';
+  const PRUNE_EVERY_MS = 24 * 60 * 60 * 1000;
 
   async function ensureAlarm() {
     try {
@@ -55,7 +63,18 @@ const ScaredyCatDBUpdater = (function () {
   }
 
   async function refresh() {
-    await Promise.all([refreshDatabase(), refreshSynopses()]);
+    await Promise.all([refreshDatabase(), refreshSynopses(), pruneVerdictsDaily()]);
+  }
+
+  async function pruneVerdictsDaily() {
+    try {
+      const { [PRUNED_AT_KEY]: at } = await chrome.storage.local.get(PRUNED_AT_KEY);
+      if (at && Date.now() - at < PRUNE_EVERY_MS) return;
+      await ScaredyCatVerdictCache.prune();
+      await chrome.storage.local.set({ [PRUNED_AT_KEY]: Date.now() });
+    } catch (e) {
+      // Best effort; the next alarm tries again.
+    }
   }
 
   async function refreshDatabase() {
@@ -66,21 +85,28 @@ const ScaredyCatDBUpdater = (function () {
 
       const res = await fetch(REMOTE_URL, { headers, cache: 'no-cache', credentials: 'omit' });
       if (res.status === 304) return;        // unchanged — cheap path
-      if (!res.ok) return;
+      if (!res.ok || !isJsonResponse(res)) return;
 
-      const text = await res.text();
+      // Size cap before parsing: a huge body is refused unread.
+      const text = await readCappedText(res);
+      if (text === null) return;
       let db;
       try {
         db = JSON.parse(text);
       } catch (e) {
         return; // malformed JSON — never poison the cache
       }
-      if (!isValidDatabase(db)) return;
+      // Strict per-entry validation; a version more than one major ahead of
+      // the bundled list is refused (it could never be replaced again).
+      const maxMajor = await maxAllowedMajor();
+      db = sanitizeDatabase(db, { maxMajor });
+      if (!db) return;
 
       // Never replace a newer stored copy (e.g. a fresh release's bundled DB)
       // with an older remote one.
       const { [CACHE_KEY]: stored } = await chrome.storage.local.get(CACHE_KEY);
-      if (isValidDatabase(stored) && compareDbVersion(db, stored) < 0) return;
+      const storedClean = sanitizeDatabase(stored, { maxMajor });
+      if (storedClean && compareDbVersion(db, storedClean) < 0) return;
 
       await chrome.storage.local.set({
         [CACHE_KEY]: db,
@@ -109,11 +135,13 @@ const ScaredyCatDBUpdater = (function () {
         await chrome.storage.local.set({ [SYNOPSES_FETCHED_AT_KEY]: Date.now() });
         return;
       }
-      if (!res.ok) return; // 404 (not deployed) / 5xx — keep what's stored
+      if (!res.ok || !isJsonResponse(res)) return; // 404 (not deployed) / 5xx — keep what's stored
 
+      const text = await readCappedText(res);
+      if (text === null) return; // over the size cap
       let payload;
       try {
-        payload = ScaredyCatSynopses.sanitizePayload(JSON.parse(await res.text()));
+        payload = ScaredyCatSynopses.sanitizePayload(JSON.parse(text));
       } catch (e) {
         return; // malformed JSON
       }
