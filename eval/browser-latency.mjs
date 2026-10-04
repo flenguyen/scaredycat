@@ -41,6 +41,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { isolatedWorld } from './browser-smoke-lib.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHROME = process.env.SC_CHROME_BIN;
@@ -204,16 +205,25 @@ const PAGES = LIVE ? [
 const pct = (arr, p) => { if (!arr.length) return null; const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
 const median = (arr) => pct(arr.filter(v => v !== null && v !== undefined), 0.5);
 
-async function readPerf(page) {
-  return page.evaluate(() => {
-    let perf = {};
-    try { perf = JSON.parse(document.documentElement.dataset.scPerf || '{}'); } catch (e) {}
-    const states = {};
-    document.querySelectorAll('[data-scaredycat-processed]').forEach(el => {
-      const s = el.getAttribute('data-scaredycat-processed'); states[s] = (states[s] || 0) + 1;
-    });
-    return { perf, states, overlays: document.querySelectorAll('.scaredycat-overlay').length };
+// Perf marks are mirrored to <html data-sc-perf> (main world) once the
+// scDebugPerf flag is on. Verdicts live in the content script's isolated
+// world (ScaredyCatState), so they are read there.
+async function readPerf(page, world) {
+  const perf = await page.evaluate(() => {
+    try { return JSON.parse(document.documentElement.dataset.scPerf || '{}'); } catch (e) { return {}; }
   });
+  let states = {}, overlays = 0;
+  try {
+    ({ states, overlays } = await world.evaluate(() => {
+      const states = {};
+      document.querySelectorAll('img, video, iframe').forEach(el => {
+        const s = ScaredyCatState.get(el);
+        if (s) states[s] = (states[s] || 0) + 1;
+      });
+      return { states, overlays: ScaredyCatBlocker.getBlockedCount() };
+    }));
+  } catch (e) { /* content script not injected yet */ }
+  return { perf, states, overlays };
 }
 
 async function getSwWorker(browser) {
@@ -269,6 +279,7 @@ async function measure(browser, pageDef, label) {
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1200, height: 900 });
+  const world = await isolatedWorld(page);
   const t0 = Date.now();
   await page.goto(pageDef.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
   // Poll until nothing is pending or the settle window closes.
@@ -276,12 +287,12 @@ async function measure(browser, pageDef, label) {
   const deadline = t0 + SETTLE_MS;
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 500));
-    snap = await readPerf(page);
+    snap = await readPerf(page, world);
     const pending = snap.states.pending || 0;
     const anyProcessed = Object.keys(snap.states).length > 0;
     if (anyProcessed && pending === 0 && Date.now() - t0 > 3000) break;
   }
-  snap = await readPerf(page);
+  snap = await readPerf(page, world);
   const metrics = await page.metrics();
   let swStats = null;
   try { sw = sw || await getSwWorker(browser); swStats = await sw.evaluate(() => { const s = self.__scStats; return s ? { classifyRequests: s.classifyRequests, cacheHits: s.cacheHits, negativeHits: s.negativeHits, offscreenSends: s.offscreenSends, throttled: s.throttled || 0, lat: s.verdictLatencies } : null; }); } catch (e) {}

@@ -243,7 +243,8 @@ async function seedBundledDatabase() {
  * GET_DB: the stored list if it validates, else the bundled one. Content
  * scripts ask only when their own copy is missing or fails to compile.
  */
-async function getDatabaseForContent() {
+async function getDatabaseForContent({ bundled = false } = {}) {
+  if (bundled) return ScaredyCatDBVersion.getBundledDatabase();
   try {
     const maxMajor = await ScaredyCatDBVersion.maxAllowedMajor();
     const { [DB_CACHE_KEY]: stored } = await chrome.storage.local.get(DB_CACHE_KEY);
@@ -432,7 +433,7 @@ async function handleMessage(message, sender) {
     return { success: true, totalBlockedAllTime: stats.totalBlockedAllTime || 0 };
   }
   if (message.type === 'GET_DB') {
-    const db = await getDatabaseForContent();
+    const db = await getDatabaseForContent({ bundled: message.bundled === true });
     return db ? { success: true, db } : { success: false };
   }
   if (message.type === 'GET_UI_CSS') {

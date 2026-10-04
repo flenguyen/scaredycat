@@ -187,7 +187,7 @@ const ScaredyCatGuards = (function () {
     REMOVE_FROM_BLOCKLIST: { check: item },
     TOGGLE_SITE: { check: hostname, pageOnly: true },
     GET_SITE_STATUS: { check: hostname, pageOnly: true },
-    GET_DB: { check: any },
+    GET_DB: { check: (m) => m.bundled == null || typeof m.bundled === 'boolean' },
     GET_UI_CSS: { check: any },
     GET_FONT: { check: (m) => FONT_FILES.includes(m.file) }
   };

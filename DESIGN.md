@@ -51,7 +51,7 @@ Three families, three jobs, no exceptions.
 
 Kickers (section eyebrows like SENSITIVITY, HIDDEN ITEMS) are Inter 700, 0.72rem, 0.18em tracking, uppercase, muted `#8D83A6`.
 
-**Fonts ship inside the extension** (`fonts/*.woff2`, latin subsets, ~272KB total — listed in `web_accessible_resources`). The popup declares them in `popup.css`; in-page overlays inject `@font-face` lazily via `ensureBrandFonts()` in [content/blocker.js](content/blocker.js), so pages that block nothing pay nothing. Every `font-family` carries system fallbacks (Georgia for Fraunces, the system sans for Inter/Bricolage) for hosts whose CSP blocks extension font fetches.
+**Fonts ship inside the extension** (`fonts/*.woff2`, latin subsets, ~272KB total). They are not web-accessible, so a page can't probe for them. The popup declares them in `popup.css`. In-page cards get them lazily through `ensureFonts()` in [content/ui-kit.js](content/ui-kit.js): the worker sends the bytes (`GET_FONT`) and the content script registers them as `FontFace` objects on the first card, so pages that block nothing pay nothing. Every `font-family` carries system fallbacks (Georgia for Fraunces, the system sans for Inter/Bricolage) in case a font fails to load.
 
 ---
 
@@ -89,8 +89,8 @@ Kickers (section eyebrows like SENSITIVITY, HIDDEN ITEMS) are Inter 700, 0.72rem
 **Motion** — 150–300ms, simple `ease`/`ease-out`, opacity and small translates/scales only. Hover lift is −1px. Nothing bounces, spins, or attention-seeks — this product lowers heart rates. `prefers-reduced-motion` is honored on every surface, no exceptions; `prefers-contrast: high` gets real borders.
 
 Two choreographies are load-bearing and must not be "improved":
-- **Blocking is instant and leak-free.** The blur, the dark scrim and the wrapper all land on the first frame the element is blocked; only the cream card animates in (`opacity 0→1`, `scale(.96)→1`, 220ms). Never transition the blur *in* — a partially sharp frame is the one thing this product exists to prevent.
-- **Revealing is one motion.** Blur clears, element opacity rises and the scrim fades together over 250ms ease-out (`.scaredycat-revealing` in [styles/blur-overlay.css](styles/blur-overlay.css)). Card state swaps (blocked → confirm → synopsis) are a 150ms fade-in of the new card.
+- **Blocking is instant and leak-free.** The blocked element drops to opacity 0, and the dark scrim and the wrapper land on the first frame it is blocked; only the cream card animates in (`opacity 0→1`, `scale(.96)→1`, 220ms). Never transition the hiding *in* — a partially visible frame is the one thing this product exists to prevent.
+- **Revealing is one motion.** Element opacity rises and the scrim fades together over 250ms ease-out (`.scaredycat-revealing` in [styles/blur-overlay.css](styles/blur-overlay.css)). Card state swaps (blocked → confirm → synopsis) are a 150ms fade-in of the new card.
 
 The popup opens already settled: `html.sc-preload` holds the body invisible and all transitions off until stored settings are applied, then fades in over 120ms. Nothing may move or animate after first paint.
 

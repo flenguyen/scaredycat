@@ -1,6 +1,6 @@
 {
   "name": "scaredycat",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "private": true,
   "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
   "type": "module",
@@ -16,6 +16,7 @@
     "smoke": "node eval/browser-smoke.mjs && node eval/browser-smoke2.mjs && node eval/browser-smoke-overlay.mjs && node eval/browser-smoke-sibling-title.mjs",
     "smoke:overlay": "node eval/browser-smoke-overlay.mjs",
     "smoke:remote-db": "node eval/browser-smoke-remote-db.mjs",
+    "smoke:hostile": "node eval/browser-smoke-hostile.mjs",
     "pack": "node scripts/pack.mjs",
     "pack:check": "node scripts/pack.mjs --check",
     "release:check": "node scripts/release-check.mjs",

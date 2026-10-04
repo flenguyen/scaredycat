@@ -72,6 +72,9 @@ const ScaredyCatDetector = (function () {
     loadPromise = (async () => {
       if (compileDatabase(await readStoredDatabase(preloaded))) return true;
       if (compileDatabase(await requestWorkerDatabase())) return true;
+      // The worker vouched for a stored list this build still can't compile:
+      // ask for the copy shipped with the extension.
+      if (compileDatabase(await requestWorkerDatabase({ bundled: true }))) return true;
       console.error('Scaredy Cat: Failed to load horror database');
       compileDatabase({ version: '0', titles: [], keywords: getDefaultKeywords() }, { allowEmpty: true });
       // The page signal is computed by the first scan (content.js calls
@@ -97,9 +100,9 @@ const ScaredyCatDetector = (function () {
     }
   }
 
-  async function requestWorkerDatabase() {
+  async function requestWorkerDatabase({ bundled = false } = {}) {
     try {
-      const res = await chrome.runtime.sendMessage({ type: 'GET_DB' });
+      const res = await chrome.runtime.sendMessage({ type: 'GET_DB', bundled });
       return res && res.success ? res.db : null;
     } catch (error) {
       return null; // worker unreachable / context invalidated

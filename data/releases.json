@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "1.6.0",
+  "current": "1.6.1",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -19,12 +19,81 @@
     {
       "what": "Reports you choose to send",
       "where": "Our report database",
-      "sends": "The page and picture addresses, what we matched, your settings and your note. Never the picture itself or your browsing history. The full list is in the consent message you see before your first report.",
+      "sends": "The page and picture addresses, cut off before any ? or #, plus what we matched, your settings and your note. Never the picture itself or your browsing history. The full list is in the consent message you see before your first report.",
       "since": "1.3.0",
       "optIn": true
     }
   ],
   "releases": [
+    {
+      "id": "1.6.1",
+      "surface": "extension",
+      "version": "1.6.1",
+      "level": 3,
+      "date": "2026-10-04",
+      "title": "Lighter, and harder for pages to fool",
+      "aside": "The cat had a security review and only hissed twice.",
+      "summary": "Scaredy Cat uses less memory, and web pages can no longer press its buttons or tell that it is installed.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "The picture check now starts only when a page has a picture it needs to look at, and it shuts down after 5 quiet minutes instead of 30."
+        },
+        {
+          "type": "improved",
+          "text": "Each picture is shrunk once before it is checked. On poster-heavy pages this cuts the picture check's peak memory from about 250 MB to about 25 MB."
+        },
+        {
+          "type": "improved",
+          "text": "Pages without large pictures, such as your inbox, no longer load the horror title list at all."
+        },
+        {
+          "type": "improved",
+          "text": "The toolbar badge now counts the pictures that are hidden right now, so it goes down when you unblur one."
+        },
+        {
+          "type": "fixed",
+          "text": "Opening a movie site started the picture check even when Scaredy Cat was turned off for that site. It now stays off."
+        },
+        {
+          "type": "fixed",
+          "text": "A page could press the blur card's buttons with a script. That let it reveal a hidden picture, turn on report sharing, or remove a picture you had blocked. The buttons now respond only to your own clicks and keys, and the card is sealed off from the page."
+        },
+        {
+          "type": "fixed",
+          "text": "Allowing a title with a short name, such as Us, also let through pictures whose address happened to contain those letters. Allowing now matches the exact picture or title."
+        },
+        {
+          "type": "fixed",
+          "text": "On IMDb and Rotten Tomatoes, poster boxes that appeared after the page first loaded could stay blank. They now show as soon as their picture is checked."
+        },
+        {
+          "type": "fixed",
+          "text": "A damaged title list from our website could have switched protection off. Each entry is now checked, and Scaredy Cat falls back to the list it shipped with."
+        },
+        {
+          "type": "privacy",
+          "text": "Web pages can no longer detect Scaredy Cat by looking for its files and fonts, or by reading the markers it used to leave on page elements."
+        },
+        {
+          "type": "privacy",
+          "text": "Pictures you choose to show are now remembered on this computer only. They used to sync to your Google account, and the list could grow until settings stopped saving."
+        },
+        {
+          "type": "privacy",
+          "text": "The picture check refuses addresses on your own computer or home network, so a page can't use it to reach your router or other devices."
+        },
+        {
+          "type": "privacy",
+          "text": "Reports now trim picture addresses the same way as page addresses, stopping before any ? or #. Pictures embedded directly in a page are left out."
+        },
+        {
+          "type": "privacy",
+          "text": "Scaredy Cat asks Chrome for two fewer permissions."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "1.6.0",
       "surface": "extension",

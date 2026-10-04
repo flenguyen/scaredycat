@@ -205,7 +205,7 @@ window.ScaredyCatFeedbackUI = (function () {
    */
   async function submit(partial) {
     if (!(await ensureConsent())) {
-      toast('No worries — nothing was sent 🐾');
+      toast('No worries, nothing was sent 🐾');
       return false;
     }
     const report = { ...partial, pageUrl: location.href };
@@ -213,25 +213,25 @@ window.ScaredyCatFeedbackUI = (function () {
     try {
       res = await chrome.runtime.sendMessage({ type: 'SUBMIT_FEEDBACK', report });
     } catch (e) {
-      toast("Couldn't send right now — try again later");
+      toast("Couldn't send right now. Try again later.");
       return false;
     }
 
     if (res?.deduped) {
-      toast('Already noted — thanks 🙀');
+      toast('Already noted, thanks 🙀');
       return true;
     }
     if (res?.success) {
       toast(res.queued
-        ? "Saved — the cat will send it when you're back online 🙀"
+        ? "Saved. The cat will send it when you're back online 🙀"
         : "Noted. The cat's taking notes 🙀");
       return true;
     }
     if (res?.rateLimited) {
-      toast('Whoa, easy — give it a moment and try again');
+      toast('Whoa, easy. Give it a moment and try again.');
       return false;
     }
-    toast("Couldn't send right now — try again later");
+    toast("Couldn't send right now. Try again later.");
     return false;
   }
 
