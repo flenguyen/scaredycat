@@ -5,8 +5,10 @@
  *   - init -> db-ready (content-script cold start)
  *   - time to first blur (from navigation start)
  *   - CLASSIFY_IMAGE requests issued, ML verdicts, p50/p95 verdict latency
- *   - service-worker counters (requests, cache hits, offscreen sends)
- *   - page.metrics() ScriptDuration as a per-page CPU proxy
+ *   - service-worker counters (requests, cache hits, offscreen sends, throttled)
+ *   - page.metrics() ScriptDuration as a per-page CPU proxy, JSHeapUsedSize
+ *   - whether the offscreen document exists after the page, and its memory
+ *     (JS heap + ArrayBuffer backing stores)
  *
  * Fixtures are served locally but under real media hostnames via
  * --host-resolver-rules, so early-init / isMediaSite paths trigger exactly
@@ -14,6 +16,17 @@
  * (model/cache may be cold), second = warm.
  *
  *   SC_CHROME_BIN=<chrome-for-testing> node eval/browser-latency.mjs [--rounds N] [--live] [--json out.json] [--db merged.json]
+ *     [--wakes N] [--wake-gap 35]
+ *
+ * Content-script perf marks (data-sc-perf) are off by default; the harness
+ * turns them on by setting chrome.storage.local.scDebugPerf = true through
+ * the worker before the first page.
+ *
+ * --wakes N runs a separate pass that counts service-worker starts while a
+ * tab navigates N times between unrelated pages (no content-script message
+ * involved), N * --wake-gap seconds apart. The gap must exceed the worker's
+ * ~30 s idle timeout, or one start covers several navigations. The worker
+ * is not attached to in this pass (DevTools would keep it alive).
  *
  * --db <path> installs that database (e.g. the merged curated + auto artifact
  * from scared-cat-web's `titles:refresh -- --out`) into chrome.storage.local
@@ -40,6 +53,8 @@ const LIVE = args.includes('--live');
 const JSON_OUT = argVal('--json', null);
 const SETTLE_MS = parseInt(argVal('--settle', '12000'), 10);
 const DB_PATH = argVal('--db', null);
+const WAKES = parseInt(argVal('--wakes', '0'), 10);
+const WAKE_GAP_S = parseFloat(argVal('--wake-gap', '35'));
 const DB_OVERRIDE = DB_PATH ? JSON.parse(fs.readFileSync(path.resolve(DB_PATH), 'utf8')) : null;
 if (DB_OVERRIDE && (!Array.isArray(DB_OVERRIDE.titles) || typeof DB_OVERRIDE.version !== 'string')) {
   throw new Error(`--db ${DB_PATH}: not a horror database (needs titles[] and version)`);
@@ -228,6 +243,26 @@ async function installDbOverride(browser) {
   if (count !== DB_OVERRIDE.titles.length) throw new Error(`--db install failed: stored ${count} titles`);
 }
 
+/** Turn on content-script perf marks (off by default) before any page loads. */
+async function enableDebugPerf(browser) {
+  const sw = await getSwWorker(browser);
+  await sw.evaluate(() => chrome.storage.local.set({ scDebugPerf: true }));
+}
+
+/** Offscreen document memory, or null when there is no offscreen document. */
+async function offscreenMemory(browser) {
+  const target = browser.targets().find(t => t.url().includes('offscreen/offscreen.html'));
+  if (!target) return null;
+  try {
+    const cdp = await target.createCDPSession();
+    const u = await cdp.send('Runtime.getHeapUsage');
+    await cdp.detach();
+    return { jsHeapMB: +(u.usedSize / 1e6).toFixed(1), backingMB: +((u.backingStorageSize || 0) / 1e6).toFixed(1) };
+  } catch (e) {
+    return { error: String(e.message || e) };
+  }
+}
+
 async function measure(browser, pageDef, label) {
   let sw = null;
   try { sw = await getSwWorker(browser); await sw.evaluate(() => self.__scStats?.reset?.()); } catch (e) { /* SW asleep; counters start at 0 anyway */ }
@@ -249,7 +284,8 @@ async function measure(browser, pageDef, label) {
   snap = await readPerf(page);
   const metrics = await page.metrics();
   let swStats = null;
-  try { sw = sw || await getSwWorker(browser); swStats = await sw.evaluate(() => { const s = self.__scStats; return s ? { classifyRequests: s.classifyRequests, cacheHits: s.cacheHits, negativeHits: s.negativeHits, offscreenSends: s.offscreenSends, lat: s.verdictLatencies } : null; }); } catch (e) {}
+  try { sw = sw || await getSwWorker(browser); swStats = await sw.evaluate(() => { const s = self.__scStats; return s ? { classifyRequests: s.classifyRequests, cacheHits: s.cacheHits, negativeHits: s.negativeHits, offscreenSends: s.offscreenSends, throttled: s.throttled || 0, lat: s.verdictLatencies } : null; }); } catch (e) {}
+  const offscreen = await offscreenMemory(browser);
   await page.close();
 
   const m = snap.perf.marks || {}, c = snap.perf.counts || {};
@@ -270,9 +306,11 @@ async function measure(browser, pageDef, label) {
     lastVerdictMs: verdictTimes.length ? Math.max(...verdictTimes) : null,
     firstRequestMs: requestTimes.length ? Math.min(...requestTimes) : null,
     states: snap.states,
-    sw: swStats ? { requests: swStats.classifyRequests, cacheHits: swStats.cacheHits, negative: swStats.negativeHits, sends: swStats.offscreenSends, latP50: pct(swStats.lat, 0.5), latP95: pct(swStats.lat, 0.95) } : null,
+    sw: swStats ? { requests: swStats.classifyRequests, cacheHits: swStats.cacheHits, negative: swStats.negativeHits, sends: swStats.offscreenSends, throttled: swStats.throttled, latP50: pct(swStats.lat, 0.5), latP95: pct(swStats.lat, 0.95) } : null,
+    offscreen,
     scriptMs: +(metrics.ScriptDuration * 1000).toFixed(0),
-    taskMs: +(metrics.TaskDuration * 1000).toFixed(0)
+    taskMs: +(metrics.TaskDuration * 1000).toFixed(0),
+    heapMB: +(metrics.JSHeapUsedSize / 1e6).toFixed(1)
   };
 }
 
@@ -286,20 +324,20 @@ for (let round = 0; round < ROUNDS; round++) {
     ]
   });
   try {
+    await enableDebugPerf(browser);
     if (DB_OVERRIDE) await installDbOverride(browser);
     for (const label of ['cold', 'warm']) {
       for (const p of PAGES) {
         const r = await measure(browser, p, label);
         r.round = round;
         results.push(r);
-        console.log(`[r${round} ${label.padEnd(4)} ${p.id.padEnd(12)}] init→db ${String(r.initToDb).padStart(6)}ms  firstScan ${String(r.firstScanMs).padStart(7)}ms  firstBlur ${String(r.firstBlurMs).padStart(7)}ms  blurs ${String(r.blurs).padStart(2)}  classify ${String(r.classifyRequests).padStart(3)}  verdicts ${String(r.verdicts).padStart(3)} (first ${r.firstVerdictMs}ms, last ${r.lastVerdictMs}ms)  sw ${r.sw ? `req ${r.sw.requests} hit ${r.sw.cacheHits} sends ${r.sw.sends} p50 ${r.sw.latP50}ms p95 ${r.sw.latP95}ms` : 'n/a'}  script ${r.scriptMs}ms  states ${JSON.stringify(r.states)}`);
+        console.log(`[r${round} ${label.padEnd(4)} ${p.id.padEnd(12)}] init→db ${String(r.initToDb).padStart(6)}ms  firstScan ${String(r.firstScanMs).padStart(7)}ms  firstBlur ${String(r.firstBlurMs).padStart(7)}ms  blurs ${String(r.blurs).padStart(2)}  classify ${String(r.classifyRequests).padStart(3)}  verdicts ${String(r.verdicts).padStart(3)} (first ${r.firstVerdictMs}ms, last ${r.lastVerdictMs}ms)  sw ${r.sw ? `req ${r.sw.requests} hit ${r.sw.cacheHits} sends ${r.sw.sends} p50 ${r.sw.latP50}ms p95 ${r.sw.latP95}ms` : 'n/a'}  script ${r.scriptMs}ms  heap ${r.heapMB}MB  offscreen ${r.offscreen ? `${r.offscreen.jsHeapMB}+${r.offscreen.backingMB}MB` : 'none'}  states ${JSON.stringify(r.states)}`);
       }
     }
   } finally {
     await browser.close();
   }
 }
-server.close();
 
 // ---- summary (median across rounds) ------------------------------------------
 console.log('\n== medians across rounds ==');
@@ -310,4 +348,40 @@ for (const label of ['cold', 'warm']) {
     console.log(`${label.padEnd(4)} ${p.id.padEnd(12)} init→db ${med('initToDb')}ms  firstBlur ${med('firstBlurMs')}ms  classify ${med('classifyRequests')}  verdicts ${med('verdicts')}  firstVerdict ${med('firstVerdictMs')}ms  lastVerdict ${med('lastVerdictMs')}ms  script ${med('scriptMs')}ms`);
   }
 }
-if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify(results, null, 2));
+
+// ---- service-worker wakes over unrelated navigations -----------------------------
+let wakeResult = null;
+if (WAKES > 0 && !LIVE) {
+  // Don't let puppeteer attach to the worker: an attached worker never idles.
+  const browser = await puppeteer.launch({
+    executablePath: CHROME, headless: false,
+    targetFilter: (target) => target.type() !== 'service_worker',
+    args: [
+      `--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run', '--window-size=1200,900',
+      '--host-resolver-rules=MAP dogblog.test 127.0.0.1, MAP otherblog.test 127.0.0.1'
+    ]
+  });
+  try {
+    const cdp = await browser.target().createCDPSession();
+    let starts = 0;
+    const isOurWorker = (info) => info.type === 'service_worker' && info.url.endsWith('/background.js');
+    cdp.on('Target.targetCreated', ({ targetInfo }) => { if (isOurWorker(targetInfo)) starts++; });
+    await cdp.send('Target.setDiscoverTargets', { discover: true });
+    const page = await browser.newPage();
+    // Let the install-time work finish and the worker go idle first.
+    await new Promise(r => setTimeout(r, WAKE_GAP_S * 1000));
+    const before = starts;
+    for (let i = 0; i < WAKES; i++) {
+      const host = i % 2 ? 'otherblog.test' : 'dogblog.test';
+      await page.goto(`http://${host}:${PORT}/post-${i}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await new Promise(r => setTimeout(r, WAKE_GAP_S * 1000));
+    }
+    wakeResult = { navigations: WAKES, gapS: WAKE_GAP_S, workerStarts: starts - before };
+    console.log(`\n== service-worker wakes ==\n${wakeResult.workerStarts} worker start(s) over ${WAKES} unrelated navigations, ${WAKE_GAP_S}s apart`);
+  } finally {
+    await browser.close();
+  }
+}
+server.close();
+
+if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify({ results, wakes: wakeResult }, null, 2));
