@@ -46,7 +46,7 @@ const ScaredyCatTrust = (function () {
   // of the extension; it never edits this file.
   const TRUSTED_KEYS = Object.freeze({
     // Live signing key (TITLES_SIGNING_KID=1 on scaredycat.app).
-    '1': 'dwsyXVr4iGC8xsAyWhwu2NTQrkJCo/39gtKzQnrH6jA=',
+    '1': 'vcv3oVeFdQhHyi9q1P5Im+/JCkQ3s2mMysxd2xfQUTU=',
     // Backup for rotation. Its private half is kept offline, not on Vercel.
     '2': 'hGlm3k3binibOU+y3bATcc0D/0LVBEd0xxbVU0rGD8A='
   });
