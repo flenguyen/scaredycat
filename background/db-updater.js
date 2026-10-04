@@ -14,10 +14,12 @@
 const ScaredyCatDBUpdater = (function () {
   'use strict';
 
-  // Served from the extension repo itself. The runtime fetch is independent of
-  // the Web Store build, so list changes reach users without a new release.
-  const REMOTE_URL =
-    'https://raw.githubusercontent.com/flenguyen/scaredycat/main/data/horror-database.json';
+  // Served by the website (scared-cat-web): the curated list from this repo
+  // merged with daily TMDB-generated `auto: true` entries. The website proxies
+  // the stored artifact with a stable ETag and answers If-None-Match with 304.
+  // The runtime fetch is independent of the Web Store build, so list changes
+  // reach users without a new release.
+  const REMOTE_URL = 'https://www.scaredycat.app/api/titles/horror-database.json';
   const ALARM_NAME = 'refresh-horror-db';
   const PERIOD_MINUTES = 1440; // daily
   const CACHE_KEY = 'horrorDatabase';

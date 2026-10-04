@@ -35,6 +35,16 @@ const ScaredyCatScoring = (function () {
   // like, which is exactly what the image veto exists for. See
   // eval/lint-database.mjs and run-eval --definite-report.
   const FAST_DEFINITE_MIN_VARIANT = 11;
+  // Auto titles (`auto: true`, appended to the served database by the daily
+  // TMDB pipeline — see tools/update-titles/README.md) are unreviewed, so
+  // their title score is capped here: below DEFINITE_TITLE_SCORE (85), so an
+  // auto match can never blur without image evidence, and below ml-bridge's
+  // UNVERIFIED_BLOCK_SCORE (80), so the title alone can never block text-only.
+  const AUTO_MAX_SCORE = 79;
+  // An auto match whose variant is at least this long AND multi-word is
+  // distinctive enough that a non-vetoing image suffices; shorter/single-word
+  // auto matches ("Together", "Obsession") need the image to positively confirm.
+  const AUTO_DISTINCTIVE_MIN_VARIANT = FAST_DEFINITE_MIN_VARIANT;
   // Near-miss window below the block threshold that still gets an ML look.
   const NEAR_MISS_WINDOW = 20;
 
@@ -213,8 +223,22 @@ const ScaredyCatScoring = (function () {
     const fuzzyVariants = [];        // [{ variant, title }]
     const fuzzyTokenIndex = new Map(); // token -> [fuzzyVariants index]
     const definiteVariants = new Set(); // variants that blur without ML on an exact match
+    // Auto (pipeline-generated) variants live OUTSIDE the alternation regexes:
+    // the single alternation hits a V8 performance cliff around 3,500–4,000
+    // alternatives (curated already uses ~1,100), while a word-bounded n-gram
+    // Map lookup is size-independent and more precise (no substring hits).
+    const autoVariants = new Map(); // variant -> { title }
+    const autoEntries = [];
+    let autoMaxTokens = 0;
+    let autoMaxLength = 0;
 
     for (const entry of titles) {
+      if (entry.auto === true) {
+        // Deferred until every curated variant is known, so curated always
+        // wins regardless of where the auto block sits in `titles`.
+        autoEntries.push(entry);
+        continue;
+      }
       const titleNormalized = normalizeText(entry.title);
       const titleWithNumbers = normalizeNumbers(titleNormalized);
       // Short main titles ("It", "Us", "Ma") only match via explicit variations.
@@ -255,6 +279,26 @@ const ScaredyCatScoring = (function () {
             list.push(idx);
           }
         }
+      }
+    }
+
+    // Auto entries: normalized title + number form + explicit variations. No
+    // no-space collapse (URL slugs match curated titles only), same <=4-char
+    // main-title skip. Never regex-bucketed, fuzzy-indexed or definite.
+    for (const entry of autoEntries) {
+      const titleNormalized = normalizeText(entry.title);
+      const variants = [
+        ...(titleNormalized.length <= 4 ? [] : [titleNormalized, normalizeNumbers(titleNormalized)]),
+        ...(entry.variations || []).map(v => normalizeText(v))
+      ];
+      for (const variant of variants) {
+        if (!variant || autoVariants.has(variant) ||
+            shortVariants.has(variant) || longVariants.has(variant)) continue;
+        autoVariants.set(variant, { title: entry.title });
+        let tokens = 1;
+        for (let i = 0; i < variant.length; i++) if (variant.charCodeAt(i) === 32) tokens++;
+        if (tokens > autoMaxTokens) autoMaxTokens = tokens;
+        if (variant.length > autoMaxLength) autoMaxLength = variant.length;
       }
     }
 
@@ -316,6 +360,7 @@ const ScaredyCatScoring = (function () {
       longRegex, longVariants,
       fuzzyVariants, fuzzyTokenIndex,
       definiteVariants,
+      autoVariants, autoMaxTokens, autoMaxLength,
       safeRegex,
       keywordRegex, keywordWeights, keywordPrefixes
     };
@@ -363,6 +408,46 @@ const ScaredyCatScoring = (function () {
       }
       // Lookahead matches are zero-width: advance manually.
       regex.lastIndex = m.index + 1;
+    }
+    return best;
+  }
+
+  /**
+   * Auto-title pass: word-bounded n-gram lookup over already-normalized text
+   * (single-space separated, trimmed). For each start token, grows the n-gram
+   * one token at a time up to the longest auto variant and probes the Map, so
+   * cost is O(tokens × autoMaxTokens) regardless of how many auto titles exist.
+   * Only matches on token boundaries — "elmstreet2" never contains "elm street".
+   * Curated matches win ties (strictly-greater replace).
+   */
+  function collectAutoMatches(text, compiled, best, safeSpans) {
+    const map = compiled.autoVariants;
+    const maxTokens = compiled.autoMaxTokens;
+    const maxLength = compiled.autoMaxLength;
+    // Nothing an auto match could score would beat what curated already found.
+    if (!map || map.size === 0 || !text || best.score >= AUTO_MAX_SCORE) return best;
+    const len = text.length;
+    let start = 0;
+    while (start < len) {
+      let end = text.indexOf(' ', start);
+      if (end === -1) end = len;
+      for (let n = 1; n <= maxTokens && end - start <= maxLength; n++) {
+        // text.slice(start, end) is the n-gram of n tokens starting at `start`.
+        const variant = text.slice(start, end);
+        const info = map.get(variant);
+        if (info !== undefined) {
+          const score = Math.min(AUTO_MAX_SCORE, variantScore(variant.length));
+          if (score > best.score && !isCoveredBySafeSpan(safeSpans, start, end)) {
+            best = { matched: true, score, title: info.title, variant, text, auto: true };
+          }
+        }
+        if (end >= len) break;
+        const next = text.indexOf(' ', end + 1);
+        end = next === -1 ? len : next;
+      }
+      const nextStart = text.indexOf(' ', start);
+      if (nextStart === -1) break;
+      start = nextStart + 1;
     }
     return best;
   }
@@ -417,6 +502,8 @@ const ScaredyCatScoring = (function () {
     if (!sameText) best = collectRegexMatches(compiled.shortRegex, normalizedWithNumbers, compiled.shortVariants, best, safeSpansNum);
     best = collectRegexMatches(compiled.longRegex, normalizedText, compiled.longVariants, best, safeSpans);
     if (!sameText) best = collectRegexMatches(compiled.longRegex, normalizedWithNumbers, compiled.longVariants, best, safeSpansNum);
+    best = collectAutoMatches(normalizedText, compiled, best, safeSpans);
+    if (!sameText) best = collectAutoMatches(normalizedWithNumbers, compiled, best, safeSpansNum);
 
     // Fuzzy pass. similarity(variant, fullText) can only exceed 0.8 when the
     // lengths are within 25% of each other, so:
@@ -447,7 +534,9 @@ const ScaredyCatScoring = (function () {
 
     if (best.matched) {
       const spans = best.text === normalizedWithNumbers ? safeSpansNum : safeSpans;
-      best.strength = (best.variant && best.variant.length < STRENGTH_CHECK_MAX_VARIANT)
+      // Auto matches always get the neighbor check: unreviewed short/common
+      // titles ("Together", "Obsession") are exactly the fragment class.
+      best.strength = (best.variant && (best.auto || best.variant.length < STRENGTH_CHECK_MAX_VARIANT))
         ? computeMatchStrength(best.text, best.variant, spans)
         : 'exact';
       // Curated fast-track: the neighbor check runs regardless of length here,
@@ -532,7 +621,7 @@ const ScaredyCatScoring = (function () {
       return {
         confidence: 0, reasons: ['No text context'], context: '',
         titleScore: 0, titleMatched: false, matchedTitle: null, keywordScore: 0,
-        titleMatchStrength: null, requiresPositiveImage: false,
+        titleMatchStrength: null, titleAuto: false, requiresPositiveImage: false,
         band: BANDS.AMBIGUOUS,
         isHorrorTextOnly: false
       };
@@ -576,6 +665,13 @@ const ScaredyCatScoring = (function () {
     const strongKeywords = keywordResult.keywords.length >= 2 ||
       keywordResult.maxWeight >= 28;
     const keywordsBlockAlone = strongKeywords && keywordResult.score >= threshold;
+    // Auto (pipeline) titles never reach DEFINITE: score <= AUTO_MAX_SCORE (79)
+    // < DEFINITE_TITLE_SCORE and they are never in definiteVariants, so
+    // fastDefinite is always false for them.
+    const autoTitle = titleMatch.matched && titleMatch.auto === true;
+    const distinctiveAuto = autoTitle && !!titleMatch.variant &&
+      titleMatch.variant.length >= AUTO_DISTINCTIVE_MIN_VARIANT &&
+      titleMatch.variant.includes(' ');
 
     let band;
     let requiresPositiveImage = false;
@@ -589,10 +685,13 @@ const ScaredyCatScoring = (function () {
       // Fragment-of-another-title matches and weak keyword evidence flip the
       // burden of proof: the image must positively confirm (>= block bar),
       // not merely fail to veto. A partial title doesn't taint the verdict
-      // when strong keyword evidence clears the threshold by itself.
+      // when strong keyword evidence clears the threshold by itself. A
+      // non-distinctive auto title is treated the same way.
       requiresPositiveImage = partialTitle
         ? !keywordsBlockAlone
-        : !titleMatch.matched && !strongKeywords;
+        : autoTitle
+          ? (!distinctiveAuto && !keywordsBlockAlone)
+          : (!titleMatch.matched && !strongKeywords);
     } else if (finalScore >= Math.max(20, threshold - NEAR_MISS_WINDOW)) {
       // Near miss: text alone wouldn't block, image evidence could.
       band = BANDS.AMBIGUOUS;
@@ -615,6 +714,8 @@ const ScaredyCatScoring = (function () {
       matchedTitle: titleMatch.matched ? titleMatch.title : null,
       keywordScore: keywordResult.score,
       titleMatchStrength: titleMatch.matched ? titleMatch.strength : null,
+      // Matched title came from the unreviewed auto (TMDB pipeline) block.
+      titleAuto: autoTitle,
       requiresPositiveImage,
       band,
       isHorrorTextOnly

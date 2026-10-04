@@ -294,7 +294,7 @@ scaredycat/
 
 ### Adding Horror Titles
 
-Edit `data/horror-database.json`:
+Edit `data/horror-database.json` (the curated list, and the source of truth):
 
 ```json
 {
@@ -303,6 +303,14 @@ Edit `data/horror-database.json`:
   "variations": ["alternate spelling", "other name"]
 }
 ```
+
+New releases don't need a hand edit: a daily pipeline on scaredycat.app appends
+TMDB horror titles to the served list as `auto: true` entries. Auto titles are
+scored below the definite bar, so they never blur without the image classifier
+weighing in (short, common titles need it to positively confirm). Curated
+entries always win over auto ones.
+Exclusions, forced inclusions and extra variations for the auto titles live in
+`tools/update-titles/overrides.json`; see `tools/update-titles/README.md`.
 
 ### Adding Keywords
 
@@ -345,9 +353,11 @@ ScaredyCat.enable()
 
 ## Privacy
 
-- **No external requests**: All detection happens locally in your browser
+- **One daily fetch of the public title list** from scaredycat.app (no identifiers, no cookies, ETag only); all detection runs locally.
 - **No data collection**: Your browsing data is never sent anywhere
 - **Local storage only**: Settings are stored in Chrome's sync storage
+
+Title data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
 
 ## License
 

@@ -205,6 +205,8 @@ const ScaredyCatDetector = (function () {
         ].join(' ');
         const opts = { threshold: getThreshold(), scanQuietElements: false };
         const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
+        // Auto (pipeline) titles are capped at 79 in scoring-core
+        // (AUTO_MAX_SCORE), so they can never set the page-level signal.
         signalNow =
           (pageResult.titleMatched && pageResult.titleScore >= 85) ||
           pageResult.keywordScore >= 30 ||
@@ -621,6 +623,8 @@ const ScaredyCatDetector = (function () {
       titleMatched: result.titleMatched,
       matchedTitle: result.matchedTitle || null,
       titleMatchStrength: result.titleMatchStrength || null,
+      // Debug only: the match came from the unreviewed auto title block.
+      titleAuto: !!result.titleAuto,
       requiresPositiveImage: !!result.requiresPositiveImage,
       titleScore: result.titleScore,
       keywordScore: result.keywordScore

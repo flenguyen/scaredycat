@@ -1,0 +1,7 @@
+{
+  "note": "Manual curation for the auto (TMDB) titles appended to the served list by scared-cat-web. Read from main by the daily refresh; see README.md in this folder. excludeTitles match after normalization, any year. extraVariations keys are \"movie:<tmdbId>\" or \"tv:<tmdbId>\".",
+  "excludeTmdbIds": { "movie": [], "tv": [] },
+  "excludeTitles": [],
+  "forceInclude": [],
+  "extraVariations": {}
+}

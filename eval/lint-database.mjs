@@ -12,6 +12,12 @@
  * 11+ characters (otherwise the flag does nothing), and the flag must not sit
  * on an entry whose title is also a safeTitle.
  *
+ * When the database carries pipeline-generated `auto: true` entries (the
+ * merged artifact served by scaredycat.app; point SC_DB_PATH at it), each must
+ * have no `definite` flag, a numeric `tmdb` id, `type` 'movie' or 'tv', and a
+ * normalized title that collides with no curated title/variation, safeTitle or
+ * keyword (curated always wins; the generator is supposed to skip those).
+ *
  * Usage: npm run lint:database (nonzero exit on violations)
  */
 
@@ -25,7 +31,10 @@ const moduleObj = { exports: {} };
 new Function('module', 'self', fs.readFileSync(path.join(ROOT, 'content/scoring-core.js'), 'utf8'))(moduleObj, undefined);
 const Scoring = moduleObj.exports;
 
-const database = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/horror-database.json'), 'utf8'));
+// SC_DB_PATH points the eval at another database (e.g. a merged artifact
+// written by scared-cat-web's `titles:refresh -- --out <path>`).
+const DB_PATH = process.env.SC_DB_PATH || path.join(ROOT, 'data/horror-database.json');
+const database = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
 const safeTitles = database.safeTitles || [];
 
 const withoutSafe = Scoring.compile({ titles: database.titles, keywords: database.keywords });
@@ -77,9 +86,33 @@ for (const entry of database.titles) {
   }
 }
 
+// ---- auto (pipeline) entries ----
+const autoEntries = database.titles.filter(t => t.auto === true);
+if (autoEntries.length) {
+  const curatedNames = new Set();
+  for (const entry of database.titles) {
+    if (entry.auto === true) continue;
+    curatedNames.add(Scoring.normalizeText(entry.title));
+    for (const v of entry.variations || []) curatedNames.add(Scoring.normalizeText(v));
+  }
+  const safeNames = new Set(safeTitles.map(s => Scoring.normalizeText(s)));
+  const keywordNames = new Set((database.keywords || []).map(k => Scoring.normalizeText(k.keyword)));
+  for (const entry of autoEntries) {
+    const label = `auto "${entry.title}" (${entry.year}, tmdb ${entry.tmdb})`;
+    const norm = Scoring.normalizeText(entry.title);
+    if ('definite' in entry) errors.push(`${label} carries a definite flag — auto titles must never fast-track`);
+    if (typeof entry.tmdb !== 'number' || !Number.isFinite(entry.tmdb)) errors.push(`${label} has a non-numeric tmdb id`);
+    if (entry.type !== 'movie' && entry.type !== 'tv') errors.push(`${label} has type ${JSON.stringify(entry.type)} (expected 'movie' or 'tv')`);
+    if (curatedNames.has(norm)) errors.push(`${label} collides with a curated title/variation`);
+    if (safeNames.has(norm)) errors.push(`${label} collides with a safeTitle`);
+    if (keywordNames.has(norm)) errors.push(`${label} collides with a keyword`);
+  }
+}
+
 if (errors.length) {
   console.error(`lint-database: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log(`lint-database: ${safeTitles.length} safeTitles OK, ${definiteCount} definite flags OK ✓`);
+console.log(`lint-database: ${safeTitles.length} safeTitles OK, ${definiteCount} definite flags OK` +
+  (autoEntries.length ? `, ${autoEntries.length} auto titles OK` : '') + ' ✓');

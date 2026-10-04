@@ -32,7 +32,10 @@ const windowStub = {};
 loadClassicScript('content/ml-bridge.js', { window: windowStub, chrome: undefined, module: undefined });
 const Bridge = windowStub.ScaredyCatMLBridge;
 
-const database = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/horror-database.json'), 'utf8'));
+// SC_DB_PATH points the eval at another database (e.g. a merged artifact
+// written by scared-cat-web's `titles:refresh -- --out <path>`).
+const DB_PATH = process.env.SC_DB_PATH || path.join(ROOT, 'data/horror-database.json');
+const database = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
 const compiled = Scoring.compile(database);
 const corpus = JSON.parse(fs.readFileSync(path.join(ROOT, 'eval/verdict-corpus.json'), 'utf8'));
 

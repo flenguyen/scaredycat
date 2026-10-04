@@ -30,7 +30,10 @@ function loadScoringCore() {
 }
 
 const Scoring = loadScoringCore();
-const database = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/horror-database.json'), 'utf8'));
+// SC_DB_PATH points the eval at another database (e.g. a merged artifact
+// written by scared-cat-web's `titles:refresh -- --out <path>`).
+const DB_PATH = process.env.SC_DB_PATH || path.join(ROOT, 'data/horror-database.json');
+const database = JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
 const corpusFile = JSON.parse(fs.readFileSync(path.join(ROOT, 'eval/corpus.json'), 'utf8'));
 
 const SENSITIVITIES = { low: 80, medium: 60, high: 40 };
@@ -44,6 +47,9 @@ function generatedEntries() {
   ];
   const entries = [];
   database.titles.forEach((entry, i) => {
+    // Auto titles are capped below every block path without image evidence,
+    // so as text-only positives they would all be guaranteed misses.
+    if (entry.auto) return;
     if (i % 6 !== 0) return; // ~104 titles, ~312 contexts
     templates.forEach((tpl, j) => {
       entries.push({

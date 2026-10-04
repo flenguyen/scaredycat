@@ -13,7 +13,12 @@
  * as in production. Each page is visited twice per round: first = cold
  * (model/cache may be cold), second = warm.
  *
- *   SC_CHROME_BIN=<chrome-for-testing> node eval/browser-latency.mjs [--rounds N] [--live] [--json out.json]
+ *   SC_CHROME_BIN=<chrome-for-testing> node eval/browser-latency.mjs [--rounds N] [--live] [--json out.json] [--db merged.json]
+ *
+ * --db <path> installs that database (e.g. the merged curated + auto artifact
+ * from scared-cat-web's `titles:refresh -- --out`) into chrome.storage.local
+ * before the first page of each round, so init→db and verdict latency are
+ * measured against it instead of the bundled curated list.
  *
  * Requires: npm install --no-save puppeteer-core sharp
  */
@@ -34,6 +39,14 @@ const ROUNDS = parseInt(argVal('--rounds', '1'), 10);
 const LIVE = args.includes('--live');
 const JSON_OUT = argVal('--json', null);
 const SETTLE_MS = parseInt(argVal('--settle', '12000'), 10);
+const DB_PATH = argVal('--db', null);
+const DB_OVERRIDE = DB_PATH ? JSON.parse(fs.readFileSync(path.resolve(DB_PATH), 'utf8')) : null;
+if (DB_OVERRIDE && (!Array.isArray(DB_OVERRIDE.titles) || typeof DB_OVERRIDE.version !== 'string')) {
+  throw new Error(`--db ${DB_PATH}: not a horror database (needs titles[] and version)`);
+}
+console.log(DB_OVERRIDE
+  ? `DB: ${path.resolve(DB_PATH)} (v${DB_OVERRIDE.version}, ${DB_OVERRIDE.titles.length} titles, ${DB_OVERRIDE.titles.filter(t => t.auto === true).length} auto)`
+  : 'DB: bundled data/horror-database.json');
 const PORT = 8905;
 
 // ---- fixtures ---------------------------------------------------------------
@@ -193,6 +206,28 @@ async function getSwWorker(browser) {
   return target.worker();
 }
 
+/**
+ * Replace the stored database with DB_OVERRIDE. Waits for background.js's
+ * install-time seed to land first (otherwise the seed could race in after us
+ * and overwrite it), and clears the daily refresh alarm so db-updater can't
+ * swap in the remote list mid-run.
+ */
+async function installDbOverride(browser) {
+  const sw = await getSwWorker(browser);
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    const seeded = await sw.evaluate(async () => !!(await chrome.storage.local.get('horrorDatabase')).horrorDatabase);
+    if (seeded) break;
+    await new Promise(r => setTimeout(r, 200));
+  }
+  const count = await sw.evaluate(async (db) => {
+    await chrome.alarms.clear('refresh-horror-db');
+    await chrome.storage.local.set({ horrorDatabase: db });
+    return (await chrome.storage.local.get('horrorDatabase')).horrorDatabase.titles.length;
+  }, DB_OVERRIDE);
+  if (count !== DB_OVERRIDE.titles.length) throw new Error(`--db install failed: stored ${count} titles`);
+}
+
 async function measure(browser, pageDef, label) {
   let sw = null;
   try { sw = await getSwWorker(browser); await sw.evaluate(() => self.__scStats?.reset?.()); } catch (e) { /* SW asleep; counters start at 0 anyway */ }
@@ -251,6 +286,7 @@ for (let round = 0; round < ROUNDS; round++) {
     ]
   });
   try {
+    if (DB_OVERRIDE) await installDbOverride(browser);
     for (const label of ['cold', 'warm']) {
       for (const p of PAGES) {
         const r = await measure(browser, p, label);

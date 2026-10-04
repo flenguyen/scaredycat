@@ -7,3 +7,6 @@ dist/
 
 # Chrome for Testing installed by @puppeteer/browsers (npm run smoke)
 chrome/
+
+# local secrets (TMDB key for the title pipeline)
+.env*.local
