@@ -14,14 +14,19 @@
  *   - #safe-video   : sibling title "Paddington in Peru"        -> safe
  *   - #orphan-video : no sibling title card at all              -> safe
  *
- * Requires: npm install --no-save puppeteer-core sharp, SC_CHROME_BIN set to
+ * Element states are read in the content script's isolated world
+ * (browser-smoke-lib.mjs). Requires: npm install --no-save puppeteer-core sharp, SC_CHROME_BIN set to
  * Chrome for Testing (branded Chrome >= 137 ignores --load-extension).
  */
 
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import http from 'node:http';
+import https from 'node:https';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { extensionArgs, focusPage, isolatedWorld, elementStates } from './browser-smoke-lib.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHROME = process.env.SC_CHROME_BIN;
@@ -66,7 +71,20 @@ const PAGE = `<!DOCTYPE html><html><head><title>IMDb: Ratings, Reviews, and Wher
 </div>
 </body></html>`;
 
-const server = http.createServer((req, res) => {
+// imdb.com is HSTS-preloaded, so Chrome upgrades http://www.imdb.com to
+// https. Serve the fixture over TLS with a throwaway self-signed certificate
+// (Chrome runs with --ignore-certificate-errors for this test only).
+const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-smoke-cert-'));
+execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+  '-keyout', path.join(certDir, 'key.pem'), '-out', path.join(certDir, 'cert.pem'),
+  '-subj', '/CN=www.imdb.com'], { stdio: 'ignore' });
+const tls = {
+  key: fs.readFileSync(path.join(certDir, 'key.pem')),
+  cert: fs.readFileSync(path.join(certDir, 'cert.pem'))
+};
+fs.rmSync(certDir, { recursive: true, force: true });
+
+const server = https.createServer(tls, (req, res) => {
   if (req.url.startsWith('/img/')) {
     res.writeHead(200, { 'content-type': 'image/png' });
     res.end(THUMB);
@@ -80,13 +98,11 @@ await new Promise(r => server.listen(PORT, r));
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: false,
-  args: [
-    `--disable-extensions-except=${ROOT}`,
-    `--load-extension=${ROOT}`,
+  args: extensionArgs(ROOT, [
     '--host-resolver-rules=MAP www.imdb.com 127.0.0.1',
-    '--no-first-run',
+    '--ignore-certificate-errors',
     '--window-size=1200,900'
-  ]
+  ])
 });
 
 try {
@@ -97,19 +113,15 @@ try {
   });
   // Let the worker seed the database into storage before the page loads.
   await new Promise(r => setTimeout(r, 2000));
-  await page.goto(`http://www.imdb.com:${PORT}/`, { waitUntil: 'networkidle0' });
+  await focusPage(browser, page);
+  const world = await isolatedWorld(page);
+  await page.goto(`https://www.imdb.com:${PORT}/`, { waitUntil: 'networkidle0' });
 
   const IDS = ['horror-video', 'safe-video', 'orphan-video'];
   const deadline = Date.now() + 60000;
   let state = {};
   while (Date.now() < deadline) {
-    state = await page.evaluate((ids) => Object.fromEntries(ids.map(id => {
-      const el = document.getElementById(id);
-      return [id, {
-        state: el?.getAttribute('data-scaredycat-processed') ?? null,
-        blurred: !!el?.classList.contains('scaredycat-blurred')
-      }];
-    })), IDS);
+    state = await elementStates(world, IDS);
     if (IDS.every(id => state[id].state && state[id].state !== 'pending')) break;
     await new Promise(r => setTimeout(r, 1000));
   }

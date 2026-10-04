@@ -7,6 +7,9 @@
  * website, so it is deterministic and offline.
  *
  * Uses only DEFINITE-band title matches so it never waits on the ML model.
+ * The card renders in a closed shadow root and ignores synthetic clicks, so
+ * state is read in the content script's isolated world over CDP and every
+ * click is a real mouse event (see browser-smoke-lib.mjs).
  * Requires: npm install --no-save puppeteer-core sharp, SC_CHROME_BIN.
  */
 
@@ -14,6 +17,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { extensionArgs, focusPage, isolatedWorld, withHelpers, realClick } from './browser-smoke-lib.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHROME = process.env.SC_CHROME_BIN;
@@ -55,12 +59,8 @@ await new Promise(r => server.listen(8902, r));
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: false,
-  args: [
-    `--disable-extensions-except=${ROOT}`,
-    `--load-extension=${ROOT}`,
-    '--no-first-run',
-    '--window-size=1200,900'
-  ]
+  defaultViewport: { width: 1200, height: 800 },
+  args: extensionArgs(ROOT, ['--window-size=1200,900'])
 });
 
 // Stand-in for https://www.scaredycat.app/api/titles/synopses.json.
@@ -92,42 +92,39 @@ try {
   }, SYNOPSES);
 
   const page = await browser.newPage();
+  await focusPage(browser, page);
+  const world = await isolatedWorld(page);
   await page.goto('http://localhost:8902/', { waitUntil: 'networkidle0' });
 
-  // Both blocks are definite-band: text-only, no model load to wait for.
-  await page.waitForFunction(() =>
-    document.getElementById('large')?.getAttribute('data-scaredycat-processed') === 'blocked' &&
-    document.getElementById('medium')?.getAttribute('data-scaredycat-processed') === 'blocked' &&
-    document.getElementById('nosyn')?.getAttribute('data-scaredycat-processed') === 'blocked',
-    { timeout: 15000 });
+  // All three blocks are definite-band: text-only, no model load to wait for.
+  await world.waitFor((ids) => ids.every(id =>
+    ScaredyCatState.get(document.getElementById(id)) === 'blocked'), { args: [['large', 'medium', 'nosyn']] });
   // Summaries arrive from the worker after the block; the spoil pills are
-  // added in place. Give the no-summary card's (null) answer time to land too.
-  await page.waitForFunction(() =>
-    ['large', 'medium'].every(id =>
-      document.getElementById(id).closest('.scaredycat-wrapper')?.querySelector('.scaredycat-spoil-btn')),
-    { timeout: 5000 });
+  // added in place. The card sheet comes from the worker too. Give the
+  // no-summary card's (null) answer time to land.
+  await world.waitFor(() => {
+    const root = (id) => ScaredyCatUI.__testShadowRoot(ScaredyCatBlocker.wrapperOf(document.getElementById(id)));
+    return ['large', 'medium'].every(id => root(id)?.querySelector('.scaredycat-spoil-btn')) &&
+      ['large', 'medium', 'nosyn'].every(id => root(id)?.querySelector('.scaredycat-styled'));
+  }, { timeout: 5000 });
   await new Promise(r => setTimeout(r, 500));
 
-  // Helpers run inside the page against a specific element's wrapper.
+  // Helpers run in the isolated world against a specific element's card.
   // Revealed overlays linger ~300ms while fading out, so all queries skip
   // .scaredycat-fade-out nodes.
-  const q = (id, sel) => page.evaluate((id, sel) => {
-    const wrapper = document.getElementById(id).closest('.scaredycat-wrapper');
-    if (!wrapper) return null;
-    const live = [...wrapper.querySelectorAll(sel)].filter(el => !el.closest('.scaredycat-fade-out'));
-    const el = live[live.length - 1];
+  const q = (id, sel) => withHelpers(world, `(id, sel) => {
+    const el = live(id, sel);
     return el ? { text: el.textContent, display: getComputedStyle(el).display } : null;
-  }, id, sel);
-  const clickIn = (id, sel) => page.evaluate((id, sel) => {
-    const wrapper = document.getElementById(id).closest('.scaredycat-wrapper');
-    const live = [...wrapper.querySelectorAll(sel)].filter(el => !el.closest('.scaredycat-fade-out'));
-    live[live.length - 1].click();
-  }, id, sel);
-  const overlayState = (id) => page.evaluate((id) =>
-    document.getElementById(id).closest('.scaredycat-wrapper')
-      ?.querySelector('.scaredycat-overlay:not(.scaredycat-fade-out)')?.dataset.state ?? null, id);
-  const isBlurred = (id) => page.evaluate((id) =>
-    document.getElementById(id).classList.contains('scaredycat-blurred'), id);
+  }`, id, sel);
+  const clickIn = async (id, sel) => {
+    await realClick(page, world, '(id, sel) => live(id, sel)', id, sel);
+    await new Promise(r => setTimeout(r, 50));
+  };
+  const overlayState = (id) => withHelpers(world, `(id) =>
+    live(id, '.scaredycat-overlay')?.dataset.state ?? null`, id);
+  const isBlurred = (id) => withHelpers(world, '(id) => isHidden(id)', id);
+  const waitRevealed = (id) => world.waitFor((id) =>
+    document.getElementById(id).style.getPropertyValue('opacity') !== '0', { timeout: 3000, args: [id] });
 
   console.log('\n-- Large tier: full card + confirm + summary --');
   check('blocked state', await overlayState('large') === 'blocked');
@@ -157,13 +154,14 @@ try {
 
   await clickIn('large', '.scaredycat-show-btn');
   await clickIn('large', '.scaredycat-btn--secondary'); // "Yes. Show it."
-  await page.waitForFunction(() => !document.getElementById('large').classList.contains('scaredycat-blurred'), { timeout: 3000 });
+  await waitRevealed('large');
   check('Yes. Show it. reveals', !(await isBlurred('large')));
   check('hide-again appears', await q('large', '.scaredycat-hide-again-btn') !== null);
 
   await clickIn('large', '.scaredycat-hide-again-btn');
   check('hide again re-blocks', await overlayState('large') === 'blocked' && await isBlurred('large'));
   check('re-hidden card keeps the summary pill', (await q('large', '.scaredycat-spoil-btn')) !== null);
+  await new Promise(r => setTimeout(r, 300)); // card entrance animation
   await clickIn('large', '.scaredycat-show-btn');
   check('second reveal skips confirm', await overlayState('large') === null || !(await isBlurred('large')));
 
@@ -184,7 +182,7 @@ try {
 
   await clickIn('medium', '.scaredycat-btn--primary'); // back
   await clickIn('medium', '.scaredycat-show-btn');
-  await page.waitForFunction(() => !document.getElementById('medium').classList.contains('scaredycat-blurred'), { timeout: 3000 });
+  await waitRevealed('medium');
   check('medium reveals in one click (no confirm)', !(await isBlurred('medium')));
 
   console.log('\n-- No summary: blur + Show only --');
@@ -193,7 +191,7 @@ try {
   check('no "?" pill rendered', await q('nosyn', '.scaredycat-help-btn') === null);
   check('Show anyway present', await q('nosyn', '.scaredycat-show-btn') !== null);
   await clickIn('nosyn', '.scaredycat-show-btn');
-  await page.waitForFunction(() => !document.getElementById('nosyn').classList.contains('scaredycat-blurred'), { timeout: 3000 });
+  await waitRevealed('nosyn');
   check('reveals in one click', !(await isBlurred('nosyn')));
 
   console.log(`\nSMOKE-OVERLAY ${failures.length === 0 ? 'PASS' : `FAIL (${failures.length}: ${failures.join(', ')})`}`);

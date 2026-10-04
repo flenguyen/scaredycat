@@ -1,12 +1,17 @@
 // Smoke test 2: the "neutral text" miss case. A real horror poster served
 // with a meaningless filename on a page whose title carries horror signal.
 // The old extension missed this 100% of the time; the image layer must catch it.
+// Served under a public-looking hostname mapped to 127.0.0.1: the worker
+// refuses to fetch loopback addresses for the classifier. State is read in
+// the content script's isolated world (browser-smoke-lib.mjs).
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { extensionArgs, focusPage, isolatedWorld, elementStates } from './browser-smoke-lib.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const HOST = 'fixtures.scaredycat-smoke.net';
 
 // Fixture cached locally: Wikipedia rate-limits repeated fetches, and a
 // failed fetch must fail loudly here, not surface as a bogus test result.
@@ -38,18 +43,18 @@ await new Promise(r => server.listen(8903, r));
 
 const browser = await puppeteer.launch({
   executablePath: process.env.SC_CHROME_BIN, headless: false,
-  args: [`--disable-extensions-except=${ROOT}`, `--load-extension=${ROOT}`, '--no-first-run']
+  args: extensionArgs(ROOT, [`--host-resolver-rules=MAP ${HOST} 127.0.0.1`])
 });
 try {
   const page = await browser.newPage();
-  await page.goto('http://localhost:8903/', { waitUntil: 'networkidle0' });
+  await focusPage(browser, page);
+  const world = await isolatedWorld(page);
+  await page.goto(`http://${HOST}:8903/`, { waitUntil: 'networkidle0' });
   const deadline = Date.now() + 60000;
   let state = {};
   while (Date.now() < deadline) {
-    state = await page.evaluate(() => ({
-      poster: document.getElementById('poster')?.getAttribute('data-scaredycat-processed') ?? null,
-      blurred: !!document.getElementById('poster')?.closest('.scaredycat-wrapper')
-    }));
+    const st = (await elementStates(world, ['poster'])).poster;
+    state = { poster: st.state, blurred: st.blurred };
     if (state.poster && state.poster !== 'pending') break;
     await new Promise(r => setTimeout(r, 1000));
   }

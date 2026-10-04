@@ -2,16 +2,24 @@
  * End-to-end browser smoke test: loads the unpacked extension in real Chrome,
  * opens a test page with horror-titled and neutral images, and checks that
  * the full pipeline (text bands -> offscreen CLIP classifier -> blur overlay)
- * behaves. Requires: npm install --no-save puppeteer-core, system Chrome.
+ * behaves. Element states are read in the content script's isolated world
+ * (browser-smoke-lib.mjs); the page itself can't see them.
+ *
+ * The fixture is served under a public-looking hostname mapped to 127.0.0.1
+ * (--host-resolver-rules): the worker refuses to fetch loopback and private
+ * addresses for the classifier, so a plain localhost URL would never reach
+ * the model. Requires: npm install --no-save puppeteer-core, SC_CHROME_BIN.
  */
 
 import path from 'node:path';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
+import { extensionArgs, focusPage, isolatedWorld, elementStates } from './browser-smoke-lib.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHROME = process.env.SC_CHROME_BIN;
+const HOST = 'fixtures.scaredycat-smoke.net';
 
 // A real 300x400 solid-red PNG: must pass the min-size check (naturalWidth
 // >= 100). A plain color block is also a clean "not horror" input for the
@@ -49,12 +57,7 @@ await new Promise(r => server.listen(8901, r));
 const browser = await puppeteer.launch({
   executablePath: CHROME,
   headless: false,
-  args: [
-    `--disable-extensions-except=${ROOT}`,
-    `--load-extension=${ROOT}`,
-    '--no-first-run',
-    '--window-size=1200,900'
-  ]
+  args: extensionArgs(ROOT, [`--host-resolver-rules=MAP ${HOST} 127.0.0.1`, '--window-size=1200,900'])
 });
 
 try {
@@ -63,20 +66,22 @@ try {
     const t = m.text();
     if (t.includes('Scaredy Cat')) console.log('  [page]', t);
   });
-  await page.goto('http://localhost:8901/', { waitUntil: 'networkidle0' });
+  await focusPage(browser, page);
+  const world = await isolatedWorld(page);
+  await page.goto(`http://${HOST}:8901/`, { waitUntil: 'networkidle0' });
 
   // Give the pipeline time: text pass is instant, ML pass needs model load
   // (first run can take several seconds for the 45MB vision tower).
   const deadline = Date.now() + 60000;
   let state = {};
   while (Date.now() < deadline) {
-    state = await page.evaluate(() => ({
-      definite: document.getElementById('definite')?.getAttribute('data-scaredycat-processed') ?? null,
-      keyword: document.getElementById('keyword')?.getAttribute('data-scaredycat-processed') ?? null,
-      safe: document.getElementById('safe')?.getAttribute('data-scaredycat-processed') ?? null,
-      definiteBlurred: !!document.getElementById('definite')?.closest('.scaredycat-wrapper'),
-      overlays: document.querySelectorAll('.scaredycat-overlay').length
-    }));
+    const st = await elementStates(world, ['definite', 'keyword', 'safe']);
+    state = {
+      definite: st.definite.state,
+      keyword: st.keyword.state,
+      safe: st.safe.state,
+      definiteBlurred: st.definite.blurred
+    };
     if (state.definite && state.keyword && state.keyword !== 'pending' && state.safe) break;
     await new Promise(r => setTimeout(r, 1000));
   }
