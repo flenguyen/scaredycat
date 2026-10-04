@@ -513,80 +513,15 @@ const ScaredyCatDetector = (function () {
     return _isSocialFeedCached;
   }
 
-  // Titled-quiet skip, per page context (experiment, see
-  // eval/quiet-skip-eval.mjs). With a context on, a quiet element (text
-  // score 0) that still has a readable non-horror title ("The Crown", a
-  // cooking video) is LIKELY_SAFE, and only textless ones go to the image
-  // classifier. All off: measured on ~1,900 TMDB-sampled cards (Oct 2026),
-  // every context loses 24-41 horror blocks per 200 against a budget of 1,
-  // because the title list names only about half of the horror on these
-  // pages and the classifier is what catches the rest.
-  const SKIP_TITLED_QUIET = Object.freeze({
-    youtube: false,
-    streaming: false,
-    database: false,
-    horrorSignal: false
-  });
-
-  // Streaming catalogs among MEDIA_SITE_PATTERNS; the rest (IMDb, Rotten
-  // Tomatoes, TMDB, Letterboxd, JustWatch, Fandango) are database sites.
-  const STREAMING_SITE_PATTERNS = [
-    /(^|\.)netflix\.com$/i,
-    /(^|\.)hulu\.com$/i,
-    /(^|\.)disneyplus\.com$/i,
-    /(^|\.)hbomax\.com$/i,
-    /(^|\.)max\.com$/i,
-    /(^|\.)primevideo\.com$/i,
-    /(^|\.)peacocktv\.com$/i,
-    /(^|\.)paramountplus\.com$/i,
-    /(^|\.)tv\.apple\.com$/i,
-    /(^|\.)vudu\.com$/i,
-    /(^|\.)shudder\.com$/i,
-    /(^|\.)amc\.com$/i,
-    /(^|\.)fxnetworks\.com$/i
-  ];
-
-  let _isStreamingSiteCached = null;
-  function isStreamingSiteCached() {
-    if (_isStreamingSiteCached === null) {
-      _isStreamingSiteCached = STREAMING_SITE_PATTERNS.some(p => p.test(window.location.hostname));
-    }
-    return _isStreamingSiteCached;
-  }
-
-  /**
-   * Which SKIP_TITLED_QUIET context this page is in, or null where quiet
-   * elements aren't scanned at all. A horror signal outranks the site kind:
-   * that is where a quiet picture is most likely to be horror.
-   */
-  function quietSkipContext() {
-    if (pageHasHorrorSignal) return 'horrorSignal';
-    if (isYouTubeCached()) return 'youtube';
-    if (!isMediaSiteCached()) return null;
-    return isStreamingSiteCached() ? 'streaming' : 'database';
-  }
-
   /**
    * Extract text context from an element and its surroundings
    */
   function extractTextContext(element) {
-    return extractTextParts(element).context;
-  }
-
-  /**
-   * The text context plus `pageText`: the parts of it that came from page
-   * text (alt, title, link text, aria-label, card titles), without the URL
-   * path tokens of the image and link. `context` is what gets scored;
-   * `pageText` only tells a titled quiet element from a textless one.
-   */
-  function extractTextParts(element) {
     const parts = [];
-    const pageParts = [];
-    const pushText = (text) => { parts.push(text); pageParts.push(text); };
 
     // Quick attribute checks - no DOM traversal
-    if (element.alt) pushText(element.alt);
-    if (element.title) pushText(element.title);
+    if (element.alt) parts.push(element.alt);
+    if (element.title) parts.push(element.title);
 
     // Extract from src URL
     const src = element.src || element.poster || '';
@@ -599,14 +534,14 @@ const ScaredyCatDetector = (function () {
 
     // Check key data attributes
     const dataTitle = element.getAttribute('data-title') || element.getAttribute('data-name');
-    if (dataTitle) pushText(dataTitle);
+    if (dataTitle) parts.push(dataTitle);
 
     // Check parent link (max 3 levels up)
     let parent = element.parentElement;
     for (let i = 0; i < 3 && parent; i++) {
       if (parent.tagName === 'A') {
         const linkText = parent.textContent?.trim();
-        if (linkText && linkText.length < 150) pushText(linkText);
+        if (linkText && linkText.length < 150) parts.push(linkText);
         if (parent.href) {
           try {
             parts.push(new URL(parent.href).pathname.replace(/[-_\/]/g, ' '));
@@ -615,7 +550,7 @@ const ScaredyCatDetector = (function () {
         break;
       }
       const ariaLabel = parent.getAttribute('aria-label');
-      if (ariaLabel) pushText(ariaLabel);
+      if (ariaLabel) parts.push(ariaLabel);
       parent = parent.parentElement;
     }
 
@@ -628,7 +563,7 @@ const ScaredyCatDetector = (function () {
       if (card) {
         const titleEl = card.querySelector(YT_TITLE_SELECTOR);
         const text = titleEl && (titleEl.getAttribute('title') || titleEl.getAttribute('aria-label') || titleEl.textContent || '').trim();
-        if (text) pushText(text.slice(0, 200));
+        if (text) parts.push(text.slice(0, 200));
       }
     }
 
@@ -638,22 +573,16 @@ const ScaredyCatDetector = (function () {
       const container = element.closest('[data-testid], [data-qa]');
       if (container) {
         const title = container.querySelector('[class*="title"], h1, h2, h3');
-        if (title) pushText(title.textContent?.trim() || '');
+        if (title) parts.push(title.textContent?.trim() || '');
       }
       // Goes FIRST: the strength check wants at least one cleanly bounded
       // occurrence, and the URL tokens already collected ("vi1053476889")
       // would otherwise flank it and demote a definite title to partial.
       const siblingTitle = findSiblingEntityTitle(element);
-      if (siblingTitle) {
-        parts.unshift(siblingTitle);
-        pageParts.unshift(siblingTitle);
-      }
+      if (siblingTitle) parts.unshift(siblingTitle);
     }
 
-    return {
-      context: parts.join(' ').slice(0, 1000),
-      pageText: pageParts.join(' ').slice(0, 1000)
-    };
+    return parts.join(' ').slice(0, 1000);
   }
 
   // A link path with at least three segments: the first two name an entity
@@ -716,24 +645,19 @@ const ScaredyCatDetector = (function () {
       };
     }
 
-    const { context, pageText } = extractTextParts(element);
+    const context = extractTextContext(element);
     const threshold = getThreshold();
-    // On a page the site files under a non-horror genre, quiet elements
-    // (no text signal at all) are the title's own stills and posters:
-    // they band LIKELY_SAFE instead of costing a classifier round trip
-    // that could only ever produce an image-only false positive.
-    const scanQuietElements = (pageHasHorrorSignal || isMediaSiteCached()) && !pageHasStructuredNonHorrorGenre;
-    const skipTitledQuiet = scanQuietElements && SKIP_TITLED_QUIET[quietSkipContext()] === true;
-    // With the skip on, the band also depends on which part is page text.
-    const memoKey = skipTitledQuiet ? `${context}\u0000${pageText}` : context;
+    const memoKey = context;
 
     let result = memo.get(memoKey);
     if (result === undefined) {
       result = ScaredyCatScoring.analyzeText(context, compiledIndex, {
         threshold,
-        scanQuietElements,
-        pageText,
-        skipTitledQuiet
+        // On a page the site files under a non-horror genre, quiet elements
+        // (no text signal at all) are the title's own stills and posters:
+        // they band LIKELY_SAFE instead of costing a classifier round trip
+        // that could only ever produce an image-only false positive.
+        scanQuietElements: (pageHasHorrorSignal || isMediaSiteCached()) && !pageHasStructuredNonHorrorGenre
       });
       if (memo.size >= MEMO_LIMIT) {
         memo.delete(memo.keys().next().value); // drop oldest entry
@@ -758,9 +682,7 @@ const ScaredyCatDetector = (function () {
       titleAuto: !!result.titleAuto,
       requiresPositiveImage: !!result.requiresPositiveImage,
       titleScore: result.titleScore,
-      keywordScore: result.keywordScore,
-      // 'titled' | 'textless' for quiet elements on scanned pages, else null.
-      quietKind: result.quietKind || null
+      keywordScore: result.keywordScore
     };
   }
 
@@ -935,9 +857,6 @@ const ScaredyCatDetector = (function () {
     setSensitivity,
     getThreshold,
     extractTextContext,
-    extractTextParts,
-    // Titled-quiet experiment: the page's context key, or null.
-    quietSkipContext,
     normalizeText: ScaredyCatScoring.normalizeText,
     canonicalImageKey,
     isAllowed,
