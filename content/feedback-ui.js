@@ -87,7 +87,7 @@ window.ScaredyCatFeedbackUI = (function () {
           <li>Your sensitivity setting and our version numbers</li>
         </ul>
         <p class="scaredycat-consent-note">
-          It goes to our report inbox on Airtable. We never send images or your browsing history. You can turn this off anytime in the popup.
+          It goes to our report database. We never send images or your browsing history. You can turn this off anytime in the popup.
         </p>
         <div class="scaredycat-consent-actions"></div>
       `;

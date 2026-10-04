@@ -388,8 +388,8 @@ never leaves the device. These are the only requests the extension makes:
   them, without your cookies, so the on-device model can look at them. The result stays
   on your computer.
 - **Reports and notes, only if you opt in.** Sharing is off until you say yes, and you can
-  turn it off in the popup. Reports go to Airtable, the service we use as our report
-  inbox. Each one contains: the report type, a random report ID and time, the page
+  turn it off in the popup. Reports are stored in our report
+  database. Each one contains: the report type, a random report ID and time, the page
   address cut off before any `?` or `#`, the picture or video link, what we matched and
   how confident we were (with the reasons), your sensitivity setting, the extension,
   title-list and model versions, and your note or category. A missed-horror pick sends
