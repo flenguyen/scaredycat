@@ -9,6 +9,8 @@ importScripts(
   'background/image-key.js',
   'background/verdict-cache.js',
   'background/ml-router.js',
+  'content/scoring-core.js',
+  'background/synopses.js',
   'background/db-updater.js',
   'background/feedback.js'
 );
@@ -247,6 +249,12 @@ async function handleMessage(message, sender) {
   if (message.type === 'WARM_ML') {
     ScaredyCatMLRouter.warm();
     return { success: true };
+  }
+
+  // Spoiler summary for one blocked title (blur card's "Just tell me what
+  // happens"); answered from the in-memory index, no settings read.
+  if (message.type === 'GET_SYNOPSIS') {
+    return ScaredyCatSynopses.handleRequest(message);
   }
 
   // Stats messages hit storage.local only — no settings read needed.

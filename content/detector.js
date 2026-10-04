@@ -43,8 +43,10 @@ const ScaredyCatDetector = (function () {
   // horror evidence always wins.
   let pageHasStructuredNonHorrorGenre = false;
 
-  // Synopsis lookups, built once at DB load.
-  let titleInfo = null; // normalized title -> { title, year, synopsis }
+  // Title lookups for the blur card's summary request, built once at DB load.
+  // normalized title -> [{ title, year, tmdb, type }] (one per entry: remakes
+  // share a title). Summaries themselves live in the worker (synopses.js).
+  let titleInfo = null;
 
   // Memoized analysis results: normalized context -> raw scoring result.
   // Card grids repeat near-identical contexts constantly.
@@ -69,15 +71,17 @@ const ScaredyCatDetector = (function () {
       titleInfo = new Map();
       for (const entry of horrorDatabase.titles || []) {
         const key = ScaredyCatScoring.normalizeText(entry.title);
-        // Duplicate titles exist (Halloween 1978/2018): keep whichever
-        // entry has a synopsis, otherwise first-in wins.
-        const existing = titleInfo.get(key);
-        if (existing && (existing.synopsis || !entry.synopsis)) continue;
-        titleInfo.set(key, {
+        // tmdb/type come with auto (pipeline) entries; curated ones mostly
+        // lack them and are looked up by name + year instead.
+        const info = {
           title: entry.title,
           year: entry.year || null,
-          synopsis: entry.synopsis || null
-        });
+          tmdb: entry.tmdb ?? null,
+          type: entry.type || null
+        };
+        const list = titleInfo.get(key);
+        if (list) list.push(info);
+        else titleInfo.set(key, [info]);
       }
       // The page signal is computed by the first scan (content.js calls
       // refreshPageSignal before scoring), not here — avoids doing it twice.
@@ -362,11 +366,14 @@ const ScaredyCatDetector = (function () {
   }
 
   /**
-   * Look up bundled info (year, satirical synopsis) for a canonical title.
+   * Look up { title, year, tmdb, type } for a canonical title. When several
+   * entries share it (Halloween 1978/2018), `contextText` (the element's own
+   * text) picks the one whose year it mentions; otherwise the first.
    */
-  function getTitleInfo(canonicalTitle) {
+  function getTitleInfo(canonicalTitle, contextText) {
     if (!titleInfo || !canonicalTitle) return null;
-    return titleInfo.get(ScaredyCatScoring.normalizeText(canonicalTitle)) || null;
+    const entries = titleInfo.get(ScaredyCatScoring.normalizeText(canonicalTitle));
+    return ScaredyCatScoring.pickEntryByYear(entries, contextText || '');
   }
 
   function setSensitivity(level) {

@@ -1,8 +1,10 @@
 /**
  * End-to-end smoke test for the overlay card state machine:
  * blocked -> confirm -> synopsis -> back, tier gating (large vs medium),
- * curated synopsis vs no synopsis (no spoil affordance at all), and the
- * confirm-once rule.
+ * summary vs no summary (no spoil affordance at all), and the confirm-once
+ * rule. Summaries come from the worker (background/synopses.js); the test
+ * seeds chrome.storage.local.synopses with a stub instead of hitting the
+ * website, so it is deterministic and offline.
  *
  * Uses only DEFINITE-band title matches so it never waits on the ML model.
  * Requires: npm install --no-save puppeteer-core sharp, SC_CHROME_BIN.
@@ -24,16 +26,16 @@ const PIXEL = await sharp({
 const PAGE = `<!DOCTYPE html><html><head><title>smoke overlay</title></head><body>
   <h1>Test page</h1>
   <!-- Large tier (>=360x220): "twenty eight years later" variant scores 98
-       = DEFINITE, and the 28 Years Later entry has a curated synopsis. -->
+       = DEFINITE, and the stub has a summary for 28 Years Later (2025). -->
   <img id="large" src="/img/teaser-a.jpg" alt="Twenty Eight Years Later official teaser trailer" width="640" height="360">
   <!-- Medium tier: "the conjuring" is a curated definite fast-track title and
-       the 2013 entry HAS a curated synopsis -> compact card with the "?" pill.
+       the stub has a summary for it (2013) -> compact card with the "?" pill.
        (No year in the alt: "the conjuring 2013" also contains the "the
        conjuring 2" variant, which outscores it and isn't word-bounded, so the
        fast-track neighbor check would demote it to the classifier.) -->
   <img id="medium" src="/img/teaser-b.jpg" alt="The Conjuring official trailer poster" width="300" height="400">
-  <!-- No synopsis: "conjuring last rites" scores 90 = DEFINITE but the entry has
-       no curated synopsis -> blur + Show only, no spoil affordance. -->
+  <!-- No summary: "conjuring last rites" scores 90 = DEFINITE but the stub has
+       no summary for it -> blur + Show only, no spoil affordance. -->
   <img id="nosyn" src="/img/teaser-c.jpg" alt="The Conjuring: Last Rites official trailer poster" width="300" height="400">
 </body></html>`;
 
@@ -61,6 +63,18 @@ const browser = await puppeteer.launch({
   ]
 });
 
+// Stand-in for https://www.scaredycat.app/api/titles/synopses.json.
+const SYNOPSES = {
+  version: 1,
+  updatedAt: '2026-10-04T00:00:00Z',
+  titles: [
+    { title: '28 Years Later', year: 2025, names: ['28 Years Later'], tmdb: 1100988, type: 'movie',
+      slug: '28-years-later-2025', text: "The fast ones still run. You're safe. Britain isn't." },
+    { title: 'The Conjuring', year: 2013, names: ['The Conjuring', 'Conjuring'], tmdb: 138843, type: 'movie',
+      slug: 'the-conjuring-2013', text: 'A family moves into a farmhouse where the previous owner never left.' }
+  ]
+};
+
 const failures = [];
 function check(name, ok, detail = '') {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
@@ -68,6 +82,15 @@ function check(name, ok, detail = '') {
 }
 
 try {
+  const swTarget = await browser.waitForTarget(
+    t => t.type() === 'service_worker' && t.url().includes('background.js'), { timeout: 15000 });
+  const worker = await swTarget.worker();
+  await worker.evaluate(async (synopses) => {
+    // No refresh mid-test: the stub must stay what the worker answers from.
+    await chrome.alarms.clear(ScaredyCatDBUpdater.ALARM_NAME);
+    await chrome.storage.local.set({ synopses });
+  }, SYNOPSES);
+
   const page = await browser.newPage();
   await page.goto('http://localhost:8902/', { waitUntil: 'networkidle0' });
 
@@ -77,6 +100,13 @@ try {
     document.getElementById('medium')?.getAttribute('data-scaredycat-processed') === 'blocked' &&
     document.getElementById('nosyn')?.getAttribute('data-scaredycat-processed') === 'blocked',
     { timeout: 15000 });
+  // Summaries arrive from the worker after the block; the spoil pills are
+  // added in place. Give the no-summary card's (null) answer time to land too.
+  await page.waitForFunction(() =>
+    ['large', 'medium'].every(id =>
+      document.getElementById(id).closest('.scaredycat-wrapper')?.querySelector('.scaredycat-spoil-btn')),
+    { timeout: 5000 });
+  await new Promise(r => setTimeout(r, 500));
 
   // Helpers run inside the page against a specific element's wrapper.
   // Revealed overlays linger ~300ms while fading out, so all queries skip
@@ -99,7 +129,7 @@ try {
   const isBlurred = (id) => page.evaluate((id) =>
     document.getElementById(id).classList.contains('scaredycat-blurred'), id);
 
-  console.log('\n-- Large tier: full card + confirm + curated synopsis --');
+  console.log('\n-- Large tier: full card + confirm + summary --');
   check('blocked state', await overlayState('large') === 'blocked');
   const heading = await q('large', '.scaredycat-heading');
   check('heading visible at large tier', heading?.display === 'block' && heading.text === 'Something spooky was here.');
@@ -115,10 +145,10 @@ try {
   await clickIn('large', '.scaredycat-btn--primary'); // "No. Tell me what happens."
   check('confirm -> synopsis', await overlayState('large') === 'synopsis');
   const synTitle = await q('large', '.scaredycat-syn-title');
-  check('curated title shown', synTitle?.text.startsWith('28 Years Later'), synTitle?.text);
+  check('summary title shown', synTitle?.text.startsWith('28 Years Later'), synTitle?.text);
   check('year + medium noun', synTitle?.text.includes('(2025, poster)'), synTitle?.text);
   const synBody = await q('large', '.scaredycat-syn-body');
-  check('curated synopsis text', synBody?.text.includes("Britain isn't."));
+  check('summary text', synBody?.text.includes("Britain isn't."));
   check('Spoiled safely badge', (await q('large', '.scaredycat-badge'))?.text.includes('Spoiled safely'));
 
   await clickIn('large', '.scaredycat-btn--primary'); // "← Back to the blur"
@@ -133,10 +163,11 @@ try {
 
   await clickIn('large', '.scaredycat-hide-again-btn');
   check('hide again re-blocks', await overlayState('large') === 'blocked' && await isBlurred('large'));
+  check('re-hidden card keeps the summary pill', (await q('large', '.scaredycat-spoil-btn')) !== null);
   await clickIn('large', '.scaredycat-show-btn');
   check('second reveal skips confirm', await overlayState('large') === null || !(await isBlurred('large')));
 
-  console.log('\n-- Medium tier: compact card + "?" + curated synopsis --');
+  console.log('\n-- Medium tier: compact card + "?" + summary --');
   check('blocked state', await overlayState('medium') === 'blocked');
   check('heading hidden at medium tier', (await q('medium', '.scaredycat-heading'))?.display === 'none');
   check('spoil pill hidden at medium tier', (await q('medium', '.scaredycat-spoil-btn'))?.display === 'none');
@@ -146,16 +177,17 @@ try {
   await clickIn('medium', '.scaredycat-help-btn');
   check('? -> synopsis', await overlayState('medium') === 'synopsis');
   const medTitle = await q('medium', '.scaredycat-syn-title');
-  check('curated title shown', medTitle?.text.startsWith('Conjuring'), medTitle?.text);
+  check('website title shown', medTitle?.text.startsWith('The Conjuring'), medTitle?.text);
+  check('year from the worker', medTitle?.text.includes('(2013, poster)'), medTitle?.text);
   const medBody = (await q('medium', '.scaredycat-syn-body'))?.text;
-  check('curated synopsis text', !!medBody && medBody.includes('farmhouse'), medBody?.slice(0, 50) + '…');
+  check('summary text', !!medBody && medBody.includes('farmhouse'), medBody?.slice(0, 50) + '…');
 
   await clickIn('medium', '.scaredycat-btn--primary'); // back
   await clickIn('medium', '.scaredycat-show-btn');
   await page.waitForFunction(() => !document.getElementById('medium').classList.contains('scaredycat-blurred'), { timeout: 3000 });
   check('medium reveals in one click (no confirm)', !(await isBlurred('medium')));
 
-  console.log('\n-- No curated synopsis: blur + Show only --');
+  console.log('\n-- No summary: blur + Show only --');
   check('blocked state', await overlayState('nosyn') === 'blocked');
   check('no spoil pill rendered', await q('nosyn', '.scaredycat-spoil-btn') === null);
   check('no "?" pill rendered', await q('nosyn', '.scaredycat-help-btn') === null);

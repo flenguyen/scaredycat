@@ -150,6 +150,22 @@ const ScaredyCatScoring = (function () {
       .trim();
   }
 
+  /**
+   * Several database entries can share one title (Halloween 1978/2018). Pick
+   * the one whose 4-digit year appears in the element's own text, else the
+   * first. Used for the blur card's summary lookup (detector.getTitleInfo).
+   */
+  function pickEntryByYear(entries, contextText) {
+    if (!entries || !entries.length) return null;
+    if (entries.length > 1 && contextText) {
+      for (const entry of entries) {
+        if (!Number.isInteger(entry.year)) continue;
+        if (new RegExp(`(^|\\D)${entry.year}(\\D|$)`).test(contextText)) return entry;
+      }
+    }
+    return entries[0];
+  }
+
   function normalizeNumbers(text) {
     if (!text || !HAS_NUMBER_WORD_REGEX.test(text)) return text;
     let result = text;
@@ -729,6 +745,7 @@ const ScaredyCatScoring = (function () {
     analyzeText,
     normalizeText,
     normalizeNumbers,
+    pickEntryByYear,
     similarity,
     isNonHorrorContent
   };

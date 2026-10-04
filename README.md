@@ -55,6 +55,8 @@ When horror content is detected, you'll see:
 - A blurred image/video with a dark overlay
 - A message: "Horror content hidden"
 - A "Show anyway" button to reveal the content
+- For a recognized movie or show, "Just tell me what happens": a short spoiler summary
+  instead of the scary part
 
 ### Site Controls
 
@@ -130,7 +132,9 @@ browsing costs nothing. Text scoring is memoized per page.
 
 - **No service-worker round trip on page load**: settings and the horror database are
   read straight from `chrome.storage` in parallel; the worker seeds the database into
-  storage on install/update and the daily refresh keeps it there.
+  storage on install/update and the periodic refresh keeps it there. Spoiler summaries
+  are kept out of it: only the worker holds them, and a blocked title asks for its
+  summary once per page.
 - **Viewport gating**: elements near the viewport (one viewport of margin in every
   direction) are scored right away; everything else waits in an `IntersectionObserver`
   until it approaches, so a 40-thumbnail YouTube results page costs ~7 classifier
@@ -156,7 +160,8 @@ npm run setup:model          # fp16 MobileCLIP-S0 vision tower (~23MB) into mode
                              # fp32 + text tower into eval/.model-cache (dev only),
                              # transformers.js 4.x + its ORT wasm into vendor/
 npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.{json,bin}
-npm run eval                 # text-layer metrics, genre-signal and image-key tests
+npm run eval                 # text-layer metrics, genre-signal, image-key, auto-title
+                             # and summary-lookup tests
 npm run eval:combined        # text + image verdict fixtures
 npm run lint:database        # safeTitles + definite-flag invariants
 npm run pack                 # dist/scaredycat-<version>.zip + size report (~26MB compressed)
@@ -244,7 +249,8 @@ scaredycat/
 │   ├── verdict-cache.js      # Memory + IndexedDB cache of image scores (key + model version)
 │   ├── image-key.js          # Size-agnostic canonical image keys (cache/dedupe)
 │   ├── db-version.js         # Database version compare shared by seeding + refresh
-│   └── db-updater.js         # Daily remote refresh of the title list
+│   ├── synopses.js           # Spoiler-summary index + lookup for the blur card
+│   └── db-updater.js         # Remote refresh (every 6h) of the title list + summaries
 ├── content/
 │   ├── scoring-core.js       # Pure text-scoring engine (also used by the eval harness)
 │   ├── genre-signal.js       # Pure genre-declaration predicates (shared with eval)
@@ -312,6 +318,10 @@ entries always win over auto ones.
 Exclusions, forced inclusions and extra variations for the auto titles live in
 `tools/update-titles/overrides.json`; see `tools/update-titles/README.md`.
 
+Spoiler summaries ("Just tell me what happens") don't live in this repo: they are
+edited in Sanity and served by the website at `/api/titles/synopses.json`, which the
+worker refreshes alongside the title list (`background/synopses.js`).
+
 ### Adding Keywords
 
 Edit the `keywords` array in `data/horror-database.json`:
@@ -353,7 +363,7 @@ ScaredyCat.enable()
 
 ## Privacy
 
-- **One daily fetch of the public title list** from scaredycat.app (no identifiers, no cookies, ETag only); all detection runs locally.
+- **A periodic fetch (every 6 hours) of the public title list and spoiler summaries** from scaredycat.app (no identifiers, no cookies, ETag only); all detection runs locally.
 - **No data collection**: Your browsing data is never sent anywhere
 - **Local storage only**: Settings are stored in Chrome's sync storage
 

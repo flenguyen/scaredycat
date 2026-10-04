@@ -49,7 +49,7 @@ auto entries are matched on a separate path in `content/scoring-core.js`:
 - Curated always wins: the generator skips auto titles whose normalized title
   equals a curated title/variation, safeTitle or keyword, and the scorer ignores
   any auto variant a curated entry already owns. Auto entries never carry
-  `definite` or `synopsis`.
+  `definite`.
 
 ## Editing `overrides.json`
 
@@ -64,9 +64,15 @@ Changes take effect on the next daily run after they reach `main`.
 
 `note` at the top is free text and ignored by the pipeline.
 
-To promote an auto title to curated (to add a synopsis, a `definite` flag, or
-URL-slug variations), add it to `data/horror-database.json` instead; the
-generator then skips the auto copy automatically.
+To promote an auto title to curated (to add a `definite` flag or URL-slug
+variations), add it to `data/horror-database.json` instead; the generator then
+skips the auto copy automatically.
+
+Spoiler summaries (the blur card's "Just tell me what happens") are not part of
+either list. They are edited in Sanity and served by the website at
+`/api/titles/synopses.json`; the extension's worker fetches that file on the
+same alarm as the title list and matches summaries to blocked titles by TMDB id,
+then name + year (see `background/synopses.js`).
 
 ## Testing a merged list locally
 

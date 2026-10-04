@@ -179,27 +179,82 @@ const ScaredyCatBlocker = (function () {
     return btn;
   }
 
+  // Spoiler summaries live in the worker (background/synopses.js, served by
+  // the website), not in the title database. One request per title + year per
+  // page: a grid of 20 trailer cards for one film shares a single promise,
+  // null results included.
+  const synopsisRequests = new Map();
+
+  function requestSynopsis(info) {
+    const key = `${info.title}|${info.year ?? ''}`;
+    let pending = synopsisRequests.get(key);
+    if (!pending) {
+      pending = (async () => {
+        try {
+          const res = await chrome.runtime.sendMessage({
+            type: 'GET_SYNOPSIS',
+            title: info.title,
+            year: info.year,
+            tmdb: info.tmdb,
+            mediaType: info.type
+          });
+          return res && typeof res.text === 'string' && res.text ? res : null;
+        } catch (e) {
+          return null; // extension context invalidated / worker unreachable
+        }
+      })();
+      synopsisRequests.set(key, pending);
+    }
+    return pending;
+  }
+
   /**
-   * Resolve the satirical synopsis for a block, once, at block time.
-   * Stored on the entry so re-renders never reshuffle the joke.
+   * Resolve the summary for a block, once, right after block time. The card
+   * renders without it; when the worker answers, the spoil buttons are added
+   * in place. Stored on the entry so re-renders (and re-hides) never change it.
    */
-  function resolveSynopsis(element, analysisResult) {
+  function resolveSynopsis(data) {
     const detector = window.ScaredyCatDetector;
-    if (!detector || !detector.getTitleInfo) return null;
-    // Only blocks tied to a recognized title get a synopsis (and therefore the
+    if (!detector || !detector.getTitleInfo) return;
+    // Only blocks tied to a recognized title get a summary (and therefore the
     // "Just tell me what happens" affordance). General horror with no identified
     // movie/show — a blog article about the genre, a video essay on horror, a
     // genre-listing poster — has nothing specific to spoil, so it just stays
     // blurred. We key strictly on THIS element's own title match: a page that
-    // merely names one movie must not attach that movie's synopsis to unrelated
+    // merely names one movie must not attach that movie's summary to unrelated
     // horror imagery on it.
-    const title = analysisResult?.matchedTitle;
-    if (!title) return null;
-    const info = detector.getTitleInfo(title);
-    if (info && info.synopsis) {
-      return { kind: 'title', title: info.title, year: info.year, text: info.synopsis };
-    }
-    return null;
+    const title = data.analysisResult?.matchedTitle;
+    if (!title) return;
+    const info = detector.getTitleInfo(title, data.analysisResult.context);
+    if (!info) return;
+    requestSynopsis(info).then((res) => {
+      if (!res || data.synopsisInfo || !data.wrapper.isConnected) return;
+      data.synopsisInfo = { kind: 'title', title: res.title || info.title, year: res.year || null, text: res.text };
+      // Revealed meanwhile: stored for the next re-hide, nothing to update.
+      const overlay = data.overlay;
+      if (data.cardState === 'blocked' && overlay?.isConnected &&
+          !overlay.classList.contains('scaredycat-fade-out')) {
+        const actions = overlay.querySelector('.scaredycat-actions');
+        if (actions) appendSpoilButtons(actions, data);
+      }
+    });
+  }
+
+  /**
+   * The blocked card's "Just tell me what happens" pill (large tier) and "?"
+   * pill (compact tiers). Appended to an existing card without a re-render, so
+   * a late summary neither replays the entrance animation nor moves focus.
+   */
+  function appendSpoilButtons(actions, data) {
+    actions.appendChild(makeButton('Just tell me what happens', 'scaredycat-btn scaredycat-btn--primary scaredycat-spoil-btn', () => {
+      setCardState(data, 'synopsis');
+    }));
+    const helpBtn = makeButton('?', 'scaredycat-btn scaredycat-btn--primary scaredycat-help-btn', () => {
+      setCardState(data, 'synopsis');
+    });
+    helpBtn.setAttribute('aria-label', 'Just tell me what happens');
+    helpBtn.title = 'Just tell me what happens';
+    actions.appendChild(helpBtn);
   }
 
   /**
@@ -276,17 +331,7 @@ const ScaredyCatBlocker = (function () {
       showBtn.appendChild(makeText('span', 'scaredycat-btn-short', 'Show'));
       actions.appendChild(showBtn);
 
-      if (data.synopsisInfo) {
-        actions.appendChild(makeButton('Just tell me what happens', 'scaredycat-btn scaredycat-btn--primary scaredycat-spoil-btn', () => {
-          setCardState(data, 'synopsis');
-        }));
-        const helpBtn = makeButton('?', 'scaredycat-btn scaredycat-btn--primary scaredycat-help-btn', () => {
-          setCardState(data, 'synopsis');
-        });
-        helpBtn.setAttribute('aria-label', 'Just tell me what happens');
-        helpBtn.title = 'Just tell me what happens';
-        actions.appendChild(helpBtn);
-      }
+      if (data.synopsisInfo) appendSpoilButtons(actions, data);
       message.appendChild(actions);
     }
 
@@ -373,7 +418,7 @@ const ScaredyCatBlocker = (function () {
       overlay,
       analysisResult,
       cardState: 'blocked',
-      synopsisInfo: resolveSynopsis(element, analysisResult),
+      synopsisInfo: null, // filled in by resolveSynopsis once the worker answers
       everRevealed: false,
       timestamp: Date.now(),
       wasPlaying: false,
@@ -468,6 +513,7 @@ const ScaredyCatBlocker = (function () {
     blockedElements.set(id, data);
     window.ScaredyCatPerf?.mark('sc:blur');
     noteBlocked();
+    resolveSynopsis(data);
 
     // On a genuine horror page, aggressively stop all videos on the page —
     // the player may live in a completely different DOM location than the
@@ -756,11 +802,14 @@ const ScaredyCatBlocker = (function () {
     const overlay = document.createElement('div');
     overlay.className = 'scaredycat-overlay';
 
+    // The tracked entry keeps the summary resolved at block time (or the one
+    // that arrived while revealed). An untracked wrapper has no title match,
+    // so no summary.
     const data = blockedElements.get(id) || {
       element,
       wrapper,
       analysisResult: null,
-      synopsisInfo: resolveSynopsis(element, null),
+      synopsisInfo: null,
       everRevealed: true
     };
     data.overlay = overlay;
