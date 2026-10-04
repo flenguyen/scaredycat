@@ -64,7 +64,7 @@ const ScaredyCatDBUpdater = (function () {
       const headers = {};
       if (etag) headers['If-None-Match'] = etag;
 
-      const res = await fetch(REMOTE_URL, { headers, cache: 'no-cache' });
+      const res = await fetch(REMOTE_URL, { headers, cache: 'no-cache', credentials: 'omit' });
       if (res.status === 304) return;        // unchanged — cheap path
       if (!res.ok) return;
 
@@ -104,7 +104,7 @@ const ScaredyCatDBUpdater = (function () {
       const headers = {};
       if (held) headers['If-None-Match'] = etag;
 
-      const res = await fetch(SYNOPSES_URL, { headers, cache: 'no-cache' });
+      const res = await fetch(SYNOPSES_URL, { headers, cache: 'no-cache', credentials: 'omit' });
       if (res.status === 304) {
         await chrome.storage.local.set({ [SYNOPSES_FETCHED_AT_KEY]: Date.now() });
         return;

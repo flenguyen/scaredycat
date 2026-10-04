@@ -1,0 +1,424 @@
+{
+  "schema": 1,
+  "current": "1.5.0",
+  "dataFlows": [
+    {
+      "what": "The list of horror titles and the spoiler summaries are downloaded from scaredycat.app every 6 hours. Before version 1.4, the list came once a day from GitHub.",
+      "where": "scaredycat.app",
+      "sends": "It sends nothing about you or the pages you visit. It is an ordinary download with no cookies and no ID, so our server only sees what every website sees: an IP address and the browser type.",
+      "since": "1.2.0",
+      "optIn": false
+    },
+    {
+      "what": "To check a picture, the extension downloads that picture again from the site it is already on.",
+      "where": "The site showing the picture",
+      "sends": "A second request for the same picture, without your cookies. The check itself runs on your computer and the result stays there.",
+      "since": "1.1.0",
+      "optIn": false
+    },
+    {
+      "what": "Reports and notes you choose to send us.",
+      "where": "Airtable, the service we use as our report inbox",
+      "sends": "The page address (cut off before any ? or #), the link to the picture or video, a little of the text next to it, what we matched and why, your sensitivity setting, version numbers, a random report ID and the time, your note, and your email if you type one. Never the picture itself and never your browsing history.",
+      "since": "1.3.0",
+      "optIn": true
+    }
+  ],
+  "releases": [
+    {
+      "id": "1.5.0",
+      "surface": "extension",
+      "version": "1.5.0",
+      "level": 2,
+      "date": "2026-10-04",
+      "title": "You can see what changed",
+      "aside": "The cat now keeps a diary, and most of it is about LinkedIn.",
+      "summary": "A What's new page in the popup, spoiler summaries that arrive from our website, and clearer wording about what a note sends.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "The popup now shows its version number. Click it to read what changed in the latest update."
+        },
+        {
+          "type": "new",
+          "text": "Every change is also listed on scaredycat.app/changelog, including the updates from before we kept notes. We numbered those properly, which is why this version jumps from 1.1 to 1.5."
+        },
+        {
+          "type": "improved",
+          "text": "\"Just tell me what happens\" summaries now come from our website, so new summaries show up without waiting for an extension update."
+        },
+        {
+          "type": "improved",
+          "text": "When two films share a name, the year on the page decides which summary you get."
+        },
+        {
+          "type": "privacy",
+          "text": "The consent message for \"Send a note\" said it only sent your note and the extension version. It also sends the address of the page you are on, your sensitivity setting, our list and model version numbers, and your email if you type one. The message now says all of this and names Airtable, where reports go. The consent sheet you see when reporting a picture left out a few of these too, and now lists them."
+        },
+        {
+          "type": "privacy",
+          "text": "The title list now checks for updates every 6 hours instead of once a day, and it also downloads the spoiler summaries. Neither request carries anything about you, and both now explicitly refuse to send cookies."
+        }
+      ],
+      "commits": [
+        "d8c8749"
+      ]
+    },
+    {
+      "id": "1.4.0",
+      "surface": "extension",
+      "version": "1.4.0",
+      "level": 2,
+      "date": "2026-10-04",
+      "title": "New horror films arrive on their own",
+      "aside": "The cat has not seen any of these 1,500 new films and plans to keep it that way.",
+      "summary": "The title list now comes from scaredycat.app and picks up new horror releases automatically.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "New horror films are added to the list automatically, using film data from TMDB, so a release from last week is covered without an update."
+        },
+        {
+          "type": "improved",
+          "text": "A film added this way that has an ordinary name, like a single common word, is only hidden when the picture also looks scary. This keeps titles like \"Companion\" from blurring unrelated posts."
+        },
+        {
+          "type": "privacy",
+          "text": "The title list is now downloaded from scaredycat.app instead of GitHub. It is still a plain download that sends nothing about you."
+        }
+      ],
+      "commits": [
+        "94f1a8f"
+      ]
+    },
+    {
+      "id": "web-2026-10-03-spoiler-library",
+      "surface": "website",
+      "version": null,
+      "level": null,
+      "date": "2026-10-03",
+      "title": "The Spoiler Library",
+      "aside": "Over 500 horror films, explained by someone who did not watch them.",
+      "summary": "Read what happens in a horror film without seeing any of it.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "The Spoiler Library on scaredycat.app explains what happens in over 500 horror films, starting spoiler-free and letting you choose how much to read."
+        },
+        {
+          "type": "new",
+          "text": "Browse by shelf, search, or filter by scare level and by whether the dog makes it. Filters live in the page address, so you can share a view."
+        },
+        {
+          "type": "improved",
+          "text": "Every article was checked again against its sources before it went up, and dog status comes from Does the Dog Die."
+        }
+      ],
+      "commits": []
+    },
+    {
+      "id": "1.3.1",
+      "surface": "extension",
+      "version": "1.3.1",
+      "level": 3,
+      "date": "2026-09-26",
+      "title": "Reported pictures disappear right away",
+      "aside": "Forrest Gump is no longer considered a threat.",
+      "summary": "Reporting a missed picture hides it immediately and remembers it on this device.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "When you report a picture we missed, it is hidden straight away in every open tab, at any size, and stays hidden on this device. This works even if you choose not to share the report. \"Allow\" brings it back."
+        },
+        {
+          "type": "fixed",
+          "text": "Trailer thumbnails for Forrest Gump on IMDb were blurred. When a page says a film is a drama or a romance, a picture alone can no longer cause a blur."
+        }
+      ],
+      "commits": [
+        "6dd2888",
+        "4b43efb"
+      ]
+    },
+    {
+      "id": "1.3.0",
+      "surface": "extension",
+      "version": "1.3.0",
+      "level": 2,
+      "date": "2026-09-25",
+      "title": "You can report what the cat missed",
+      "aside": "The cat now accepts tips.",
+      "summary": "Scaredy Cat checks only what is on screen, downloads at half the size, and lets you report what it missed.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "Scaredy Cat now checks only what is on or near your screen, so long pages load faster."
+        },
+        {
+          "type": "improved",
+          "text": "The download went from 49 MB to 26 MB. It now needs Chrome 137 or newer."
+        },
+        {
+          "type": "new",
+          "text": "Right-click a picture and choose \"Report missed horror\", or pick one from the popup, to tell us what we missed."
+        },
+        {
+          "type": "new",
+          "text": "After you reveal something, a \"This isn't horror\" link lets you tell us we got it wrong."
+        },
+        {
+          "type": "new",
+          "text": "The toolbar icon shows how many things are hidden on the current tab."
+        },
+        {
+          "type": "improved",
+          "text": "Pictures are covered before they appear, so you no longer see a flash of the image first. A \"Hide again\" button puts the blur back, and the cards work with a keyboard and screen readers."
+        },
+        {
+          "type": "fixed",
+          "text": "On IMDb, the blur sometimes covered only half of a trailer, and some trailer cards for a listed film were missed. Both are fixed."
+        },
+        {
+          "type": "privacy",
+          "text": "This is the first version that can send anything to us. Sharing is off until you say yes, and you can turn it off again in the popup. Reports go to Airtable, the service we use as our report inbox. They never include the picture itself or your browsing history."
+        }
+      ],
+      "commits": [
+        "60a0ea6",
+        "6b87358",
+        "859439f"
+      ]
+    },
+    {
+      "id": "1.2.0",
+      "surface": "extension",
+      "version": "1.2.0",
+      "level": 2,
+      "date": "2026-06-17",
+      "title": "It can tell when a whole page is horror",
+      "aside": "If a website files something under Horror, the cat takes its word for it.",
+      "summary": "Scaredy Cat reads a page's own genre labels and gets new titles without an update.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "When a movie page labels a film as Horror, its poster is hidden, even for new films that are not on our list yet."
+        },
+        {
+          "type": "new",
+          "text": "On pages filtered to the Horror genre, every poster is hidden."
+        },
+        {
+          "type": "fixed",
+          "text": "On YouTube, hovering over a blurred thumbnail played the trailer preview anyway. It no longer does."
+        },
+        {
+          "type": "new",
+          "text": "The title list now refreshes itself once a day, so new films are covered without an extension update."
+        },
+        {
+          "type": "improved",
+          "text": "\"Just tell me what happens\" only appears for films we actually know. The generic joke versions are gone."
+        },
+        {
+          "type": "fixed",
+          "text": "On LinkedIn, one hidden post could cover every video in the feed, and some dark article images were blurred. On social feeds each post is now judged on its own."
+        },
+        {
+          "type": "privacy",
+          "text": "The daily title list was downloaded from GitHub, where the project's code lives. The request sent nothing about you."
+        }
+      ],
+      "commits": [
+        "594295e",
+        "0fa7067",
+        "2bb8d2a",
+        "a3b748c",
+        "53a9204",
+        "8cd1945",
+        "40f0cab",
+        "b9ed71a",
+        "10af513"
+      ]
+    },
+    {
+      "id": "web-2026-06-15-cat-explains",
+      "surface": "website",
+      "version": null,
+      "level": null,
+      "date": "2026-06-15",
+      "title": "The first movie explainers",
+      "aside": "The cat reads the Wikipedia plot so you don't have to watch the trailer.",
+      "summary": "The website started explaining horror films and how scary they are.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "scaredycat.app started publishing short pages that explain what happens in a horror film and how scary it is, starting spoiler-free."
+        }
+      ],
+      "commits": []
+    },
+    {
+      "id": "web-2026-06-14-site-opens",
+      "surface": "website",
+      "version": null,
+      "level": null,
+      "date": "2026-06-14",
+      "title": "scaredycat.app opens",
+      "summary": "The website went up with a waitlist for the free beta.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "scaredycat.app went live with a short tour of the extension and a waitlist for the free beta."
+        }
+      ],
+      "commits": []
+    },
+    {
+      "id": "1.1.0",
+      "surface": "extension",
+      "version": "1.1.0",
+      "level": 2,
+      "date": "2026-06-11",
+      "title": "The cat learns to look at pictures",
+      "aside": "Freaky Friday was never in danger, but the cat blurred it anyway until this update.",
+      "summary": "An image check that runs on your computer, plus \"Just tell me what happens\" spoilers and a new look.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "When the words around a picture don't settle it, Scaredy Cat now looks at the picture itself. The check runs entirely on your computer, and nothing is uploaded."
+        },
+        {
+          "type": "new",
+          "text": "\"Just tell me what happens\": for films we recognize, you can read a deadpan summary of the plot instead of looking at the poster."
+        },
+        {
+          "type": "improved",
+          "text": "A new design for the popup and the blur card. The card resizes to fit the picture, and tiny thumbnails show only the cat and a Show button."
+        },
+        {
+          "type": "fixed",
+          "text": "Before this version, Rotten Tomatoes was barely covered. The site builds its pages in a way our scanner could not see into, and only about 1 in 100 pictures there was checked."
+        },
+        {
+          "type": "fixed",
+          "text": "The popup's Allow and Show all buttons did not work until this version."
+        },
+        {
+          "type": "fixed",
+          "text": "Freaky Friday, The Devil Wears Prada, Cape Fear and Monsters, Inc. were blurred by mistake. Words like \"scary\", \"devil\" and \"evil\" now count for less on their own."
+        },
+        {
+          "type": "improved",
+          "text": "One horror poster on a homepage no longer makes the whole page more likely to be blurred."
+        }
+      ],
+      "commits": [
+        "a005a10",
+        "7c60f84",
+        "ca6d66a",
+        "c141a25",
+        "56680c9",
+        "942d7f7",
+        "71bc30a"
+      ]
+    },
+    {
+      "id": "1.0.2",
+      "surface": "extension",
+      "version": "1.0.2",
+      "level": 3,
+      "date": "2026-01-26",
+      "title": "LinkedIn posts about AI are left alone",
+      "aside": "Two horror films called Afraid and Companion turned out to share a vocabulary with tech LinkedIn.",
+      "summary": "Fixes posts about AI being blurred on LinkedIn.",
+      "changes": [
+        {
+          "type": "fixed",
+          "text": "Posts about AI on LinkedIn were being blurred because they matched the horror films \"Afraid\" and \"Companion\". Those titles now need more evidence before anything is hidden."
+        }
+      ],
+      "commits": [
+        "333797d"
+      ]
+    },
+    {
+      "id": "1.0.1",
+      "surface": "extension",
+      "version": "1.0.1",
+      "level": 3,
+      "date": "2026-01-24",
+      "title": "Faster, with 35 new films",
+      "aside": "The Lord of the Rings spent a day under a blur, which the hobbits did not deserve.",
+      "summary": "Faster page loads, 35 recent horror films, and trailers that are fully covered.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "Pages load faster with Scaredy Cat on."
+        },
+        {
+          "type": "new",
+          "text": "Added 35 recent and upcoming horror films, including Longlegs, The Substance, Sinners and Heretic."
+        },
+        {
+          "type": "fixed",
+          "text": "The Lord of the Rings and No Other Choice were blurred by mistake."
+        },
+        {
+          "type": "fixed",
+          "text": "Some trailers were paused but still visible, and trailers that loaded a few seconds late were missed. They are now covered."
+        }
+      ],
+      "commits": [
+        "9fe01cd",
+        "2a50dc8"
+      ]
+    },
+    {
+      "id": "1.0.0",
+      "surface": "extension",
+      "version": "1.0.0",
+      "level": 1,
+      "date": "2026-01-23",
+      "title": "Scaredy Cat is born",
+      "aside": "Built by someone who reads the ending of a horror film before deciding not to watch it.",
+      "summary": "The first version: blurs pictures and trailers from known horror films.",
+      "changes": [
+        {
+          "type": "new",
+          "text": "Scaredy Cat blurs pictures, thumbnails and trailers tied to about 590 known horror films. Click \"Show anyway\" whenever you want to see one."
+        },
+        {
+          "type": "new",
+          "text": "Hidden trailers are paused and muted, including ones embedded from YouTube, and pick up where they left off if you reveal them."
+        },
+        {
+          "type": "new",
+          "text": "From the popup you can turn protection on or off, choose how sensitive it is, or pause it on one website."
+        },
+        {
+          "type": "new",
+          "text": "Scaredy Cat stays off video calls and work tools such as Zoom, Google Meet, Teams, Slack, Discord and Loom."
+        },
+        {
+          "type": "fixed",
+          "text": "On launch day, some logos and small icons were blurred, and an early attempt to stop autoplay broke the Loom recorder. Both were fixed the same day."
+        },
+        {
+          "type": "privacy",
+          "text": "Everything ran on your computer. This version sent nothing anywhere."
+        }
+      ],
+      "commits": [
+        "68771d5",
+        "f055750",
+        "dbd9789",
+        "79dea5a",
+        "08ffa01",
+        "a9ae632",
+        "16bb4a7",
+        "82a44b5",
+        "35add68"
+      ]
+    }
+  ]
+}

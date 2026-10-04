@@ -172,6 +172,10 @@ chrome.runtime.onStartup.addListener(seedBundledDatabase);
 chrome.runtime.onInstalled.addListener(async (details) => {
   if (details.reason === 'install') {
     await chrome.storage.sync.set({ settings: DEFAULT_SETTINGS });
+    // A new user has nothing to catch up on: no "New in x.y" marker in the
+    // popup footer. Updates leave this key alone, so people coming from an
+    // older version see the marker (popup/whats-new.js).
+    await chrome.storage.local.set({ whatsNewSeen: chrome.runtime.getManifest().version });
     console.log('Scaredy Cat installed! Default settings applied.');
   } else if (details.reason === 'update') {
     // Merge new default settings with existing ones

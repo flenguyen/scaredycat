@@ -14,8 +14,9 @@ A Chrome extension that protects you from horror-related content while browsing.
   items, reveal everything on a page
 - **Dynamic Content Support**: Works with infinite scroll and dynamically loaded content
 - **Site-Specific Settings**: Disable on specific websites
-- **Privacy-First**: All processing happens locally — the ML model is bundled with the
-  extension and no data is ever sent anywhere
+- **Privacy-First**: Detection runs on your computer. The ML model is bundled with the
+  extension and pictures are never uploaded. The few things that do leave the device
+  are listed under [Privacy](#privacy); reports to us are off until you opt in
 
 ## Installation
 
@@ -160,8 +161,9 @@ npm run setup:model          # fp16 MobileCLIP-S0 vision tower (~23MB) into mode
                              # fp32 + text tower into eval/.model-cache (dev only),
                              # transformers.js 4.x + its ORT wasm into vendor/
 npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.{json,bin}
-npm run eval                 # text-layer metrics, genre-signal, image-key, auto-title
-                             # and summary-lookup tests
+npm run eval                 # text-layer metrics, genre-signal, image-key, auto-title,
+                             # summary-lookup and release-notes tests
+npm run release:check        # versions + data/releases.json agree (pack runs it too)
 npm run eval:combined        # text + image verdict fixtures
 npm run lint:database        # safeTitles + definite-flag invariants
 npm run pack                 # dist/scaredycat-<version>.zip + size report (~26MB compressed)
@@ -264,12 +266,16 @@ scaredycat/
 │   ├── offscreen.html        # Offscreen document hosting the classifier
 │   └── classifier.js         # MobileCLIP vision tower (WebGPU/WASM), streaming port
 ├── data/
+│   ├── releases.json         # Release notes: popup "What's new" + scaredycat.app/changelog
 │   ├── horror-database.json  # Horror titles (with curated `definite` flags) and keywords
 │   ├── prompt-embeddings.json # Prompt labels + logit scale
 │   └── prompt-embeddings.bin  # Float32 prompt embeddings
 ├── models/                    # fp16 MobileCLIP-S0 vision tower (npm run setup:model)
 ├── vendor/                    # transformers.js 4.x + ONNX runtime WASM (npm run setup:model)
-├── scripts/pack.mjs           # Builds the distributable zip, refuses dev files
+├── scripts/
+│   ├── pack.mjs              # Builds the distributable zip, refuses dev files
+│   ├── release-check.mjs     # Versions + release notes consistency (npm run release:check)
+│   └── release-guard.mjs     # Claude Code commit hook: no runtime change without a note
 ├── eval/
 │   ├── run-eval.mjs          # Quality metrics, --definite-report audit, benchmark
 │   ├── corpus.json           # Labeled test contexts (curated + generated)
@@ -278,11 +284,12 @@ scaredycat/
 │   ├── precompute-prompts.mjs # Prompt ensemble -> embeddings
 │   ├── image-classifier.mjs  # Node-side classifier (dev model cache)
 │   ├── image-key-test.mjs    # Canonical image key unit test
+│   ├── releases-test.mjs     # What's new helpers + release check unit tests
 │   ├── fp16-compare.mjs      # fp16 vs fp32 in the real extension runtime
 │   ├── browser-latency.mjs   # Perf harness: cold/warm timings on fixture pages
 │   ├── ab-test.mjs           # Score real images from Wikipedia (prompt tuning aid)
 │   └── browser-smoke*.mjs    # End-to-end tests in Chrome for Testing
-├── popup/                     # Extension popup UI
+├── popup/                     # Extension popup UI (whats-new.js: release-notes logic)
 ├── icons/                     # Extension icons
 └── styles/                    # Blur overlay styles
 ```
@@ -297,6 +304,13 @@ scaredycat/
 2. Go to `chrome://extensions/`
 3. Click the reload button on the Scaredy Cat card
 4. Refresh any open tabs to see changes
+
+### Versioning & release notes
+
+Every change people can see gets a version bump and a note in `data/releases.json`, in
+the same commit. The popup's "What's new" view and https://www.scaredycat.app/changelog
+both read that file. The three-level policy (and when to stop and ask before a 2.0) is in
+[CLAUDE.md](CLAUDE.md) under "Releases"; `npm run release:check` enforces the mechanics.
 
 ### Adding Horror Titles
 
@@ -363,9 +377,27 @@ ScaredyCat.enable()
 
 ## Privacy
 
-- **A periodic fetch (every 6 hours) of the public title list and spoiler summaries** from scaredycat.app (no identifiers, no cookies, ETag only); all detection runs locally.
-- **No data collection**: Your browsing data is never sent anywhere
-- **Local storage only**: Settings are stored in Chrome's sync storage
+Detection runs on your computer. Pictures are never uploaded, and your browsing history
+never leaves the device. These are the only requests the extension makes:
+
+- **The title list and spoiler summaries** are downloaded from scaredycat.app every 6
+  hours. The request carries no identifier and no cookies (only an ETag, so an unchanged
+  list isn't downloaded again), so the server sees what any website sees: an IP address
+  and the browser type.
+- **Pictures being checked** are downloaded a second time from the site already showing
+  them, without your cookies, so the on-device model can look at them. The result stays
+  on your computer.
+- **Reports and notes, only if you opt in.** Sharing is off until you say yes, and you can
+  turn it off in the popup. Reports go to Airtable, the service we use as our report
+  inbox. Each one contains: the report type, a random report ID and time, the page
+  address cut off before any `?` or `#`, the picture or video link, what we matched and
+  how confident we were (with the reasons), your sensitivity setting, the extension,
+  title-list and model versions, and your note or category. A missed-horror pick sends
+  the text next to the picture as its note. Your email is included only if you type it.
+
+Settings are stored in Chrome's sync storage; counts, the cached title list and image
+verdicts stay in local storage. Every change to what leaves the device is listed on
+https://www.scaredycat.app/changelog.
 
 Title data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
 

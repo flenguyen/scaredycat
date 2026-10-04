@@ -22,6 +22,9 @@
       </label>
     </header>
 
+    <!-- Main view: everything below the header. Swapped out (hidden) while the
+         What's new view is open, plum band included, so a screen never has two. -->
+    <div class="main-view" id="mainView">
     <!-- Status — the plum band, the popup's one high-contrast moment -->
     <section class="status-card" id="statusCard" aria-live="polite">
       <span class="status-count" id="blockedCount">0</span>
@@ -96,7 +99,7 @@
 
         <div class="feedback-consent-row" id="popupConsentRow" hidden>
           <p class="feedback-consent-text">
-            We'll send your note plus the extension version — no images, no browsing history.
+            We'll send your note, this page's address (cut off before any ? or #), your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report inbox on Airtable. We never send images or your browsing history.
           </p>
           <div class="feedback-consent-actions">
             <button type="button" class="feedback-cat" id="popupConsentDecline">Not now</button>
@@ -118,9 +121,39 @@
     <!-- Footer -->
     <footer class="footer">
       <p class="footer-text">Keeping you safe from spooky stuff! 👻</p>
+      <p class="footer-meta">
+        <!-- popup.js shows exactly one: the button when the release notes
+             loaded, the plain version when they didn't -->
+        <button type="button" class="footer-link" id="whatsNewOpen" aria-controls="whatsNew" hidden></button>
+        <span class="footer-version" id="footerVersion" hidden></span>
+      </p>
     </footer>
+    </div>
+
+    <!-- What's new: the latest release notes, from the bundled data/releases.json.
+         Filled by popup.js with textContent only. -->
+    <section class="whats-new" id="whatsNew" aria-labelledby="whatsNewKicker" hidden>
+      <div class="whats-new-nav">
+        <button type="button" class="text-btn" id="whatsNewBack">← Back</button>
+      </div>
+      <article class="control-section release-card">
+        <div class="control-label">
+          <h2 class="control-title" id="whatsNewKicker">What's new</h2>
+          <span class="release-meta" id="whatsNewMeta"></span>
+        </div>
+        <div id="whatsNewHighlight"></div>
+      </article>
+      <section class="control-section release-patches" id="whatsNewPatches" aria-labelledby="whatsNewPatchesKicker" hidden>
+        <div class="control-label">
+          <h2 class="control-title" id="whatsNewPatchesKicker">Since then</h2>
+        </div>
+        <ol class="release-patch-list" id="whatsNewPatchList"></ol>
+      </section>
+      <button type="button" class="text-btn whats-new-more" id="whatsNewMore">Every change, on scaredycat.app →</button>
+    </section>
   </div>
 
+  <script src="whats-new.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

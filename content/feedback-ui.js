@@ -82,11 +82,12 @@ window.ScaredyCatFeedbackUI = (function () {
           To improve detection, we'd send a small report. It includes:
         </p>
         <ul class="scaredycat-consent-list">
-          <li>The page address and the image/video link</li>
-          <li>What we matched, and how confident we were</li>
+          <li>The page address (cut off before any ? or #) and the image or video link</li>
+          <li>Text next to it, what we matched, and how confident we were</li>
+          <li>Your sensitivity setting and our version numbers</li>
         </ul>
         <p class="scaredycat-consent-note">
-          No images, no browsing history. You can turn this off anytime in the popup.
+          It goes to our report inbox on Airtable. We never send images or your browsing history. You can turn this off anytime in the popup.
         </p>
         <div class="scaredycat-consent-actions"></div>
       `;

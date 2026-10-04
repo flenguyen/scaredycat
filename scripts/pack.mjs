@@ -4,6 +4,9 @@
  *
  *   npm run pack            -> dist/scaredycat-<version>.zip + size report
  *   npm run pack -- --check -> report only, no zip
+ *
+ * Both modes run the release check first (scripts/release-check.mjs) and
+ * refuse to continue if the versions or data/releases.json disagree.
  */
 
 import fs from 'node:fs';
@@ -11,9 +14,17 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runReleaseCheck, formatErrors } from './release-check.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHECK_ONLY = process.argv.includes('--check');
+
+const releaseErrors = runReleaseCheck({ root: ROOT });
+if (releaseErrors.length) {
+  console.error(formatErrors(releaseErrors));
+  console.error('\nRefusing to build until the release check passes.');
+  process.exit(1);
+}
 
 const INCLUDE = [
   'manifest.json',
