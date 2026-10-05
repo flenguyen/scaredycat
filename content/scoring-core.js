@@ -48,6 +48,24 @@ const ScaredyCatScoring = (function () {
   // Near-miss window below the block threshold that still gets an ML look.
   const NEAR_MISS_WINDOW = 20;
 
+  // A card that files itself under horror. Its own title ("Hotel Visitor -
+  // Horror Short", "#horrorshorts", "Analog Horror", "creepypasta") is the
+  // uploader or advertiser naming the genre, which is stronger evidence than
+  // a keyword found anywhere nearby. Tested on the card's title only (never
+  // URLs or bylines), on normalized text, so "#HorrorShorts" reads as
+  // "horrorshorts". Hashtags are tested on the raw text.
+  const GENRE_LABEL_REGEX = /\b(horror[a-z]*|creepypastas?|found footage|jump ?scares?|scary (?:stor(?:y|ies)|movies?|films?|shorts?|videos?)|scarystor(?:y|ies))\b/g;
+  const GENRE_HASHTAG_REGEX = /#(scary|creepy|creepypasta|jumpscare|paranormal|haunted|analoghorror|scarystor(?:y|ies))(?![a-z0-9_])/i;
+  // Strong labels file the card under the genre itself (a horror short, an
+  // analog horror series, a #horror upload) and blur outright. On YouTube
+  // and Vimeo thumbnails the image model scores 39% of real horror at or
+  // below its veto line (eval/cards, Oct 2026), so waiting for the picture
+  // to agree loses most of them. Weak labels ("horror stories", a bare
+  // "horror", #scary) are also used figuratively ("retail horror stories")
+  // and keep the image veto.
+  const STRONG_GENRE_LABEL_REGEX = /\b(horror (?:shorts?|films?|movies?|trailers?|teasers?|thrillers?|games?|series|anthology|anime|manga|comics?|novels?|podcasts?|edits?)|(?:short|indie|analog|analogue|surreal|survival|folk|psychological|cosmic|body|gothic|supernatural|slasher) horror|horror(?:shorts?|films?|movies?|games?|tok|fan|edits?|anime|art|community)|creepypastas?|found footage|jump ?scares?)\b/;
+  const STRONG_GENRE_HASHTAG_REGEX = /#(horror(?!stor)[a-z]*|creepypasta|analoghorror|jumpscare|foundfootage)(?![a-z0-9_])/i;
+
   // Known non-horror phrasings that collide with horror titles/keywords.
   // NOTE: only structural/idiom patterns belong here. Title-shaped entries
   // (LOTR etc.) live in the database's safeTitles list, which suppresses
@@ -126,7 +144,11 @@ const ScaredyCatScoring = (function () {
     'crew', 'full', 'free', 'online', 'now', 'new', 'top', 'best', 'vol',
     'volume', 'edition', 'anniversary', 'remastered', 'extended', 'original',
     'img', 'image', 'photo', 'video', 'jpg', 'jpeg', 'png', 'webp', 'gif',
-    'ii', 'iii', 'iv', 'vi', 'vii', 'viii', 'ix'
+    'ii', 'iii', 'iv', 'vi', 'vii', 'viii', 'ix',
+    // Movie ad copy ("Other Mommy - Only in Theatres", "Get showtimes -
+    // Other Mommy"): sponsored trailers wrap the title in these.
+    'only', 'theatres', 'theaters', 'cinemas', 'showtimes', 'tickets', 'get',
+    'coming', 'soon', 'exclusively', 'everywhere'
   ]);
 
   // Opaque identifiers that page URLs contribute to the context ("tt26657236",
@@ -611,6 +633,31 @@ const ScaredyCatScoring = (function () {
   }
 
   /**
+   * The genre label a card's own title gives itself, as { label, strong },
+   * or null: "horror short" and "#horror" are strong, "horror stories" and
+   * "#creepy" weak. A label inside a safe-title span doesn't count.
+   */
+  function findGenreLabel(text, compiled) {
+    if (!text) return null;
+    const normalized = normalizeText(text);
+    const spans = collectSafeSpans(compiled && compiled.safeRegex, normalized);
+    const strongTag = STRONG_GENRE_HASHTAG_REGEX.exec(text);
+    if (strongTag) return { label: `#${strongTag[1].toLowerCase()}`, strong: true };
+    const strong = STRONG_GENRE_LABEL_REGEX.exec(normalized);
+    if (strong && !isCoveredBySafeSpan(spans, strong.index, strong.index + strong[1].length)) {
+      return { label: strong[1], strong: true };
+    }
+    const hashtag = GENRE_HASHTAG_REGEX.exec(text);
+    if (hashtag) return { label: `#${hashtag[1].toLowerCase()}`, strong: false };
+    GENRE_LABEL_REGEX.lastIndex = 0;
+    let m;
+    while ((m = GENRE_LABEL_REGEX.exec(normalized)) !== null) {
+      if (!isCoveredBySafeSpan(spans, m.index, m.index + m[1].length)) return { label: m[1], strong: false };
+    }
+    return null;
+  }
+
+  /**
    * Analyze a text context. Pure and synchronous.
    *
    * opts: {
@@ -618,6 +665,11 @@ const ScaredyCatScoring = (function () {
    *   scanQuietElements: boolean, // route zero-signal elements to the image
    *                               // classifier (horror-signal pages and media
    *                               // sites); does NOT imply the page is horror
+   *   scanAnyText: boolean,       // route ANY text signal below the near-miss
+   *                               // window to the classifier (video and ad
+   *                               // cards, media sites, horror pages)
+   *   selfLabelText: string,      // the card's own title, tested for a genre
+   *                               // self-label (findGenreLabel); null = off
    * }
    *
    * Returns {
@@ -673,7 +725,7 @@ const ScaredyCatScoring = (function () {
       }
     }
 
-    const isHorrorTextOnly = finalScore >= threshold;
+    let isHorrorTextOnly = finalScore >= threshold;
     const partialTitle = titleMatch.matched && titleMatch.strength === 'partial';
     // A lone non-definitive keyword ("scary", "devil", "evil") is not enough
     // text evidence to block at any sensitivity; multiple distinct keywords
@@ -711,12 +763,31 @@ const ScaredyCatScoring = (function () {
     } else if (finalScore >= Math.max(20, threshold - NEAR_MISS_WINDOW)) {
       // Near miss: text alone wouldn't block, image evidence could.
       band = BANDS.AMBIGUOUS;
+    } else if (finalScore > 0 && opts.scanAnyText) {
+      // Some horror text on a video or ad card, a media site or a horror
+      // page ("Hotel Visitor - Horror Short" alone scores 30): too little to
+      // block on, too much to wave through without looking at the picture.
+      band = BANDS.AMBIGUOUS;
     } else if (finalScore === 0 && opts.scanQuietElements) {
       // Quiet element on a horror-signal page or media site: worth a look
       // at the pixels.
       band = BANDS.AMBIGUOUS;
     } else {
       band = BANDS.LIKELY_SAFE;
+    }
+
+    // The card names its own genre. A strong label ("horror short",
+    // "#horror") blurs at once, like a definite title; a weak one ("horror
+    // stories") blurs unless the picture is clearly harmless (the image
+    // veto). Definite title matches already blur.
+    const genreLabel = band !== BANDS.DEFINITE_HORROR && opts.selfLabelText
+      ? findGenreLabel(opts.selfLabelText, compiled) : null;
+    if (genreLabel) {
+      band = genreLabel.strong ? BANDS.DEFINITE_HORROR : BANDS.AMBIGUOUS;
+      isHorrorTextOnly = true;
+      requiresPositiveImage = false;
+      finalScore = Math.max(finalScore, threshold);
+      reasons.push(`Labelled horror: "${genreLabel.label}"`);
     }
 
     return {
@@ -733,6 +804,9 @@ const ScaredyCatScoring = (function () {
       // Matched title came from the unreviewed auto (TMDB pipeline) block.
       titleAuto: autoTitle,
       requiresPositiveImage,
+      // The card's own title names the genre (findGenreLabel).
+      selfLabel: !!genreLabel,
+      selfLabelStrong: !!(genreLabel && genreLabel.strong),
       band,
       isHorrorTextOnly
     };
@@ -743,6 +817,7 @@ const ScaredyCatScoring = (function () {
     BANDS,
     compile,
     analyzeText,
+    findGenreLabel,
     normalizeText,
     normalizeNumbers,
     pickEntryByYear,

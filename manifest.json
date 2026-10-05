@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Scaredy Cat",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "minimum_chrome_version": "137",
   "description": "Protects you from horror content while browsing. Because not everyone wants to see scary stuff! 🙀",
   "icons": {
@@ -58,6 +58,8 @@
         "content/genre-signal.js",
         "content/element-state.js",
         "content/ui-kit.js",
+        "content/site-adapters.js",
+        "content/cards.js",
         "content/detector.js",
         "content/feedback-ui.js",
         "content/blocker.js",
@@ -68,6 +70,8 @@
         "content/content.js"
       ],
       "run_at": "document_end",
+      "all_frames": true,
+      "match_origin_as_fallback": true,
       "exclude_matches": [
         "*://*.loom.com/*",
         "*://*.loomcdn.com/*",

@@ -35,9 +35,10 @@ export async function focusPage(browser, page) {
 
 /**
  * Evaluate functions in the content script's isolated world of the page's
- * main frame. Survives navigations (contexts are tracked as they come and go).
+ * main frame, or of the first subframe whose URL contains `frame`. Survives
+ * navigations (contexts are tracked as they come and go).
  */
-export async function isolatedWorld(page, { name = 'Scaredy Cat' } = {}) {
+export async function isolatedWorld(page, { name = 'Scaredy Cat', frame = null } = {}) {
   const cdp = await page.createCDPSession();
   const contexts = new Map(); // id -> frameId
   cdp.on('Runtime.executionContextCreated', ({ context }) => {
@@ -49,20 +50,27 @@ export async function isolatedWorld(page, { name = 'Scaredy Cat' } = {}) {
   cdp.on('Runtime.executionContextsCleared', () => contexts.clear());
   await cdp.send('Runtime.enable');
 
-  async function mainFrameId() {
+  async function targetFrameId() {
     const { frameTree } = await cdp.send('Page.getFrameTree');
-    return frameTree.frame.id;
+    if (!frame) return frameTree.frame.id;
+    const stack = [...(frameTree.childFrames || [])];
+    while (stack.length) {
+      const node = stack.shift();
+      if ((node.frame.url || '').includes(frame)) return node.frame.id;
+      stack.push(...(node.childFrames || []));
+    }
+    return null;
   }
 
   async function contextId(timeout = 15000) {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
-      const frameId = await mainFrameId();
+      const frameId = await targetFrameId();
       const ids = [...contexts].filter(([, f]) => f === frameId).map(([id]) => id);
       if (ids.length) return ids[ids.length - 1];
       await new Promise(r => setTimeout(r, 100));
     }
-    throw new Error('no Scaredy Cat isolated world in the main frame');
+    throw new Error(`no Scaredy Cat isolated world in ${frame ? `the frame matching "${frame}"` : 'the main frame'}`);
   }
 
   /** Run `fn(...args)` in the isolated world; returns its (JSON) value. */

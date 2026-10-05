@@ -63,13 +63,18 @@ const ScaredyCatMLBridge = (function () {
 
   /**
    * URL whose pixels represent this element, or null if there are none we
-   * can classify (e.g. iframes).
+   * can classify. An embedded YouTube player draws its thumbnail inside the
+   * cross-origin frame, so the frame is judged on that same thumbnail,
+   * fetched by video id. Other iframes have no pixels we can reach.
    */
   function getClassifiableUrl(element) {
     const tag = element.tagName;
     let url = '';
     if (tag === 'IMG') url = element.currentSrc || element.src || '';
     else if (tag === 'VIDEO') url = element.poster || '';
+    else if (tag === 'IFRAME' && typeof ScaredyCatCards !== 'undefined') {
+      url = ScaredyCatCards.embedThumbnail(element.src) || '';
+    }
     return /^https?:/.test(url) && url.length <= MAX_URL_LENGTH ? url : null;
   }
 
@@ -111,6 +116,11 @@ const ScaredyCatMLBridge = (function () {
     const reasons = [...(textResult.reasons || [])];
 
     if (imageScore === null) {
+      // A card that labels itself horror blurs unless the picture clears it,
+      // and a missing picture verdict clears nothing.
+      if (textResult.selfLabel) {
+        return { isHorror: true, confidence: textResult.confidence, reasons };
+      }
       // No image evidence: only strong text blocks unverified, and text that
       // needs positive image confirmation (fragment title matches, weak
       // keywords) can never block without it.
@@ -147,9 +157,11 @@ const ScaredyCatMLBridge = (function () {
     // veto images that clearly AREN'T a horror poster. This catches the
     // modern/minimalist posters that score 41-64 and slip the 65 detail-page
     // bar.
+    // A card whose byline or description mentions horror (and whose title
+    // doesn't) gets the horror-page bar: weak text, but text about this card.
     const blockScore = (opts.isHorrorGenreListing || opts.authoritativeHorrorGenre)
       ? IMAGE_BLOCK_SCORE_GENRE_LISTING
-      : opts.pageHasHorrorSignal
+      : (opts.pageHasHorrorSignal || textResult.secondaryOnly)
         ? IMAGE_BLOCK_SCORE_HORROR_PAGE
         : (textResult.confidence === 0 ? IMAGE_ONLY_BLOCK_SCORE : IMAGE_BLOCK_SCORE);
     if (imageScore >= blockScore) {

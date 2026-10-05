@@ -15,6 +15,13 @@
   let warmRequested = false;
   const currentHostname = window.location.hostname;
   const State = ScaredyCatState;
+  // Content scripts also run in frames (embedded players, display ads).
+  // A frame is judged on its own pictures, with no page-level signal, and
+  // its block count reaches the toolbar badge through its top frame.
+  const IS_SUBFRAME = window.top !== window;
+  // Frames smaller than this hold tracking pixels and buttons, not pictures.
+  const MIN_FRAME_WIDTH = 120;
+  const MIN_FRAME_HEIGHT = 90;
 
   // Canonical image keys the user reported as missed horror (see
   // ADD_TO_BLOCKLIST in background.js). Checked before everything else in
@@ -113,8 +120,24 @@
   /**
    * Initialize the extension
    */
+  function frameTooSmall() {
+    return IS_SUBFRAME && (window.innerWidth < MIN_FRAME_WIDTH || window.innerHeight < MIN_FRAME_HEIGHT);
+  }
+
+  function onFrameResize() {
+    if (frameTooSmall()) return;
+    window.removeEventListener('resize', onFrameResize);
+    init();
+  }
+
   async function init() {
     if (isInitialized) return;
+    // A tiny frame (pixel, button, collapsed ad slot) costs nothing until
+    // it grows into something that can show a picture.
+    if (frameTooSmall()) {
+      window.addEventListener('resize', onFrameResize);
+      return;
+    }
     Perf.mark('sc:init');
 
     // Skip on trusted domains
@@ -196,10 +219,11 @@
     ScaredyCatBlocker.setEntryListener(armPrune);
     performInitialScan();
     if (mediaSite) scheduleShadowSweeps();
+    watchNavigation();
 
     // Suppress YouTube's shared hover-preview player over blocked thumbnails
     // (no-op off YouTube).
-    window.ScaredyCatYouTubeGuard?.init();
+    if (!IS_SUBFRAME) window.ScaredyCatYouTubeGuard?.init();
 
     console.log('Scaredy Cat: Initialized');
   }
@@ -242,7 +266,7 @@
       if (!isEnabled) return;
       // The page signal needs the compiled index: settle it before the first
       // verdicts so they use the right image bar.
-      if (ScaredyCatDetector.refreshPageSignal()) State.resetSafe();
+      refreshPageSignal();
       for (const element of list) {
         if (State.get(element) !== 'pending') continue;
         State.clear(element);
@@ -272,7 +296,16 @@
   /**
    * Handle messages from popup
    */
+  // Messages about the tab as a whole are answered by the top frame alone
+  // (the popup takes the first answer it gets, and blocked-item ids are per
+  // frame). Reports go through the top frame, which persists the blocklist
+  // change; every frame then hears BLOCKLIST_UPDATED.
+  const TOP_FRAME_ONLY = new Set([
+    'GET_PAGE_STATS', 'ALLOW_ITEM', 'REPORT_FALSE_POSITIVE', 'START_PICK_MODE', 'REPORT_MISSED_CONTEXT', 'FRAME_COUNT'
+  ]);
+
   function handleMessage(message, sender, sendResponse) {
+    if (IS_SUBFRAME && TOP_FRAME_ONLY.has(message.type)) return false;
     switch (message.type) {
       case 'SETTINGS_UPDATED': {
         const prev = settings;
@@ -310,9 +343,14 @@
       case 'GET_PAGE_STATS':
         sendResponse({
           success: true,
-          blockedCount: ScaredyCatBlocker.getBlockedCount(),
+          blockedCount: ScaredyCatBlocker.getBlockedCount() + ScaredyCatBlocker.getFrameCount(),
           blockedItems: ScaredyCatBlocker.getBlockedItems()
         });
+        break;
+      case 'FRAME_COUNT':
+        // A frame's hidden count, relayed by the worker (sender.frameId).
+        ScaredyCatBlocker.setFrameCount(message.frameId, message.pageCount);
+        sendResponse({ success: true });
         break;
       case 'ALLOW_ITEM': {
         const allowed = allowBlockedItem(message.id);
@@ -321,7 +359,7 @@
       }
       case 'SHOW_ALL_PAGE':
         ScaredyCatBlocker.revealAll();
-        sendResponse({ success: true });
+        if (!IS_SUBFRAME) sendResponse({ success: true });
         break;
       case 'RESCAN_PAGE':
         if (isEnabled) {
@@ -632,7 +670,7 @@
     // SPA media sites hydrate title/genre/JSON-LD after init, so re-evaluate
     // the page-level horror signal against the current DOM before scoring.
     // (A no-op until the database is compiled.)
-    if (ScaredyCatDetector.refreshPageSignal()) State.resetSafe();
+    refreshPageSignal();
 
     // Scan early-hidden elements first (media sites only)
     const earlyHidden = window.__scaredycatEarlyHidden;
@@ -660,11 +698,66 @@
         // The genre line / listing filter may only now be in the DOM. If it
         // just flipped the page signal on, re-judge elements already marked
         // safe under the old (higher) image bar.
-        if (ScaredyCatDetector.refreshPageSignal()) State.resetSafe();
+        refreshPageSignal();
         const media = collectMedia(document);
         if (media.length > 0) scanElements(media);
       }, delay);
     });
+  }
+
+  /**
+   * Re-evaluate the page-level horror signal; when it just turned on,
+   * re-judge what was marked safe under the old (higher) image bar. A frame
+   * has no page signal of its own: an ad slot's document title says nothing
+   * about the picture in it.
+   */
+  function refreshPageSignal() {
+    if (IS_SUBFRAME) return false;
+    if (!ScaredyCatDetector.refreshPageSignal()) return false;
+    State.resetSafe();
+    return true;
+  }
+
+  // ---- Same-document navigation -------------------------------------------------
+  // YouTube and other single-page apps change the URL without a page load.
+  // The page signal is sticky within a page, so a new search or a new title
+  // page must start from scratch: reset it, re-judge what was shown under
+  // the old page's bars, and settle the new signal as the new page renders
+  // (its document.title often updates after the URL).
+  const NAV_SETTLE_MS = [800, 2500, 6000];
+  let lastPageKey = pageKey(location.href);
+  let navTimers = [];
+
+  function pageKey(href) {
+    try {
+      const u = new URL(href);
+      return u.origin + u.pathname + u.search;
+    } catch (e) {
+      return href;
+    }
+  }
+
+  function checkNavigation() {
+    const key = pageKey(location.href);
+    if (key === lastPageKey) return;
+    lastPageKey = key;
+    if (IS_SUBFRAME || !isEnabled || !protectionStarted || !ScaredyCatDetector.isReady()) return;
+    ScaredyCatDetector.resetPageSignal();
+    State.resetSafe();
+    navTimers.forEach(clearTimeout);
+    navTimers = [setTimeout(performInitialScan, 0), ...NAV_SETTLE_MS.map(delay => setTimeout(() => {
+      if (!isEnabled) return;
+      if (refreshPageSignal()) performInitialScan();
+    }, delay))];
+  }
+
+  function watchNavigation() {
+    if (IS_SUBFRAME) return;
+    window.addEventListener('popstate', checkNavigation);
+    document.addEventListener('yt-navigate-finish', checkNavigation);
+    try {
+      window.navigation?.addEventListener('navigatesuccess', checkNavigation);
+    } catch (e) { /* Navigation API unavailable */ }
   }
 
   function markSkip(element) {
@@ -685,6 +778,9 @@
    */
   function scanElements(elements, { immediate = false, viewportFirst = false } = {}) {
     if (!isEnabled || !isInitialized || !settings || elements.length === 0) return;
+    // Every DOM batch passes through here, so a pushState navigation is
+    // noticed even where no navigation event reaches this world.
+    checkNavigation();
 
     if (immediate) {
       for (const element of elements) {
@@ -713,6 +809,14 @@
     }
   }
 
+  // Inside a frame, only pictures the size of an ad creative or a player
+  // poster are worth a classifier request.
+  function subframeTooSmall(element, rect) {
+    if (!IS_SUBFRAME) return false;
+    const r = rect || element.getBoundingClientRect();
+    return r.width < MIN_FRAME_WIDTH || r.height < MIN_FRAME_HEIGHT;
+  }
+
   function scanOne(element, rect) {
     if (State.has(element)) return;
 
@@ -723,7 +827,7 @@
       return;
     }
 
-    if (!ScaredyCatDetector.shouldAnalyzeElement(element, rect)) {
+    if (!ScaredyCatDetector.shouldAnalyzeElement(element, rect) || subframeTooSmall(element, rect)) {
       markSkip(element);
       return;
     }
@@ -787,19 +891,23 @@
   }
 
   // A throttled classify request (the worker's per-tab rate limit) gets the
-  // no-image verdict now and, if that left it visible, one more try later,
-  // when (or if) it is near the viewport again.
-  const THROTTLE_RETRY_MS = 15000;
-  const throttleRetried = new WeakSet();
+  // no-image verdict now and, if that left it visible, up to three more
+  // tries later (backing off), when (or if) it is near the viewport again.
+  // A fast scroll through a long results page can be throttled more than
+  // once; one retry left those thumbnails unchecked for good.
+  const THROTTLE_RETRY_MS = [15000, 30000, 60000];
+  const throttleRetries = new WeakMap(); // element -> retries scheduled
 
   function scheduleThrottleRetry(element) {
-    if (throttleRetried.has(element)) return;
-    throttleRetried.add(element);
+    const n = throttleRetries.get(element) || 0;
+    if (n >= THROTTLE_RETRY_MS.length) return;
+    throttleRetries.set(element, n + 1);
+    const base = THROTTLE_RETRY_MS[n];
     setTimeout(() => {
       if (!isEnabled || !element.isConnected || State.get(element) !== 'safe') return;
       State.clear(element);
       track(element);
-    }, THROTTLE_RETRY_MS + Math.random() * THROTTLE_RETRY_MS);
+    }, base + Math.random() * base);
   }
 
   /**

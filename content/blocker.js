@@ -70,8 +70,26 @@ const ScaredyCatBlocker = (function () {
   let lastSentPageCount = -1;
   let badgeTimer = null;
 
-  function hiddenCount() {
+  // Hidden counts reported by this tab's frames (top frame only; relayed by
+  // the worker as FRAME_COUNT), so the badge covers embedded players and ads.
+  const frameCounts = new Map(); // frameId -> count
+  const MAX_FRAMES = 200;
+
+  function frameCount() {
     let n = 0;
+    frameCounts.forEach((c) => { n += c; });
+    return n;
+  }
+
+  function setFrameCount(frameId, count) {
+    if (!Number.isInteger(frameId) || !Number.isInteger(count) || count < 0) return;
+    if (count === 0) frameCounts.delete(frameId);
+    else if (frameCounts.has(frameId) || frameCounts.size < MAX_FRAMES) frameCounts.set(frameId, Math.min(count, MAX_PAGE_COUNT));
+    scheduleBadge(300);
+  }
+
+  function hiddenCount() {
+    let n = frameCount();
     blockedElements.forEach((data) => {
       if (!data.revealed && data.wrapper.isConnected) n++;
     });
@@ -1206,6 +1224,9 @@ const ScaredyCatBlocker = (function () {
     removeAllBlurs,
     pruneDetached,
     getBlockedCount,
+    // Blocks inside this tab's frames (top frame's tally, see setFrameCount).
+    getFrameCount: frameCount,
+    setFrameCount,
     getBlockedItems,
     getBlockedData,
     getBlockedWrappers,

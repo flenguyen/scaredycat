@@ -246,7 +246,8 @@ const ScaredyCatDetector = (function () {
       if (!signalNow && !pageHasHorrorSignal) {
         const titleUrlContext = [
           document.title || '',
-          window.location.pathname.replace(/[-_\/]/g, ' ')
+          window.location.pathname.replace(/[-_\/]/g, ' '),
+          searchQueryOf(window.location.href)
         ].join(' ');
         const opts = { threshold: getThreshold(), scanQuietElements: false };
         const pageResult = ScaredyCatScoring.analyzeText(titleUrlContext, compiledIndex, opts);
@@ -273,6 +274,34 @@ const ScaredyCatDetector = (function () {
     } catch (e) {
       // Leave any previously-confirmed signal untouched.
     }
+  }
+
+  // Site search parameters. A results page for "horror" is a horror page even
+  // where the site doesn't echo the query into document.title.
+  const SEARCH_PARAMS = ['search_query', 'q', 'query', 's', 'k', 'keyword', 'keywords', 'term'];
+
+  function searchQueryOf(href) {
+    try {
+      const params = new URL(href).searchParams;
+      for (const name of SEARCH_PARAMS) {
+        const value = params.get(name);
+        if (value) return value.slice(0, 200);
+      }
+    } catch (e) { /* not a URL */ }
+    return '';
+  }
+
+  /**
+   * Forget every page-level flag. For same-document navigations (YouTube,
+   * other SPAs): the flags are sticky within a page, but a new search or a
+   * new title page is a new page. The memo bakes the flags in, so it goes too.
+   */
+  function resetPageSignal() {
+    pageHasHorrorSignal = false;
+    pageIsHorrorGenreListing = false;
+    pageHasStructuredHorrorGenre = false;
+    pageHasStructuredNonHorrorGenre = false;
+    memo.clear();
   }
 
   // JSON-LD blobs on media sites can be tens of KB and the page signal is
@@ -495,22 +524,6 @@ const ScaredyCatDetector = (function () {
     /(^|\.)bsky\.app$/i
   ];
 
-  // YouTube card containers (classic polymer renderers and the newer
-  // lockup view models) and where the title lives inside them.
-  const YT_CARD_SELECTOR = 'ytd-rich-item-renderer, ytd-video-renderer, ytd-compact-video-renderer, ytd-grid-video-renderer, ytd-playlist-video-renderer, ytd-reel-item-renderer, yt-lockup-view-model, ytd-rich-grid-media, ytd-ad-slot-renderer';
-  const YT_TITLE_SELECTOR = '#video-title, a#video-title-link, h3 a[title], h3 a[aria-label], .yt-lockup-metadata-view-model-wiz__title, [class*="lockup-metadata"] a[aria-label]';
-  // Sponsored cards (search results, home feed) have no #video-title: the
-  // advertiser's headline and description sit in feed-ad-metadata-view-model,
-  // and the thumbnail is a googlesyndication image whose URL says nothing.
-  const YT_AD_TEXT_SELECTOR = 'feed-ad-metadata-view-model [class*="Headline"], feed-ad-metadata-view-model [class*="Description"]';
-  let _isYouTubeCached = null;
-  function isYouTubeCached() {
-    if (_isYouTubeCached === null) {
-      _isYouTubeCached = /(^|\.)youtube\.com$/i.test(window.location.hostname);
-    }
-    return _isYouTubeCached;
-  }
-
   let _isSocialFeedCached = null;
   function isSocialFeedCached() {
     if (_isSocialFeedCached === null) {
@@ -523,6 +536,16 @@ const ScaredyCatDetector = (function () {
    * Extract text context from an element and its surroundings
    */
   function extractTextContext(element) {
+    return extractContext(element).text;
+  }
+
+  /**
+   * The element's text context plus what the card layer (cards.js) found:
+   * { text, primary, secondary, kind }. `text` is what gets scored; `primary`
+   * is the card's own title (also inside `text`), `secondary` the card's
+   * byline/description, scored separately as a weak signal.
+   */
+  function extractContext(element) {
     const parts = [];
 
     // Quick attribute checks - no DOM traversal
@@ -560,22 +583,22 @@ const ScaredyCatDetector = (function () {
       parent = parent.parentElement;
     }
 
-    // YouTube thumbnails carry no text of their own (the <a id=thumbnail>
-    // wrapper is empty); the video title sits in a sibling inside the
-    // renderer element. Reading it turns a pixel-only guess into a title
-    // match — instant DEFINITE for named horror trailers, no classifier.
-    if (isYouTubeCached()) {
-      const card = element.closest(YT_CARD_SELECTOR);
-      if (card) {
-        const titleEl = card.querySelector(YT_TITLE_SELECTOR);
-        const text = titleEl && (titleEl.getAttribute('title') || titleEl.getAttribute('aria-label') || titleEl.textContent || '').trim();
-        if (text) parts.push(text.slice(0, 200));
-        const adTexts = card.querySelectorAll(YT_AD_TEXT_SELECTOR);
-        for (let i = 0; i < adTexts.length && i < 2; i++) {
-          const adText = adTexts[i].textContent.replace(/\s+/g, ' ').trim();
-          if (adText) parts.push(adText.slice(0, 200));
-        }
-      }
+    // Thumbnails on video sites and trailer rails carry no text of their own
+    // (YouTube's <a id=thumbnail> wrapper is empty); the title sits in a
+    // sibling inside the card. Reading it turns a pixel-only guess into a
+    // title match: instant DEFINITE for named horror trailers, no classifier.
+    let card = null;
+    try {
+      card = ScaredyCatCards.describe(element);
+    } catch (e) {
+      card = null;
+    }
+    const primary = card ? card.primary : '';
+    if (primary) {
+      // Not twice: a title that is also the alt text would double its
+      // keyword count.
+      const seen = parts.join(' ').toLowerCase();
+      if (!seen.includes(primary.toLowerCase())) parts.unshift(primary);
     }
 
     // On media sites, do minimal extra checks
@@ -593,7 +616,12 @@ const ScaredyCatDetector = (function () {
       if (siblingTitle) parts.unshift(siblingTitle);
     }
 
-    return parts.join(' ').slice(0, 1000);
+    return {
+      text: parts.join(' ').slice(0, 1000),
+      primary,
+      secondary: card ? card.secondary : '',
+      kind: card ? card.kind : 'image'
+    };
   }
 
   // A link path with at least three segments: the first two name an entity
@@ -656,24 +684,47 @@ const ScaredyCatDetector = (function () {
       };
     }
 
-    const context = extractTextContext(element);
+    const extracted = extractContext(element);
+    const context = extracted.text;
     const threshold = getThreshold();
-    const memoKey = context;
+    const social = isSocialFeedCached();
+    const mediaSite = isMediaSiteCached();
+    const videoOrAd = extracted.kind === 'video' || extracted.kind === 'ad';
+    // On a page the site files under a non-horror genre, quiet elements
+    // (no text signal at all) are the title's own stills and posters:
+    // they band LIKELY_SAFE instead of costing a classifier round trip
+    // that could only ever produce an image-only false positive.
+    const scanQuietElements = (pageHasHorrorSignal || mediaSite) && !pageHasStructuredNonHorrorGenre;
+    // Social posts keep their stricter per-element rules: a post's text is
+    // the poster talking, not a title naming the genre.
+    const scanAnyText = scanQuietElements || (videoOrAd && !social);
+    const selfLabelText = !social && (videoOrAd || mediaSite)
+      ? [extracted.primary, element.getAttribute('alt'), element.getAttribute('title')].filter(Boolean).join(' ')
+      : '';
+    const opts = { threshold, scanQuietElements, scanAnyText, selfLabelText };
 
-    let result = memo.get(memoKey);
-    if (result === undefined) {
-      result = ScaredyCatScoring.analyzeText(context, compiledIndex, {
-        threshold,
-        // On a page the site files under a non-horror genre, quiet elements
-        // (no text signal at all) are the title's own stills and posters:
-        // they band LIKELY_SAFE instead of costing a classifier round trip
-        // that could only ever produce an image-only false positive.
-        scanQuietElements: (pageHasHorrorSignal || isMediaSiteCached()) && !pageHasStructuredNonHorrorGenre
-      });
-      if (memo.size >= MEMO_LIMIT) {
-        memo.delete(memo.keys().next().value); // drop oldest entry
+    let result = cachedAnalysis(
+      `${scanQuietElements ? 1 : 0}${scanAnyText ? 1 : 0}\u0001${selfLabelText}\u0001${context}`,
+      () => ScaredyCatScoring.analyzeText(context, compiledIndex, opts));
+
+    // Byline, channel and description: a weak signal. It can send the
+    // picture to the classifier (at the horror-page bar) but never blocks by
+    // itself, so a description mentioning horror in passing costs a look,
+    // not a blur. Video/ad cards and media sites only; never social posts.
+    let secondaryOnly = false;
+    const secondary = extracted.secondary;
+    if (secondary && !social && (videoOrAd || mediaSite) && !result.isHorrorTextOnly &&
+        result.band !== BANDS.DEFINITE_HORROR) {
+      const sec = cachedAnalysis(`\u0002${secondary}`, () =>
+        ScaredyCatScoring.analyzeText(secondary, compiledIndex, { threshold, scanQuietElements: false }));
+      if (sec.confidence > 0) {
+        secondaryOnly = true;
+        result = {
+          ...result,
+          band: BANDS.AMBIGUOUS,
+          reasons: [...result.reasons, ...sec.reasons.map(r => `Nearby text: ${r}`)]
+        };
       }
-      memo.set(memoKey, result);
     }
 
     return {
@@ -692,9 +743,28 @@ const ScaredyCatDetector = (function () {
       // Debug only: the match came from the unreviewed auto title block.
       titleAuto: !!result.titleAuto,
       requiresPositiveImage: !!result.requiresPositiveImage,
+      // The card's own title names the genre: blocks unless the image vetoes.
+      selfLabel: !!result.selfLabel,
+      selfLabelStrong: !!result.selfLabelStrong,
+      // Only the card's byline/description had a signal: the image decides,
+      // at the horror-page bar.
+      secondaryOnly,
+      cardKind: extracted.kind,
       titleScore: result.titleScore,
       keywordScore: result.keywordScore
     };
+  }
+
+  function cachedAnalysis(key, compute) {
+    let result = memo.get(key);
+    if (result === undefined) {
+      result = compute();
+      if (memo.size >= MEMO_LIMIT) {
+        memo.delete(memo.keys().next().value); // drop oldest entry
+      }
+      memo.set(key, result);
+    }
+    return result;
   }
 
   // URL patterns for logos/icons that should never be blocked
@@ -755,6 +825,17 @@ const ScaredyCatDetector = (function () {
     return LOGO_WHITELIST_PATTERNS.some(pattern => pattern.test(src));
   }
 
+  // Tested on the path only: YouTube's thumbnail query strings (sqp=, rs=)
+  // are random base64 that can spell "icon" or "logo" by chance.
+  const LOGO_PATH_RE = /logo|icon|sprite|avatar|badge/i;
+  function pathLooksLikeLogo(src) {
+    try {
+      return LOGO_PATH_RE.test(new URL(src, location.href).pathname);
+    } catch (e) {
+      return LOGO_PATH_RE.test(src);
+    }
+  }
+
   /**
    * `rect` (optional) is a DOMRect the caller already has (from the
    * IntersectionObserver entry or its own layout pass): using it avoids a
@@ -785,7 +866,7 @@ const ScaredyCatDetector = (function () {
 
     // Skip logos and trusted sources based on src
     const src = element.src || '';
-    if (src && (/logo|icon|sprite|avatar|badge/i.test(src) || isTrustedSource(src))) {
+    if (src && (pathLooksLikeLogo(src) || isTrustedSource(src))) {
       return false;
     }
 
@@ -802,7 +883,7 @@ const ScaredyCatDetector = (function () {
   function isCheapSkip(element) {
     const tagName = element.tagName;
     const src = element.src || '';
-    if (src && (/logo|icon|sprite|avatar|badge/i.test(src) || isTrustedSource(src))) return true;
+    if (src && (pathLooksLikeLogo(src) || isTrustedSource(src))) return true;
     if (tagName === 'IMG' && element.complete && element.naturalWidth && element.naturalHeight) {
       const minSize = isMediaSiteCached() ? 60 : 100;
       return element.naturalWidth < minSize || element.naturalHeight < minSize;
@@ -896,6 +977,8 @@ const ScaredyCatDetector = (function () {
     // call repeatedly; the signal is sticky-on. Returns true only on the
     // transition false -> true, so the caller can re-judge elements it already
     // marked safe under the old (higher) image bar. Called before each scan.
+    // Same-document navigation to a different page: drop the sticky flags.
+    resetPageSignal,
     refreshPageSignal: () => {
       if (!compiledIndex) return false;
       const before = pageHasHorrorSignal;

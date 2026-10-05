@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "2.0.0",
+  "current": "2.1.0",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -25,6 +25,51 @@
     }
   ],
   "releases": [
+    {
+      "id": "2.1.0",
+      "surface": "extension",
+      "version": "2.1.0",
+      "level": 2,
+      "date": "2026-10-05",
+      "title": "Horror videos, Shorts and ads on any site",
+      "aside": "Calling your video a horror short is now a very reliable way to get Scaredy Cat to cover it.",
+      "summary": "Scaredy Cat now reads the titles of video cards, Shorts and ads on any site, so far more horror videos in search results get blurred.",
+      "changes": [
+        {
+          "type": "fixed",
+          "text": "Scaredy Cat missed most horror videos in YouTube search results. A title that said \"horror\" only once was not enough for it to check the picture, and the titles of Shorts were not read at all. On the 19 video pages in our tests it now blurs about 8 in 10 horror videos. Before this update it blurred about 3 in 10."
+        },
+        {
+          "type": "new",
+          "text": "When a video's own title says it is horror, such as \"Horror Short Film\", \"Analog Horror\", \"creepypasta\" or #horror, Scaredy Cat blurs it right away. Looser phrases such as \"horror stories\" still get a look at the picture first, so videos about bad days at work usually stay visible."
+        },
+        {
+          "type": "new",
+          "text": "Scaredy Cat now also looks inside frames on a page. YouTube trailers embedded in an article and banner ads for horror films get blurred too."
+        },
+        {
+          "type": "improved",
+          "text": "Video cards on other sites, such as Dailymotion and Vimeo search results and trailer rows on news sites, now get their titles read the same way as on YouTube."
+        },
+        {
+          "type": "improved",
+          "text": "The channel name and description under a video now count as a hint. They can send the picture for a closer look, but they never blur a video on their own."
+        },
+        {
+          "type": "fixed",
+          "text": "Sponsored trailers that put words like \"Only in Theatres\" or \"Get showtimes\" next to the film's name were sometimes left unblurred. They are now blurred like the film's other trailers."
+        },
+        {
+          "type": "fixed",
+          "text": "On YouTube, a new search made without reloading the page was still judged with the previous search's settings. Each search is now judged on its own."
+        },
+        {
+          "type": "improved",
+          "text": "Some safe videos are blurred a little more often than before. In our tests this rose from about 1 in 100 safe videos to about 2 in 100, mostly true crime documentaries."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "2.0.0",
       "surface": "extension",

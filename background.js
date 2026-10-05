@@ -181,8 +181,16 @@ function formatBadge(n) {
   return n > BADGE_MAX ? `${BADGE_MAX}+` : String(n);
 }
 
-async function setBadgeCount(tabId, count) {
+async function setBadgeCount(tabId, count, frameId = 0) {
   if (tabId == null) return;
+  // A frame (embedded player, ad slot) counts only its own blocks. Its top
+  // frame adds them to the tab's count and sets the badge, so the worker
+  // still keeps no per-tab state.
+  if (frameId) {
+    chrome.tabs.sendMessage(tabId, { type: 'FRAME_COUNT', frameId, pageCount: count }, { frameId: 0 })
+      .catch(() => { /* top frame has no content script */ });
+    return;
+  }
   try {
     await chrome.action.setBadgeText({ tabId, text: formatBadge(count) });
   } catch (e) {
@@ -421,12 +429,12 @@ async function handleMessage(message, sender) {
   // Stats and badge messages hit storage.local / the action only.
   if (message.type === 'INCREMENT_BLOCKED') {
     const n = Math.min(message.count, ScaredyCatGuards.BLOCKED_COUNT_MAX);
-    if (Number.isInteger(message.pageCount)) setBadgeCount(sender?.tab?.id, message.pageCount);
+    if (Number.isInteger(message.pageCount)) setBadgeCount(sender?.tab?.id, message.pageCount, sender?.frameId);
     const totalBlocked = await incrementBlocked(n);
     return { success: true, totalBlocked };
   }
   if (message.type === 'SET_BADGE') {
-    await setBadgeCount(sender?.tab?.id, message.pageCount);
+    await setBadgeCount(sender?.tab?.id, message.pageCount, sender?.frameId);
     return { success: true };
   }
   if (message.type === 'GET_PAGE_STATS') {
