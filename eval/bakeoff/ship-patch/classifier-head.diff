@@ -1,0 +1,123 @@
+diff --git a/offscreen/classifier.js b/offscreen/classifier.js
+index 8c946c8..f299f5e 100644
+--- a/offscreen/classifier.js
++++ b/offscreen/classifier.js
+@@ -31,7 +31,7 @@ const PORT_NAME = 'sc-classify';
+ const FETCH_CONCURRENCY = 4;
+ const FETCH_TIMEOUT_MS = 8000;
+ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+-const INPUT_SIZE = 256; // MobileCLIP-S0: shortest edge 256, center crop 256x256
++let INPUT_SIZE = 256; // shortest edge the processor resizes to (read from preprocessor_config.json after load)
+ // 'canvas' (shipped): the legacy pixels with one full-size buffer instead of
+ // five (decodeLikeLegacy). 'bitmap': createImageBitmap resizes during decode,
+ // no full-size buffer at all, but it scores differently on large images and
+@@ -76,6 +76,8 @@ let warmPromise = null;
+ let processor = null;
+ let visionModel = null;
+ let promptData = null;
++let head = null; // { w: Float32Array, b, dim, model }: linear head, replaces zero-shot when data/image-head.json exists
++let modelVersion = null;
+ let activeDevice = null;
+ let activeDtype = null;
+ let loadMs = 0;
+@@ -102,6 +104,21 @@ async function loadPromptData() {
+   };
+ }
+ 
++/**
++ * Optional linear head: score = 100 * sigmoid(w . e_hat + b) on the L2-normalised
++ * image embedding (trained by eval/bakeoff). Returns null when none ships, in
++ * which case the zero-shot prompt embeddings are used.
++ */
++async function loadHead() {
++  const res = await fetch(chrome.runtime.getURL('data/image-head.json'));
++  if (!res.ok) return null;
++  const h = await res.json();
++  if (!Array.isArray(h.w) || h.w.length !== h.dim || h.normalise !== 'l2') {
++    throw new Error('data/image-head.json is malformed');
++  }
++  return { w: Float32Array.from(h.w), b: h.b, dim: h.dim, model: h.model };
++}
++
+ /**
+  * Load once. `dtype`/`device` overrides only apply to the first call (the
+  * eval hook); the extension itself always uses the defaults.
+@@ -113,8 +130,16 @@ async function loadModel(dtypeOverride, deviceOverride) {
+     if (typeof WebAssembly.Suspending !== 'function') {
+       throw new Error('WebAssembly JSPI unavailable (Chrome 137+ required)');
+     }
+-    promptData = await loadPromptData();
++    head = await loadHead().catch(() => null);
++    if (head) {
++      modelVersion = `${head.model}-head`;
++    } else {
++      promptData = await loadPromptData();
++      modelVersion = promptData.modelVersion;
++    }
+     processor = await AutoProcessor.from_pretrained(MODEL_ID);
++    const size = processor.image_processor.size;
++    INPUT_SIZE = typeof size === 'number' ? size : (size.shortest_edge ?? size.height);
+ 
+     // q8 vision is badly degraded for MobileCLIP (int8 scored Hereditary 2.2
+     // vs 97.9); only fp16/fp32 are acceptable.
+@@ -157,7 +182,8 @@ globalThis.__scEval = {
+     await loadModel();
+     const t0 = performance.now();
+     const r = await classifyOne(url, new Set(), opts);
+-    return { ...r, ms: Math.round(performance.now() - t0) };
++    // `embedding` (L2-normalised) lets the harness compare against Node.
++    return { ...r, embedding: r.embedding && Array.from(r.embedding), ms: Math.round(performance.now() - t0) };
+   }
+ };
+ 
+@@ -168,8 +194,8 @@ function warmUp() {
+     await loadModel();
+     const t0 = performance.now();
+     try {
+-      const pixels = new Uint8ClampedArray(256 * 256 * 3).fill(128);
+-      const image = new RawImage(pixels, 256, 256, 3);
++      const pixels = new Uint8ClampedArray(INPUT_SIZE * INPUT_SIZE * 3).fill(128);
++      const image = new RawImage(pixels, INPUT_SIZE, INPUT_SIZE, 3);
+       const inputs = await processor(image);
+       await runInference(inputs);
+       console.log(`Scaredy Cat: classifier warm (${Math.round(performance.now() - t0)}ms)`);
+@@ -180,6 +206,13 @@ function warmUp() {
+   return warmPromise;
+ }
+ 
++/** Linear head: 100 * sigmoid(w . e_hat + b). */
++function scoreWithHead(imageEmbedding) {
++  let z = head.b;
++  for (let i = 0; i < head.dim; i++) z += head.w[i] * imageEmbedding[i];
++  return 100 / (1 + Math.exp(-z));
++}
++
+ /** Same math as eval/image-classifier.mjs — keep the two in sync. */
+ function scoreEmbedding(imageEmbedding, prompts, logitScale) {
+   const logits = prompts.map(p => {
+@@ -399,7 +432,9 @@ async function classifyOne(url, controllers, opts) {
+     norm = Math.sqrt(norm);
+     const normalized = new Float32Array(vec.length);
+     for (let i = 0; i < vec.length; i++) normalized[i] = vec[i] / norm;
+-    return { score: scoreEmbedding(normalized, promptData.prompts, promptData.logitScale), reason: 'ok' };
++    const score = head ? scoreWithHead(normalized)
++      : scoreEmbedding(normalized, promptData.prompts, promptData.logitScale);
++    return { score, reason: 'ok', embedding: normalized };
+   } catch (e) {
+     return { score: null, reason: 'infer' };
+   } finally {
+@@ -447,12 +482,12 @@ chrome.runtime.onConnect.addListener((port) => {
+       }
+       if (message.type === 'WARM') {
+         await warmUp();
+-        post({ type: 'WARM_DONE', modelVersion: promptData.modelVersion });
++        post({ type: 'WARM_DONE', modelVersion });
+         return;
+       }
+       if (message.type !== 'CLASSIFY' || typeof message.url !== 'string') return;
+       const result = await classifyOne(message.url, controllers);
+-      post({ type: 'RESULT', key: message.key, score: result.score, reason: result.reason, modelVersion: promptData.modelVersion });
++      post({ type: 'RESULT', key: message.key, score: result.score, reason: result.reason, modelVersion });
+     })();
+   });
+ });

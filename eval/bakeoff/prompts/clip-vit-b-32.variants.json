@@ -1,0 +1,106 @@
+{
+ "model": "clip-vit-b-32",
+ "selectedBy": "among variants within 0.005 of the best val ROC-AUC, lowest hard-safe false-blur at val recall 80%",
+ "chosen": "no-genre-sinks",
+ "variants": [
+  {
+   "variant": "shipped",
+   "nPrompts": 35,
+   "logitScale": 100,
+   "valAuc": 0.8726879059696876,
+   "valHardAuc": 0.8633452868852459,
+   "valHardFalseBlurAtRecall80": 0.203125,
+   "valThreshold": 23.62923133283808,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.8816822684571342
+  },
+  {
+   "variant": "no-genre-sinks",
+   "nPrompts": 28,
+   "logitScale": 100,
+   "valAuc": 0.9054438601917724,
+   "valHardAuc": 0.8774334016393442,
+   "valHardFalseBlurAtRecall80": 0.16145833333333334,
+   "valThreshold": 85.36734562562978,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.9129622798884779
+  },
+  {
+   "variant": "drop-thriller-war-scifi",
+   "nPrompts": 32,
+   "logitScale": 100,
+   "valAuc": 0.8871326940921744,
+   "valHardAuc": 0.8696635928961749,
+   "valHardFalseBlurAtRecall80": 0.22916666666666666,
+   "valThreshold": 38.48395044660849,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.8972043053630947
+  },
+  {
+   "variant": "more-horror",
+   "nPrompts": 41,
+   "logitScale": 100,
+   "valAuc": 0.8727497680173214,
+   "valHardAuc": 0.8630891393442623,
+   "valHardFalseBlurAtRecall80": 0.18229166666666666,
+   "valThreshold": 44.45242971561203,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.8843241051816554
+  },
+  {
+   "variant": "more-horror-no-sinks",
+   "nPrompts": 34,
+   "logitScale": 100,
+   "valAuc": 0.9027528611197031,
+   "valHardAuc": 0.8736765710382514,
+   "valHardFalseBlurAtRecall80": 0.19791666666666666,
+   "valThreshold": 92.50470092067458,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.9175414635443148
+  },
+  {
+   "variant": "binary-minimal",
+   "nPrompts": 9,
+   "logitScale": 100,
+   "valAuc": 0.822455923291061,
+   "valHardAuc": 0.8335040983606558,
+   "valHardFalseBlurAtRecall80": 0.21354166666666666,
+   "valThreshold": 12.033512650446724,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.8220498659143247
+  },
+  {
+   "variant": "more-safe",
+   "nPrompts": 40,
+   "logitScale": 100,
+   "valAuc": 0.8875657284256109,
+   "valHardAuc": 0.8824282786885246,
+   "valHardFalseBlurAtRecall80": 0.18229166666666666,
+   "valThreshold": 20.077164299590564,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.8966526765627544
+  },
+  {
+   "variant": "more-both",
+   "nPrompts": 46,
+   "logitScale": 100,
+   "valAuc": 0.8914630374265389,
+   "valHardAuc": 0.8841359289617486,
+   "valHardFalseBlurAtRecall80": 0.140625,
+   "valThreshold": 40.35787038305468,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.9049703084136684
+  },
+  {
+   "variant": "more-both-no-sinks",
+   "nPrompts": 39,
+   "logitScale": 100,
+   "valAuc": 0.9057841014537581,
+   "valHardAuc": 0.8796960382513661,
+   "valHardFalseBlurAtRecall80": 0.25,
+   "valThreshold": 63.138932085286825,
+   "valRecallAtThreshold": 0.8032786885245902,
+   "trainAuc": 0.9214925879033785
+  }
+ ]
+}

@@ -1,0 +1,58 @@
+diff --git a/offscreen/classifier.js b/offscreen/classifier.js
+index 8c946c8..d7675e1 100644
+--- a/offscreen/classifier.js
++++ b/offscreen/classifier.js
+@@ -157,7 +157,8 @@ globalThis.__scEval = {
+     await loadModel();
+     const t0 = performance.now();
+     const r = await classifyOne(url, new Set(), opts);
+-    return { ...r, ms: Math.round(performance.now() - t0) };
++    // `embedding` (L2-normalised) lets the harness read it back.
++    return { ...r, embedding: r.embedding && Array.from(r.embedding), ms: Math.round(performance.now() - t0) };
+   }
+ };
+ 
+@@ -351,6 +352,24 @@ async function decodeLikeLegacy(blob) {
+   return new RawImage(data, INPUT_SIZE, INPUT_SIZE, 4).rgb();
+ }
+ 
++/**
++ * Squash: the whole image resized straight to the model's square input
++ * (no crop), so the processor has nothing left to resize.
++ */
++async function decodeSquash(blob) {
++  const size = processor.image_processor.size;
++  const S = typeof size === 'number' ? size : (size.shortest_edge ?? size.height);
++  const bitmap = await createImageBitmap(blob, { resizeWidth: S, resizeHeight: S, resizeQuality: RESIZE_QUALITY });
++  try {
++    const ctx = new OffscreenCanvas(S, S).getContext('2d');
++    ctx.drawImage(bitmap, 0, 0);
++    const { data } = ctx.getImageData(0, 0, S, S);
++    return new RawImage(data, S, S, 4).rgb();
++  } finally {
++    bitmap.close();
++  }
++}
++
+ /**
+  * Fetch, decode and preprocess one image. `controllers` lets the port's
+  * disconnect handler abort everything still in flight for it. On success the
+@@ -370,7 +389,8 @@ async function prepare(url, controllers, opts = {}) {
+     if (!fetched.blob) { release(); return { reason: fetched.reason }; }
+     try {
+       const decode = opts.decode || DECODE_PATH;
+-      const image = decode === 'legacy' ? await RawImage.fromBlob(fetched.blob)
++      const image = decode === 'squash' ? await decodeSquash(fetched.blob)
++        : decode === 'legacy' ? await RawImage.fromBlob(fetched.blob)
+         : decode === 'canvas' ? await decodeLikeLegacy(fetched.blob)
+         : await decodeToInput(fetched.blob, opts.quality || RESIZE_QUALITY);
+       const inputs = await processor(image);
+@@ -399,7 +419,7 @@ async function classifyOne(url, controllers, opts) {
+     norm = Math.sqrt(norm);
+     const normalized = new Float32Array(vec.length);
+     for (let i = 0; i < vec.length; i++) normalized[i] = vec[i] / norm;
+-    return { score: scoreEmbedding(normalized, promptData.prompts, promptData.logitScale), reason: 'ok' };
++    return { score: scoreEmbedding(normalized, promptData.prompts, promptData.logitScale), reason: 'ok', embedding: normalized };
+   } catch (e) {
+     return { score: null, reason: 'infer' };
+   } finally {

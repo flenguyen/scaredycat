@@ -1,0 +1,43 @@
+{
+ "model": "tinyclip-vit-8m-16-yfcc15m",
+ "variant": "binary-minimal",
+ "logitScale": 50,
+ "prompts": [
+  {
+   "label": "horror",
+   "text": "a horror movie poster"
+  },
+  {
+   "label": "horror",
+   "text": "a scary scene from a horror film"
+  },
+  {
+   "label": "horror",
+   "text": "a gory monster"
+  },
+  {
+   "label": "horror",
+   "text": "a frightening ghost"
+  },
+  {
+   "label": "safe",
+   "text": "a movie poster"
+  },
+  {
+   "label": "safe",
+   "text": "an ordinary photograph"
+  },
+  {
+   "label": "safe",
+   "text": "a screenshot of a website or app"
+  },
+  {
+   "label": "safe",
+   "text": "a company logo"
+  },
+  {
+   "label": "safe",
+   "text": "a cartoon"
+  }
+ ]
+}

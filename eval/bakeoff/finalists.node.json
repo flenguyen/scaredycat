@@ -1,0 +1,84 @@
+{
+ "generated": "2026-10-05T01:57:09",
+ "source": "eval/bakeoff/analyze.py (val only)",
+ "rule": "eligible configs ranked on val by recall@T_only, minimalist@T_page, AUC, then smaller zip; best config of the top two distinct models",
+ "baseline": {
+  "config": "mobileclip-s0|zero-shot|fp16",
+  "thresholds": {
+   "T_only": 76.5,
+   "T_page": 66.81,
+   "T_block": 75.27,
+   "T_veto": 48.79
+  },
+  "shippedBars": {
+   "IMAGE_ONLY_BLOCK_SCORE": 80,
+   "IMAGE_BLOCK_SCORE": 76,
+   "IMAGE_BLOCK_SCORE_HORROR_PAGE": 65,
+   "IMAGE_VETO_SCORE": 40
+  }
+ },
+ "finalists": [
+  {
+   "config": "tinyclip-vit-8m-16-yfcc15m|head-fp32|fp16",
+   "model": "tinyclip-vit-8m-16-yfcc15m",
+   "approach": "head-fp32",
+   "dtype": "fp16",
+   "head": "eval/bakeoff/heads/tinyclip-vit-8m-16-yfcc15m-fp32.json",
+   "prompts": null,
+   "thresholds": {
+    "T_only": 80.26,
+    "T_page": 68.36,
+    "T_block": 76.43,
+    "T_veto": 76.55
+   },
+   "val": {
+    "auc": 0.8815341787813177,
+    "recall@T_only": 0.2786885245901639,
+    "minimalist@T_only": 0.2,
+    "minimalist@T_page": 0.45,
+    "collisionBelow@T_veto": 1.0
+   },
+   "sizeBytes": 16782102,
+   "deflateBytes": 15370950,
+   "maxAbsDeltaVsFp32": 0.24043600350292138,
+   "nodeP50Ms": 24.64562500000011,
+   "decisionRuleVal": {
+    "a": false,
+    "b": true,
+    "provisionalPass": false,
+    "anyInconclusive": true
+   }
+  },
+  {
+   "config": "dinov2-small|head|fp16",
+   "model": "dinov2-small",
+   "approach": "head",
+   "dtype": "fp16",
+   "head": "eval/bakeoff/heads/dinov2-small-fp16.json",
+   "prompts": null,
+   "thresholds": {
+    "T_only": 77.37,
+    "T_page": 63.99,
+    "T_block": 77.02,
+    "T_veto": 46.18
+   },
+   "val": {
+    "auc": 0.886390349520569,
+    "recall@T_only": 0.2540983606557377,
+    "minimalist@T_only": 0.25,
+    "minimalist@T_page": 0.4,
+    "collisionBelow@T_veto": 1.0
+   },
+   "sizeBytes": 43500488,
+   "deflateBytes": 40079953,
+   "maxAbsDeltaVsFp32": 0.26034327125438494,
+   "nodeP50Ms": 61.42591700000003,
+   "decisionRuleVal": {
+    "a": false,
+    "b": true,
+    "provisionalPass": false,
+    "anyInconclusive": true
+   }
+  }
+ ]
+}

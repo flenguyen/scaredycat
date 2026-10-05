@@ -100,12 +100,12 @@
     ],
     "commercialOk": true,
     "caveats": "Over the 50 MB cap at fp16 (~80 MB), so reference only. Trained on LAION-400M (web-scraped; dataset caveats).",
-    "role": "reference",
+    "role": "candidate",
     "approach": "zero-shot+head",
     "onnxAvailable": "none in this repo (safetensors 336.9 MB); ONNX copy onnx-community/TinyCLIP-ViT-40M-32-Text-19M-LAION400M-ONNX @ 737108a175dc6c043d9e64cf738baa91a272f7cb (HF tag has NO licence field; inherits upstream MIT; model_fp16 168.8 MB, model_int8 85.6 MB, both towers)",
     "visionParamsM": 40,
     "estFp16MB": 80,
-    "notes": "int8 vision would be ~40 MB but stays a reference per plan (never recommended).",
+    "notes": "int8 vision would be ~40 MB but stays a reference per plan (never recommended). 2026-10-05: user raised the shipped-file size cap to ~85 MB, so this is a shipping candidate at fp16 (79.7 MB).",
     "family": "hf-clip"
   },
   {

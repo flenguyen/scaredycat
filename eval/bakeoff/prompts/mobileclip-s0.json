@@ -1,0 +1,148 @@
+{
+ "model": "mobileclip-s0",
+ "variant": "shipped",
+ "logitScale": 100,
+ "note": "shipped data/prompt-embeddings.* unchanged, no tuning",
+ "prompts": [
+  {
+   "label": "horror",
+   "text": "a terrifying scene from a horror movie"
+  },
+  {
+   "label": "horror",
+   "text": "a horror movie poster with a frightening figure"
+  },
+  {
+   "label": "horror",
+   "text": "a zombie or rotting undead monster"
+  },
+  {
+   "label": "horror",
+   "text": "a bloody, gory, or mutilated body"
+  },
+  {
+   "label": "horror",
+   "text": "a creepy haunted figure in a dark room"
+  },
+  {
+   "label": "horror",
+   "text": "a demonic or possessed face with unnatural features"
+  },
+  {
+   "label": "horror",
+   "text": "a scary evil clown or masked killer with a weapon"
+  },
+  {
+   "label": "horror",
+   "text": "a ghostly supernatural apparition"
+  },
+  {
+   "label": "horror",
+   "text": "a human skull, corpse, or dead body in a disturbing setting"
+  },
+  {
+   "label": "horror",
+   "text": "a frightening jump scare moment from a scary film"
+  },
+  {
+   "label": "safe",
+   "text": "an ordinary everyday photograph"
+  },
+  {
+   "label": "safe",
+   "text": "a screenshot of a website, app, or software dashboard"
+  },
+  {
+   "label": "safe",
+   "text": "a company logo or app icon"
+  },
+  {
+   "label": "safe",
+   "text": "a portrait photo of a person smiling"
+  },
+  {
+   "label": "safe",
+   "text": "a movie poster for a comedy, drama, or romance"
+  },
+  {
+   "label": "safe",
+   "text": "a landscape, city, or nature photo"
+  },
+  {
+   "label": "safe",
+   "text": "food photography or a recipe photo"
+  },
+  {
+   "label": "safe",
+   "text": "a product photo for online shopping"
+  },
+  {
+   "label": "safe",
+   "text": "a sports game or athletic event"
+  },
+  {
+   "label": "safe",
+   "text": "a colorful cartoon for children"
+  },
+  {
+   "label": "safe",
+   "text": "a cute halloween pumpkin or family costume"
+  },
+  {
+   "label": "safe",
+   "text": "people working in an office or business meeting"
+  },
+  {
+   "label": "safe",
+   "text": "a cute pet such as a dog or cat"
+  },
+  {
+   "label": "safe",
+   "text": "a wild animal in nature"
+  },
+  {
+   "label": "safe",
+   "text": "a musician, concert, or album cover"
+  },
+  {
+   "label": "safe",
+   "text": "a car, vehicle, or technology gadget"
+  },
+  {
+   "label": "safe",
+   "text": "a baby or children playing"
+  },
+  {
+   "label": "safe",
+   "text": "a fashion or beauty photo"
+  },
+  {
+   "label": "safe",
+   "text": "an action movie poster with explosions, guns, or car chases"
+  },
+  {
+   "label": "safe",
+   "text": "a science fiction movie poster with spaceships or futuristic technology"
+  },
+  {
+   "label": "safe",
+   "text": "a fantasy adventure movie poster with warriors, dragons, or magic"
+  },
+  {
+   "label": "safe",
+   "text": "a superhero movie poster"
+  },
+  {
+   "label": "safe",
+   "text": "a video game cover or fighting game artwork"
+  },
+  {
+   "label": "safe",
+   "text": "a dark moody movie poster for a thriller, crime, or spy film"
+  },
+  {
+   "label": "safe",
+   "text": "a war or military movie poster"
+  }
+ ]
+}

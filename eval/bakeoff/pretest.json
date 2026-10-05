@@ -1,0 +1,523 @@
+{
+ "generated": "2026-10-05T02:03:50",
+ "mode": "pre-test fixes (train/val only; test labels never read)",
+ "baselineVal": {
+  "collisionBelowAt40": 0.9375,
+  "collisionCount": 15,
+  "nCollision": 16
+ },
+ "rules": {
+  "vetoBenefitMatched": "lowest V (0.01 grid) with val collision-below share >= the baseline share at 40",
+  "vetoCostMatched": "D2 T_veto: largest V with no more val horror at or below it than the baseline at 40",
+  "genreListing": "veto + 1 when <= T_page (shipped coupling); otherwise decoupled and set to T_page",
+  "flips": "WASM vs WebGPU verdict flips per bar on the 200 parity images (label-free; 32 are test images, the 168 non-test counts are given too)"
+ },
+ "configs": {
+  "mobileclip-s0|zero-shot|fp16|crop": {
+   "thresholdsD2": {
+    "T_only": 78.07,
+    "T_page": 72.69,
+    "T_block": 75.33,
+    "T_veto": 43.07,
+    "T_veto_moody": 47.36
+   },
+   "vetoBenefitMatched": {
+    "V": 17.45,
+    "collisionBelow": 0.9375,
+    "horrorVetoed": 0.23770491803278687,
+    "moodyVetoed": 0.3571428571428572,
+    "hardSafeVetoed": 0.7760416666666666,
+    "easySafeVetoed": 0.8082191780821918,
+    "ci95": {
+     "collisionBelow": [
+      0.8125,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.1623931623931624,
+      0.31751561280249774
+     ],
+     "hardSafeVetoed": [
+      0.7216345632121541,
+      0.8333333333333334
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.1428571428571428,
+     0.6428571428571429
+    ],
+    "counts": {
+     "collisionBelow": 15,
+     "nCollision": 16,
+     "horrorVetoed": 29,
+     "nHorror": 122,
+     "moodyVetoed": 5,
+     "nMoody": 14
+    }
+   },
+   "vetoCostMatched": {
+    "V": 43.07,
+    "collisionBelow": 0.9375,
+    "horrorVetoed": 0.4098360655737705,
+    "moodyVetoed": 0.5,
+    "hardSafeVetoed": 0.8958333333333334,
+    "easySafeVetoed": 0.9178082191780822,
+    "ci95": {
+     "collisionBelow": [
+      0.8125,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.3219748541261461,
+      0.5
+     ],
+     "hardSafeVetoed": [
+      0.8520408163265306,
+      0.9378318465893916
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.2142857142857143,
+     0.7857142857142857
+    ],
+    "counts": {
+     "collisionBelow": 15,
+     "nCollision": 16,
+     "horrorVetoed": 50,
+     "nHorror": 122,
+     "moodyVetoed": 7,
+     "nMoody": 14
+    }
+   },
+   "vetoShipped40": {
+    "V": 40,
+    "collisionBelow": 0.9375,
+    "horrorVetoed": 0.4098360655737705,
+    "moodyVetoed": 0.5,
+    "hardSafeVetoed": 0.8958333333333334,
+    "easySafeVetoed": 0.9041095890410958,
+    "ci95": {
+     "collisionBelow": [
+      0.8125,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.3219748541261461,
+      0.5
+     ],
+     "hardSafeVetoed": [
+      0.8520408163265306,
+      0.9378318465893916
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.2142857142857143,
+     0.7857142857142857
+    ],
+    "counts": {
+     "collisionBelow": 15,
+     "nCollision": 16,
+     "horrorVetoed": 50,
+     "nHorror": 122,
+     "moodyVetoed": 7,
+     "nMoody": 14
+    }
+   },
+   "shippedConstants": {
+    "IMAGE_ONLY_BLOCK_SCORE": 80,
+    "IMAGE_BLOCK_SCORE": 76,
+    "IMAGE_BLOCK_SCORE_HORROR_PAGE": 65,
+    "IMAGE_BLOCK_SCORE_GENRE_LISTING": 41,
+    "IMAGE_VETO_SCORE": 40
+   },
+   "genreListingShipped41": {
+    "T": 41,
+    "recall": 0.5901639344262295,
+    "minimalistRecall": 0.45,
+    "hardFalseBlur": 0.10416666666666667,
+    "easyFalseBlur": 0.0958904109589041
+   },
+   "flips": {
+    "n": 200,
+    "nNonTest": 168,
+    "maxAbsScoreDelta": 2.9493485348521205,
+    "bars": {
+     "IMAGE_ONLY_BLOCK_SCORE": {
+      "T": 80,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "IMAGE_BLOCK_SCORE": {
+      "T": 76,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "IMAGE_BLOCK_SCORE_HORROR_PAGE": {
+      "T": 65,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "IMAGE_BLOCK_SCORE_GENRE_LISTING": {
+      "T": 41,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "IMAGE_VETO_SCORE": {
+      "T": 40,
+      "flipsAll200": 1,
+      "flipsNonTest168": 0
+     },
+     "val:T_only": {
+      "T": 78.07,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "val:T_page": {
+      "T": 72.69,
+      "flipsAll200": 1,
+      "flipsNonTest168": 1
+     },
+     "val:T_block": {
+      "T": 75.33,
+      "flipsAll200": 1,
+      "flipsNonTest168": 1
+     },
+     "val:T_veto": {
+      "T": 43.07,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "val:T_veto_benefit": {
+      "T": 17.45,
+      "flipsAll200": 2,
+      "flipsNonTest168": 2
+     }
+    },
+    "imagesWithAnyFlip": 5
+   }
+  },
+  "tinyclip-vit-40m-32-laion400m|head|fp16|crop": {
+   "thresholdsD2": {
+    "T_only": 52.39,
+    "T_page": 45.83,
+    "T_block": 49.99,
+    "T_veto": 45.38,
+    "T_veto_moody": 48.78
+   },
+   "vetoBenefitMatched": {
+    "V": 34.69,
+    "collisionBelow": 0.9375,
+    "horrorVetoed": 0.14754098360655737,
+    "moodyVetoed": 0.1428571428571428,
+    "hardSafeVetoed": 0.8125,
+    "easySafeVetoed": 1.0,
+    "ci95": {
+     "collisionBelow": [
+      0.8125,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.08590770656779662,
+      0.21601666666666658
+     ],
+     "hardSafeVetoed": [
+      0.7589743589743589,
+      0.8624466199339296
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.0,
+     0.3571428571428572
+    ],
+    "counts": {
+     "collisionBelow": 15,
+     "nCollision": 16,
+     "horrorVetoed": 18,
+     "nHorror": 122,
+     "moodyVetoed": 2,
+     "nMoody": 14
+    }
+   },
+   "vetoCostMatched": {
+    "V": 45.38,
+    "collisionBelow": 1.0,
+    "horrorVetoed": 0.4098360655737705,
+    "moodyVetoed": 0.3571428571428572,
+    "hardSafeVetoed": 0.9479166666666666,
+    "easySafeVetoed": 1.0,
+    "ci95": {
+     "collisionBelow": [
+      1.0,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.3251981707317073,
+      0.49586776859504134
+     ],
+     "hardSafeVetoed": [
+      0.9109947643979057,
+      0.9790575916230366
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.1428571428571428,
+     0.6428571428571429
+    ],
+    "counts": {
+     "collisionBelow": 16,
+     "nCollision": 16,
+     "horrorVetoed": 50,
+     "nHorror": 122,
+     "moodyVetoed": 5,
+     "nMoody": 14
+    }
+   },
+   "proposedConstants": {
+    "IMAGE_ONLY_BLOCK_SCORE": 52.39,
+    "IMAGE_BLOCK_SCORE": 49.99,
+    "IMAGE_BLOCK_SCORE_HORROR_PAGE": 45.83,
+    "IMAGE_BLOCK_SCORE_GENRE_LISTING": 35.69,
+    "IMAGE_VETO_SCORE": 34.69,
+    "UNVERIFIED_BLOCK_SCORE": 80
+   },
+   "proposedConstantsInfo": {
+    "genreListingCoupled": true,
+    "genreListingIfCoupled": 35.69,
+    "orderingOk": true,
+    "genreRule": "veto + 1 (shipped coupling, no code change)"
+   },
+   "alternativeCostMatchedVeto": {
+    "constants": {
+     "IMAGE_ONLY_BLOCK_SCORE": 52.39,
+     "IMAGE_BLOCK_SCORE": 49.99,
+     "IMAGE_BLOCK_SCORE_HORROR_PAGE": 45.83,
+     "IMAGE_BLOCK_SCORE_GENRE_LISTING": 45.83,
+     "IMAGE_VETO_SCORE": 45.38,
+     "UNVERIFIED_BLOCK_SCORE": 80
+    },
+    "info": {
+     "genreListingCoupled": false,
+     "genreListingIfCoupled": 46.38,
+     "orderingOk": true,
+     "genreRule": "veto + 1 = 46.38 > T_page 45.83: decouple in ml-bridge.js and set it to T_page"
+    },
+    "genreListing": {
+     "T": 45.83,
+     "recall": 0.5655737704918032,
+     "minimalistRecall": 0.7,
+     "hardFalseBlur": 0.046875,
+     "easyFalseBlur": 0.0
+    }
+   },
+   "genreListing": {
+    "T": 35.69,
+    "recall": 0.8278688524590164,
+    "minimalistRecall": 0.8,
+    "hardFalseBlur": 0.18229166666666666,
+    "easyFalseBlur": 0.0
+   },
+   "flips": {
+    "n": 200,
+    "nNonTest": 168,
+    "maxAbsScoreDelta": 1.5037604009022658,
+    "bars": {
+     "IMAGE_ONLY_BLOCK_SCORE": {
+      "T": 52.39,
+      "flipsAll200": 1,
+      "flipsNonTest168": 0
+     },
+     "IMAGE_BLOCK_SCORE": {
+      "T": 49.99,
+      "flipsAll200": 2,
+      "flipsNonTest168": 1
+     },
+     "IMAGE_BLOCK_SCORE_HORROR_PAGE": {
+      "T": 45.83,
+      "flipsAll200": 1,
+      "flipsNonTest168": 1
+     },
+     "IMAGE_BLOCK_SCORE_GENRE_LISTING": {
+      "T": 35.69,
+      "flipsAll200": 2,
+      "flipsNonTest168": 1
+     },
+     "IMAGE_VETO_SCORE": {
+      "T": 34.69,
+      "flipsAll200": 2,
+      "flipsNonTest168": 1
+     },
+     "T_veto (cost-matched)": {
+      "T": 45.38,
+      "flipsAll200": 1,
+      "flipsNonTest168": 0
+     },
+     "GENRE_LISTING if cost-matched veto": {
+      "T": 45.83,
+      "flipsAll200": 1,
+      "flipsNonTest168": 1
+     }
+    },
+    "imagesWithAnyFlip": 8
+   }
+  },
+  "tinyclip-vit-8m-16-yfcc15m|head|fp16|squash": {
+   "thresholdsD2": {
+    "T_only": 71.27,
+    "T_page": 62.87,
+    "T_block": 67.32,
+    "T_veto": 51.61,
+    "T_veto_moody": 71.31
+   },
+   "vetoBenefitMatched": {
+    "V": 34.94,
+    "collisionBelow": 0.9375,
+    "horrorVetoed": 0.22950819672131148,
+    "moodyVetoed": 0.1428571428571428,
+    "hardSafeVetoed": 0.7552083333333334,
+    "easySafeVetoed": 1.0,
+    "ci95": {
+     "collisionBelow": [
+      0.8125,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.15966386554621848,
+      0.3053545517632956
+     ],
+     "hardSafeVetoed": [
+      0.6947259340059995,
+      0.8144329896907216
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.0,
+     0.3571428571428572
+    ],
+    "counts": {
+     "collisionBelow": 15,
+     "nCollision": 16,
+     "horrorVetoed": 28,
+     "nHorror": 122,
+     "moodyVetoed": 2,
+     "nMoody": 14
+    }
+   },
+   "vetoCostMatched": {
+    "V": 51.61,
+    "collisionBelow": 1.0,
+    "horrorVetoed": 0.4098360655737705,
+    "moodyVetoed": 0.2857142857142857,
+    "hardSafeVetoed": 0.90625,
+    "easySafeVetoed": 1.0,
+    "ci95": {
+     "collisionBelow": [
+      1.0,
+      1.0
+     ],
+     "horrorVetoed": [
+      0.33326612903225805,
+      0.4918065838180856
+     ],
+     "hardSafeVetoed": [
+      0.865979381443299,
+      0.9430125260402756
+     ]
+    },
+    "ci95MoodyVetoed": [
+     0.0714285714285714,
+     0.5
+    ],
+    "counts": {
+     "collisionBelow": 16,
+     "nCollision": 16,
+     "horrorVetoed": 50,
+     "nHorror": 122,
+     "moodyVetoed": 4,
+     "nMoody": 14
+    }
+   },
+   "proposedConstants": {
+    "IMAGE_ONLY_BLOCK_SCORE": 71.27,
+    "IMAGE_BLOCK_SCORE": 67.32,
+    "IMAGE_BLOCK_SCORE_HORROR_PAGE": 62.87,
+    "IMAGE_BLOCK_SCORE_GENRE_LISTING": 35.94,
+    "IMAGE_VETO_SCORE": 34.94,
+    "UNVERIFIED_BLOCK_SCORE": 80
+   },
+   "proposedConstantsInfo": {
+    "genreListingCoupled": true,
+    "genreListingIfCoupled": 35.94,
+    "orderingOk": true,
+    "genreRule": "veto + 1 (shipped coupling, no code change)"
+   },
+   "alternativeCostMatchedVeto": {
+    "constants": {
+     "IMAGE_ONLY_BLOCK_SCORE": 71.27,
+     "IMAGE_BLOCK_SCORE": 67.32,
+     "IMAGE_BLOCK_SCORE_HORROR_PAGE": 62.87,
+     "IMAGE_BLOCK_SCORE_GENRE_LISTING": 52.61,
+     "IMAGE_VETO_SCORE": 51.61,
+     "UNVERIFIED_BLOCK_SCORE": 80
+    },
+    "info": {
+     "genreListingCoupled": true,
+     "genreListingIfCoupled": 52.61,
+     "orderingOk": true,
+     "genreRule": "veto + 1 (shipped coupling, no code change)"
+    },
+    "genreListing": {
+     "T": 52.61,
+     "recall": 0.5819672131147541,
+     "minimalistRecall": 0.7,
+     "hardFalseBlur": 0.09375,
+     "easyFalseBlur": 0.0
+    }
+   },
+   "genreListing": {
+    "T": 35.94,
+    "recall": 0.7459016393442623,
+    "minimalistRecall": 0.8,
+    "hardFalseBlur": 0.22395833333333334,
+    "easyFalseBlur": 0.0
+   },
+   "flips": {
+    "n": 200,
+    "nNonTest": 168,
+    "maxAbsScoreDelta": 1.62598576079764,
+    "bars": {
+     "IMAGE_ONLY_BLOCK_SCORE": {
+      "T": 71.27,
+      "flipsAll200": 2,
+      "flipsNonTest168": 1
+     },
+     "IMAGE_BLOCK_SCORE": {
+      "T": 67.32,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     },
+     "IMAGE_BLOCK_SCORE_HORROR_PAGE": {
+      "T": 62.87,
+      "flipsAll200": 1,
+      "flipsNonTest168": 1
+     },
+     "IMAGE_BLOCK_SCORE_GENRE_LISTING": {
+      "T": 35.94,
+      "flipsAll200": 3,
+      "flipsNonTest168": 2
+     },
+     "IMAGE_VETO_SCORE": {
+      "T": 34.94,
+      "flipsAll200": 2,
+      "flipsNonTest168": 1
+     },
+     "T_veto (cost-matched)": {
+      "T": 51.61,
+      "flipsAll200": 0,
+      "flipsNonTest168": 0
+     }
+    },
+    "imagesWithAnyFlip": 7
+   }
+  }
+ }
+}
