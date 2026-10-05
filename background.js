@@ -10,6 +10,7 @@ importScripts(
   'background/image-key.js',
   'background/allowlist.js',
   'background/verdict-cache.js',
+  'background/model-info.js',
   'background/ml-router.js',
   'content/scoring-core.js',
   'background/synopses.js',

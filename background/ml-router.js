@@ -7,7 +7,7 @@
  * Requests are rate limited per tab and capped globally, so a hostile page
  * with thousands of unique images can't queue unbounded work.
  * Loaded via importScripts (depends on verdict-cache.js, image-key.js,
- * guards.js).
+ * guards.js, model-info.js).
  */
 
 const ScaredyCatMLRouter = (function () {
@@ -52,7 +52,10 @@ const ScaredyCatMLRouter = (function () {
   // Set true once we know the classifier can't run (model not bundled,
   // offscreen unsupported). Content scripts stop asking after one report.
   let unavailable = false;
-  let modelVersion = 'mobileclip_s0-fp16-v3';
+  // The shipped model's version keys the verdict cache from the first lookup
+  // (model-info.js, generated with models/image-model.json); the offscreen
+  // document reports the same value with every result.
+  let modelVersion = ScaredyCatModelInfo.version;
 
   const inflight = new Map(); // key -> entry {key, url, promise, resolve, t0, timer, attempts}
   const failed = new Map();   // key -> timestamp of last fetch/decode failure (FIFO, capped)

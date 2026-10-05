@@ -12,6 +12,15 @@ Scaredy Cat is both the product and its mascot, a character. It is the one who g
 
 The positioning behind this is in [context/persona.md](context/persona.md).
 
+## Image model
+
+`models/image-model.json` names the shipped image model and how to score it; the runbook is [models/README.md](models/README.md).
+- Swap or retune it only with `eval/bakeoff/promote.mjs`, never by hand. It writes the manifest, `background/model-info.js` and the `models/` lines of `vendor/CHECKSUMS.sha256`.
+- Scores are calibrated, so the `ml-bridge.js` bars (40/41/65/76/80) never change with the model.
+- Node scores (`eval/image-classifier.mjs`) are not authoritative. Bars and `imageScore` values come from in-browser runs.
+- `models/**/*.onnx` is in Git LFS. `npm run model:check` checks the model end to end.
+- A new model is a Level 1 release (trigger 6).
+
 ## Welcome page
 
 One page, two places: `welcome/welcome.html` in the extension (opened on install by `background.js` and from the popup's "How it works" link) and https://www.scaredycat.app/welcome. Both run the same files from this repo:
@@ -68,7 +77,7 @@ f. Tag it locally: `git tag vX.Y.Z`. **Ask before pushing** the tag or `main`.
 
 Pushing to `main` is what updates scaredycat.app/changelog: the website reads `https://raw.githubusercontent.com/flenguyen/scaredycat/main/data/releases.json`. The page re-reads it every 5 minutes; to update it immediately after a push, run `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://www.scaredycat.app/api/revalidate/releases` (secret in `.env.local`). A user-facing website launch gets a `"surface": "website"` entry here (`version` and `level` null, id `web-YYYY-MM-DD-slug`). Never hand-edit release text in the web repo.
 
-A commit with no user-visible effect (tests, tooling, docs, comments), or one that only changes brand wording, puts **`[no-release]`** in its message. The guard hook in `.claude/settings.json` (`scripts/release-guard.mjs`) blocks a `git commit` that stages runtime files (`manifest.json`, `background*`, `content/`, `popup/`, `offscreen/`, `styles/`, `fonts/`, `icons/`) without `data/releases.json` or `[no-release]`.
+A commit with no user-visible effect (tests, tooling, docs, comments), or one that only changes brand wording, puts **`[no-release]`** in its message. The guard hook in `.claude/settings.json` (`scripts/release-guard.mjs`) blocks a `git commit` that stages runtime files (`manifest.json`, `background*`, `content/`, `popup/`, `offscreen/`, `styles/`, `fonts/`, `icons/`, `models/`, `vendor/`) without `data/releases.json` or `[no-release]`.
 
 ### Writing the notes
 

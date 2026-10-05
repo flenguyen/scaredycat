@@ -10,10 +10,13 @@ import crypto from 'node:crypto';
 
 export const CHECKSUMS_FILE = 'vendor/CHECKSUMS.sha256';
 
-/** Files that must be listed: vendor/* (but the list itself) and models' json + onnx. */
+/**
+ * Files that must be listed: vendor/* (but the list itself) and every model
+ * file (json, onnx, and the .bin prompt embeddings of a zero-shot model).
+ */
 export function isChecksummed(rel) {
   return (/^vendor\/[^/]+$/.test(rel) && rel !== CHECKSUMS_FILE)
-    || /^models\/.+\.(onnx|json)$/.test(rel);
+    || /^models\/.+\.(onnx|json|bin)$/.test(rel);
 }
 
 export function sha256File(abs) {

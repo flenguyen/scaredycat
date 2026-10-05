@@ -10,10 +10,12 @@
  *
  *   SC_CHROME_BIN=<chrome> node eval/fp16-compare.mjs [--tolerance 2]
  *
- * Requires BOTH models/Xenova/mobileclip_s0/onnx/vision_model_fp16.onnx (shipped)
- * and vision_model.onnx (fp32 baseline) in models/ for the run: copy the fp32
- * file in from eval/.model-cache, then remove it again (npm run pack refuses to
- * ship two vision models).
+ * Scores are the classifier's calibrated ones, so the bars are ml-bridge.js's
+ * for any model. Requires BOTH models/<dir>/onnx/vision_model_fp16.onnx
+ * (shipped; <dir> from models/image-model.json) and vision_model.onnx (fp32
+ * baseline) for the run: copy the fp32 file in from
+ * eval/.model-cache/bakeoff/<dir>/onnx/, then remove it again (npm run pack
+ * and setup:model --verify refuse a file the manifest doesn't list).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const MODEL_DIR = `models/${JSON.parse(fs.readFileSync(path.join(ROOT, 'models/image-model.json'), 'utf8')).dir}`;
 const CHROME = process.env.SC_CHROME_BIN;
 if (!CHROME) throw new Error('SC_CHROME_BIN not set');
 const args = process.argv.slice(2);
@@ -33,8 +36,8 @@ const PORT = 8906;
 const HOST = 'calib.scaredycat.test';
 
 for (const f of ['onnx/vision_model.onnx', 'onnx/vision_model_fp16.onnx']) {
-  if (!fs.existsSync(path.join(ROOT, 'models/Xenova/mobileclip_s0', f))) {
-    throw new Error(`missing models/Xenova/mobileclip_s0/${f}`);
+  if (!fs.existsSync(path.join(ROOT, MODEL_DIR, f))) {
+    throw new Error(`missing ${MODEL_DIR}/${f}`);
   }
 }
 

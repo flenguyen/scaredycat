@@ -12,33 +12,41 @@ const ScaredyCatMLBridge = (function () {
   // unavailable (model not bundled, offscreen failure), stop asking.
   let mlUnavailable = false;
 
-  // Image evidence at/above this score blocks on its own. Calibrated against
-  // a poster corpus (eval/corpus.json + Wikipedia poster sweep): scariest
-  // safe poster (Cape Fear) ~72, atmospheric horror (Hereditary) 74-81
-  // depending on backend (WebGPU and CPU disagree by several points). The
-  // two classes overlap, so the bar is contextual: high on neutral pages,
-  // lower when the page itself carries horror signal and weak evidence may
-  // reinforce. Dark action/fantasy posters (Mortal Kombat 34, White House
-  // Down 0) sit far below either bar.
+  // Image scores arrive on a shared 0-100 scale: the offscreen classifier maps
+  // each model's raw score through the calibration knots in
+  // models/image-model.json, and these four bars are the anchors of that
+  // mapping. So they are operating points, not scores of one model, and they
+  // stay put when the model is swapped (eval/bakeoff/promote.mjs picks the
+  // model's raw bar for each on the bake-off's validation images).
+  //
+  // Image evidence at/above this score blocks on its own when there is some
+  // text signal (the bake-off's "block" bar: at most 5 of 192 hard-safe
+  // validation posters, dark thrillers, action and family Halloween films,
+  // reach it). The two classes overlap, so the bar is contextual: high on
+  // neutral pages, lower when the page itself carries horror signal and weak
+  // evidence may reinforce.
   const IMAGE_BLOCK_SCORE = 76;
+  // On a page whose own title or URL says horror (at most 5% hard-safe false
+  // blur on validation).
   const IMAGE_BLOCK_SCORE_HORROR_PAGE = 65;
   // With ZERO text signal on a neutral page, pixels carry the full burden of
-  // proof, and 76 sits only 4 points above the scariest known-safe poster
-  // (Cape Fear 72). Dark non-horror posters (The Furious, Masters of the
-  // Universe class) live in the 65-75 band and must not block image-only.
+  // proof: at most 2% hard-safe false blur on validation, so dark non-horror
+  // posters (The Furious, Masters of the Universe class) must not block
+  // image-only.
   const IMAGE_ONLY_BLOCK_SCORE = 80;
-  // Image evidence at/below this score vetoes a non-definite text block.
-  // Calibrated: Devil Wears Prada 37 / Mortal Kombat 34 must veto their
-  // short-title collisions; moody horror posters (Nun 51, Insidious 59)
-  // must not veto weak-but-real text signals.
+  // Image evidence at/below this score vetoes a non-definite text block. Set
+  // where the veto still cancels at least 15 of 16 validation short-title
+  // collision posters (The Devil Wears Prada class) while cancelling as little
+  // real horror as possible, so moody horror posters don't veto weak-but-real
+  // text signals.
   const IMAGE_VETO_SCORE = 40;
   // On a listing explicitly filtered to the Horror genre, the site has already
   // categorized every card as horror. The classifier is no longer the arbiter
   // of "is this horror"; it only needs to veto images that clearly AREN'T a
   // horror poster (site chrome, banners, a stray non-horror still). So the bar
   // drops to just above the veto line: anything not "clearly not horror"
-  // blocks. This catches the modern/minimalist horror posters that score 0-64
-  // and slipped through the 65 bar on these pages, while still letting an
+  // blocks. This catches the modern/minimalist horror posters that score
+  // between the veto and the 65 bar on these pages, while still letting an
   // obvious non-poster image (very low score) reveal.
   const IMAGE_BLOCK_SCORE_GENRE_LISTING = IMAGE_VETO_SCORE + 1;
   // Without image evidence (no pixels, fetch failed, ML unavailable), text
@@ -138,7 +146,7 @@ const ScaredyCatMLBridge = (function () {
     // site's own data model asserts horror, so the classifier only needs to
     // veto images that clearly AREN'T a horror poster. This catches the
     // modern/minimalist posters that score 41-64 and slip the 65 detail-page
-    // bar (e.g. Leviticus' poster ~50).
+    // bar.
     const blockScore = (opts.isHorrorGenreListing || opts.authoritativeHorrorGenre)
       ? IMAGE_BLOCK_SCORE_GENRE_LISTING
       : opts.pageHasHorrorSignal

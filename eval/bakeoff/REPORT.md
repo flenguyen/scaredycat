@@ -393,3 +393,13 @@ The draft passes `validateReleases` from `scripts/release-check.mjs` (summary 12
 ```
 
 The figures behind it (test split, 40M head at the proposed bars against today's shipped bars): modern horror at the horror-page bar 80% against 45%; family-halloween false blur 4.8% against 14.3% to 23.8%; horror vetoed 16.8% against 34.4%; collision posters vetoed 76.5% against 88.2%; image-only recall 36.8% against 41.6%, with hard-safe false blur 1.4% against 1.9%.
+
+## Shipping addendum (2026-10-05, after the user's approval)
+
+The user approved the swap to `tinyclip-vit-40m-32-laion400m|head|fp16|crop`. It was installed by `eval/bakeoff/promote.mjs` (runbook: `models/README.md`), not by hand, and it differs from section 7 in one way: the model's raw bars are not copied into `content/ml-bridge.js`. The classifier maps the raw head score through calibration knots in `models/image-model.json`, and `ml-bridge.js` keeps its bars.
+
+- **Knots (raw to calibrated):** `[0, 0]`, `[34.69, 40]` (benefit-matched veto), `[45.83, 65]` (horror page), `[49.99, 76]` (block), `[52.39, 80]` (image only), `[100, 100]`. The mapping is monotone and every bar is a knot, so the verdict at each bar is the one section 6's raw constants would give.
+- **Genre-listing bar:** `IMAGE_BLOCK_SCORE_GENRE_LISTING` stays `IMAGE_VETO_SCORE + 1` = 41 calibrated, which is raw 35.14. Section 6 proposed veto + 1 in raw terms, 35.69. Both are an arbitrary "just above the veto" line, and the genre-listing numbers in section 3 were measured at 35.69. Between the two lines sit 2 of 387 val images (one horror, one safe) and 3 of 402 test images (all safe: crime, sci-fi and family Halloween). So on test the shipped genre-listing bar blurs those 3 safe images too, on top of the section 3 figures.
+- **Version:** `tinyclip40m-fp16-head-v1` keys the verdict cache and feedback reports (`background/model-info.js`).
+- **Parity after the swap:** the unpacked extension reproduces the bake-off's in-browser embeddings exactly (max calibrated |delta| 0.000 on 243 images on WASM and 200 on WebGPU, `eval/bakeoff/browser-check.mjs`). Between backends the calibration stretches the raw gap: max 2.89 calibrated points (raw 1.50), with 1 to 3 verdict flips per bar on 243 images, in line with section 2 (c).
+- **Verdict corpus:** the measured posters in `eval/verdict-corpus.json` were re-recorded as calibrated in-browser scores. No gate changed. The Devil Wears Prada (2006) poster now scores 66.5 (MobileCLIP 37), above the horror-page bar, although it is a training image for the head.

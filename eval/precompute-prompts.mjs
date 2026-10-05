@@ -1,25 +1,37 @@
 /**
- * Precompute the zero-shot prompt embeddings and write them to
- * data/prompt-embeddings.json (labels + logit scale) and
- * data/prompt-embeddings.bin (Float32 [prompts x dim], L2-normalized). The
- * extension then needs only the CLIP vision tower at runtime (~46MB fp32
- * instead of ~90MB with the text tower) and never tokenizes.
+ * Zero-shot models only: embed the prompt ensemble below with the model's
+ * text tower (dev cache, fp32) into eval/bakeoff/.cache/prompts/<model>/custom/
+ * as prompt-embeddings.json (labels + logit scale) and prompt-embeddings.bin
+ * (Float32 [prompts x dim], L2-normalized), the format offscreen/classifier.js
+ * reads. The extension then needs only the vision tower and never tokenizes.
  *
- * The tokenizer + text tower live in eval/.model-cache (gitignored, fetched by
- * npm run setup:model); they are dev-only and never shipped.
+ * New prompts mean new raw scores, so the calibration has to be re-picked
+ * before they can ship: score the bake-off images with them (eval/bakeoff,
+ * analyze.py on in-browser embeddings), point the config's `prompts` in
+ * finalists.json at the new directory, then run eval/bakeoff/promote.mjs,
+ * which copies the files into models/<dir>/ and writes the new knots and
+ * version (models/README.md).
  *
- * Tuning detection = editing PROMPTS and re-running this script.
+ * A model with a linear head (the shipped one, see models/image-model.json)
+ * has no prompts: this exits with a message.
+ *
+ *   npm run precompute:prompts
  */
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { env, AutoTokenizer, CLIPTextModelWithProjection } from '@huggingface/transformers';
-import { MODEL_ID, MODEL_VERSION, DEV_MODEL_DIR } from './setup-model.mjs';
+import { MODEL_ID, MODEL_MANIFEST } from './setup-model.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-env.localModelPath = DEV_MODEL_DIR;
-env.allowRemoteModels = false;
+
+if (MODEL_MANIFEST.scorer.type !== 'zero-shot') {
+  console.error(`${MODEL_MANIFEST.version} scores images with a linear head (${MODEL_MANIFEST.scorer.file}), not prompts: nothing to precompute.`);
+  console.error('A head is retrained in eval/bakeoff (analyze.py) and shipped with eval/bakeoff/promote.mjs; see models/README.md.');
+  process.exit(1);
+}
 
 // Prompt ensemble. horror prompts vote FOR blocking, safe prompts AGAINST.
 // The safe set deliberately covers historical false-positive classes
@@ -65,43 +77,16 @@ const PROMPTS = [
   { label: 'safe', text: 'a war or military movie poster' }
 ];
 
+const out = path.join(ROOT, 'eval/bakeoff/.cache/prompts', MODEL_ID, 'custom');
+if (fs.existsSync(path.join(out, 'prompt-embeddings.json'))) {
+  console.error(`${path.relative(ROOT, out)} already exists; move it aside first.`);
+  process.exit(1);
+}
+const list = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'sc-prompts-')), 'prompts.json');
+fs.writeFileSync(list, JSON.stringify(PROMPTS));
 console.log(`Embedding ${PROMPTS.length} prompts with ${MODEL_ID} text tower...`);
-const tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID);
-const textModel = await CLIPTextModelWithProjection.from_pretrained(MODEL_ID, {
-  dtype: 'q8',
-  // Single-threaded: onnxruntime-node aborts in threaded mode on macOS arm64.
-  session_options: { intraOpNumThreads: 1, interOpNumThreads: 1 }
-});
-
-// MobileCLIP's text tower has a fixed 77-token context (no dynamic axis).
-const inputs = tokenizer(PROMPTS.map(p => p.text), {
-  padding: 'max_length', max_length: 77, truncation: true
-});
-const { text_embeds } = await textModel(inputs);
-
-const [n, dim] = text_embeds.dims;
-const data = text_embeds.data;
-const floats = new Float32Array(n * dim);
-PROMPTS.forEach((p, i) => {
-  const vec = Array.from(data.slice(i * dim, (i + 1) * dim));
-  const norm = Math.hypot(...vec);
-  floats.set(vec.map(v => v / norm), i * dim);
-});
-
-const meta = {
-  modelId: MODEL_ID,
-  modelVersion: MODEL_VERSION,
-  dim,
-  logitScale: 100,
-  embeddings: 'prompt-embeddings.bin', // Float32 row-major [prompts x dim], L2-normalized
-  prompts: PROMPTS.map(p => ({ label: p.label, text: p.text }))
-};
-
-const jsonPath = path.join(ROOT, 'data', 'prompt-embeddings.json');
-const binPath = path.join(ROOT, 'data', 'prompt-embeddings.bin');
-fs.writeFileSync(jsonPath, JSON.stringify(meta, null, 2) + '\n');
-fs.writeFileSync(binPath, Buffer.from(floats.buffer));
-console.log(`Wrote ${jsonPath} + ${binPath} (${n} prompts, dim=${dim}, ${(fs.statSync(binPath).size / 1e3).toFixed(0)}KB)`);
-// Exit explicitly: onnxruntime-node's teardown otherwise aborts the process
-// with a (harmless) mutex error after all work is done.
-process.exit(0);
+// The bake-off script does the work: fp32 text tower, one prompt at a time
+// (no padding), the model's own trained logit scale.
+execFileSync(process.execPath, [path.join(ROOT, 'eval/bakeoff/precompute-prompts.mjs'),
+  '--model', MODEL_ID, '--prompts', list, '--out', out], { stdio: 'inherit' });
+console.log(`Next: re-pick the bars for these prompts, then eval/bakeoff/promote.mjs (models/README.md).`);

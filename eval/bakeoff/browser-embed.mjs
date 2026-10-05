@@ -1,7 +1,11 @@
 // Phase E2: embed images inside Chrome through the extension's real decode path.
 //   SC_CHROME_BIN=<chrome> node eval/bakeoff/browser-embed.mjs --root <worktree> --name <config> --view crop|squash --device wasm|webgpu [--ids file.json]
-// crop = the shipped decode (canvas resize to 256 short edge + centre crop 256, then the model's processor).
-// squash = whole image resized to the model's square input (needs the classifier-squash.diff patch).
+// crop = the extension's decode (canvas resize to 256 short edge + centre crop 256, then the model's processor).
+// squash = whole image resized to the model's square input (offscreen/classifier.js decodeSquash; worktrees older
+// than the 2.0 model swap need the classifier-squash.diff patch).
+// <root> is a git worktree of this repo (never the repo itself: its models/ is rewritten). The candidate is staged
+// into <root>/models/<name>/ with a placeholder manifest (zero head, identity calibration): only the embedding is
+// read here, and the real head and bars come later from analyze.py.
 // Writes .cache/emb-browser/<name>-<view>-<device>.f32 (+ .json). Resumable via a .partial.jsonl checkpoint.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,13 +22,26 @@ const outDir = path.join(CACHE, 'emb-browser'); fs.mkdirSync(outDir, { recursive
 const base = path.join(outDir, `${NAME}-${VIEW}-${DEVICE}`);
 const partial = base + '.partial.jsonl';
 
-// Swap the model into the worktree (MobileCLIP is the shipped model: restore it from git).
+// Stage the model into the worktree. MobileCLIP (the pre-2.0 baseline) needs a worktree checked out before the
+// swap, where it is restored from git.
+if (path.resolve(WT) === path.resolve(ROOT)) throw new Error('--root must be a worktree, not this repo (its models/ would be rewritten)');
 if (NAME === 'mobileclip-s0') {
   (await import('node:child_process')).execFileSync('git', ['-C', WT, 'checkout', '--', 'models']);
 } else {
-  const src = path.join(ROOT, 'eval/.model-cache/bakeoff', NAME), dst = path.join(WT, 'models/Xenova/mobileclip_s0');
+  const src = path.join(ROOT, 'eval/.model-cache/bakeoff', NAME), dst = path.join(WT, 'models', NAME);
+  fs.mkdirSync(path.join(dst, 'onnx'), { recursive: true });
   for (const f of ['config.json', 'preprocessor_config.json']) fs.copyFileSync(path.join(src, f), path.join(dst, f));
   fs.copyFileSync(path.join(src, 'onnx/vision_model_fp16.onnx'), path.join(dst, 'onnx/vision_model_fp16.onnx'));
+  const dim = JSON.parse(fs.readFileSync(path.join(src, 'config.json'), 'utf8')).projection_dim || 512;
+  fs.writeFileSync(path.join(dst, 'head.json'), JSON.stringify({ model: NAME, view: VIEW, dim, normalise: 'l2', b: 0, w: new Array(dim).fill(0) }));
+  const p = JSON.parse(fs.readFileSync(path.join(src, 'preprocessor_config.json'), 'utf8'));
+  const input = typeof p.size === 'number' ? p.size : (p.size?.shortest_edge ?? p.size?.height);
+  fs.writeFileSync(path.join(WT, 'models/image-model.json'), JSON.stringify({
+    schema: 1, id: NAME, version: `${NAME}-embed-staging`, dir: NAME, dtype: 'fp16',
+    decode: { view: VIEW, size: VIEW === 'squash' ? input : 256 },
+    scorer: { type: 'head', file: 'head.json' }, calibration: { knots: [[0, 0], [100, 100]] },
+    source: { hfId: '', revision: '', licence: '' }, files: ['config.json', 'preprocessor_config.json', 'onnx/vision_model_fp16.onnx', 'head.json']
+  }, null, 1));
 }
 
 const all = images(), idx = loadIndex();

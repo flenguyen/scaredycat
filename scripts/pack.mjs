@@ -15,6 +15,11 @@
  * the commit: an untracked, modified or deleted file under INCLUDE stops the
  * build (a stray local file, such as a secrets file, can't slip into the zip).
  * vendor/ and models/ must match vendor/CHECKSUMS.sha256.
+ *
+ * models/ ships exactly models/image-model.json and the files it lists under
+ * models/<dir>/ (one vision model); any other file there stops the build. The
+ * .onnx files live in Git LFS, so a clone without `git lfs pull` holds small
+ * pointer files instead, which also stops the build.
  */
 
 import fs from 'node:fs';
@@ -23,7 +28,7 @@ import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { runReleaseCheck, formatErrors } from './release-check.mjs';
-import { verifyChecksums, CHECKSUMS_FILE } from './checksums.mjs';
+import { verifyChecksums, readChecksums, CHECKSUMS_FILE } from './checksums.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CHECK_ONLY = process.argv.includes('--check');
@@ -49,7 +54,8 @@ const INCLUDE = [
   'data',
   'vendor',
   'models',
-  'icons/icon16.png', 'icons/icon48.png', 'icons/icon128.png'
+  'icons/icon16.png', 'icons/icon48.png', 'icons/icon128.png',
+  'THIRD_PARTY_NOTICES'
 ];
 // Anything matching these must never end up in the zip.
 const FORBIDDEN = [
@@ -61,8 +67,9 @@ const FORBIDDEN = [
   /ort-wasm-simd-threaded\.(jsep|asyncify)\./, /ort-wasm-simd-threaded\.(mjs|wasm)$/, /\.map$/
 ];
 
-// Tracked but not shipped: the checksum list itself.
-const SKIP = new Set([CHECKSUMS_FILE]);
+// Tracked but not shipped: the checksum list itself and the model runbook.
+const SKIP = new Set([CHECKSUMS_FILE, 'models/README.md']);
+const MODEL_MANIFEST = 'models/image-model.json';
 
 function git(...args) {
   return execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean);
@@ -99,6 +106,47 @@ if (bad.length) {
   console.error('Refusing to package dev-only files:\n  ' + bad.join('\n  '));
   process.exit(1);
 }
+
+// models/: the manifest and exactly its files.
+let modelFiles;
+try {
+  const m = JSON.parse(fs.readFileSync(path.join(ROOT, MODEL_MANIFEST), 'utf8'));
+  if (typeof m.dir !== 'string' || !m.dir || m.dir.includes('..') || !Array.isArray(m.files) || !m.files.length) throw new Error('needs dir and files');
+  modelFiles = [MODEL_MANIFEST, ...m.files.map(f => `models/${m.dir}/${f}`)];
+} catch (e) {
+  console.error(`Cannot read ${MODEL_MANIFEST}: ${e.message}`);
+  process.exit(1);
+}
+const modelProblems = [
+  ...files.filter(f => f.startsWith('models/') && !modelFiles.includes(f)).map(f => `${f}: not in ${MODEL_MANIFEST}`),
+  ...modelFiles.filter(f => !files.includes(f)).map(f => `${f}: listed in ${MODEL_MANIFEST} but not tracked`)
+];
+if (modelProblems.length) {
+  console.error('models/ does not match its manifest:\n  ' + modelProblems.join('\n  '));
+  process.exit(1);
+}
+const lfsPointers = modelFiles.filter(f => {
+  const abs = path.join(ROOT, f);
+  if (fs.statSync(abs).size > 1024) return false;
+  return fs.readFileSync(abs, 'utf8').startsWith('version https://git-lfs');
+});
+if (lfsPointers.length) {
+  console.error('Model files are Git LFS pointers, not the files themselves (run git lfs pull):\n  ' + lfsPointers.join('\n  '));
+  process.exit(1);
+}
+let listed;
+try {
+  listed = readChecksums(ROOT);
+} catch (e) {
+  console.error(`Cannot read ${CHECKSUMS_FILE}: ${e.message}`);
+  process.exit(1);
+}
+const unlisted = modelFiles.filter(f => !listed.has(f));
+if (unlisted.length) {
+  console.error(`Model files missing from ${CHECKSUMS_FILE}:\n  ` + unlisted.join('\n  '));
+  process.exit(1);
+}
+
 const checksumErrors = verifyChecksums(ROOT, files);
 if (checksumErrors.length) {
   console.error('Vendored runtime or model files do not match their checksums:\n  ' + checksumErrors.join('\n  '));

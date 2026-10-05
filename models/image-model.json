@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "id": "tinyclip-vit-40m-32-laion400m",
+  "version": "tinyclip40m-fp16-head-v1",
+  "dir": "tinyclip-vit-40m-32-laion400m",
+  "dtype": "fp16",
+  "decode": {
+    "view": "crop",
+    "size": 256
+  },
+  "scorer": {
+    "type": "head",
+    "file": "head.json"
+  },
+  "calibration": {
+    "knots": [
+      [0, 0],
+      [34.69, 40],
+      [45.83, 65],
+      [49.99, 76],
+      [52.39, 80],
+      [100, 100]
+    ]
+  },
+  "source": {
+    "hfId": "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M",
+    "revision": "95ec8197b3f2fe7f747865c61ca556cf0768b2f7",
+    "licence": "MIT",
+    "export": "eval/bakeoff/export.py"
+  },
+  "files": [
+    "config.json",
+    "preprocessor_config.json",
+    "onnx/vision_model_fp16.onnx",
+    "head.json"
+  ]
+}

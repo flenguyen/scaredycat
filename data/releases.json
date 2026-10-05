@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "1.6.3",
+  "current": "2.0.0",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -25,6 +25,43 @@
     }
   ],
   "releases": [
+    {
+      "id": "2.0.0",
+      "surface": "extension",
+      "version": "2.0.0",
+      "level": 1,
+      "date": "2026-10-05",
+      "title": "A new picture model",
+      "aside": "Scaredy Cat has new glasses, and it finds the quiet, arty posters much easier to spot now.",
+      "summary": "Scaredy Cat now checks pictures with a new model that can go in the Chrome Web Store, and it catches more modern horror posters.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "Scaredy Cat now uses a different model to look at pictures. The licence of the old model only allowed research use, so it could not go in the Chrome Web Store. The new model's licence allows that."
+        },
+        {
+          "type": "improved",
+          "text": "On pages that are already about horror, Scaredy Cat now catches about 8 in 10 modern horror posters in our test pictures. The old model caught fewer than half of them."
+        },
+        {
+          "type": "fixed",
+          "text": "Family Halloween pictures, such as pumpkin photos and children's Halloween films, were sometimes blurred by mistake. That now happens far less often."
+        },
+        {
+          "type": "fixed",
+          "text": "When the text around a picture only weakly suggested horror, a calm-looking picture could cancel the blur, even when it was a real horror poster. This happened to about a third of the horror pictures in our tests. Scaredy Cat now cancels a blur only when the picture looks clearly safe, which happens to about 1 in 6 of them. As a result, some films that share a short name with a horror film may be blurred a little more often."
+        },
+        {
+          "type": "improved",
+          "text": "A picture with no title or other clue nearby is now blurred a little less often, and fewer safe pictures get blurred by mistake."
+        },
+        {
+          "type": "improved",
+          "text": "The download is larger, about 78 MB, up from about 26 MB, because the new model is bigger. Pictures are still checked on your computer, and no new information leaves it."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "1.6.3",
       "surface": "extension",

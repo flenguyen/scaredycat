@@ -17,7 +17,7 @@
 import { execFileSync } from 'node:child_process';
 import { runReleaseCheck, RELEASES_PATH } from './release-check.mjs';
 
-const RUNTIME = [/^manifest\.json$/, /^background(\.js$|\/)/, /^content\//, /^popup\//, /^offscreen\//, /^styles\//, /^fonts\//, /^icons\//];
+const RUNTIME = [/^manifest\.json$/, /^background(\.js$|\/)/, /^content\//, /^popup\//, /^offscreen\//, /^styles\//, /^fonts\//, /^icons\//, /^models\//, /^vendor\//];
 const GIT_COMMIT = /\bgit\b(?:\s+-[cC]\s+\S+|\s+--[\w-]+(?:=\S+)?)*\s+commit\b/;
 
 function readStdin() {

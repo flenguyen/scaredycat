@@ -2,12 +2,16 @@
 # Checked by `npm run pack` / `pack:check` and `npm run setup:model -- --verify`.
 # vendor/: @huggingface/transformers 4.3.0, onnxruntime-web 1.31.0-dev.20260914-8d85527a0
 # (a dev prerelease; move to a stable 1.31.x when one is published).
-# models/: Xenova/mobileclip_s0 at revision 757d59c9c6870a76a4b0306f05f5061bca15c39f.
 # After an intentional update, regenerate with:
-#   shasum -a 256 vendor/*.js vendor/*.mjs vendor/*.wasm models/Xenova/mobileclip_s0/*.json models/Xenova/mobileclip_s0/onnx/*.onnx
+#   shasum -a 256 vendor/*.js vendor/*.mjs vendor/*.wasm
+# models/: models/image-model.json and its files, written by eval/bakeoff/promote.mjs
+#   (tinyclip-vit-40m-32-laion400m, tinyclip40m-fp16-head-v1). Rerun it to change them; never edit
+#   these lines by hand.
 6b37a3974dbd96a752fdc1805e1bdc2dca3ead7e380703c092240c2352c71dbf  vendor/ort-wasm-simd-threaded.jspi.mjs
 173146c55eb8c7e01f8be3f7b7376fbde14118d91607583ab7caf4feac98e59c  vendor/ort-wasm-simd-threaded.jspi.wasm
 1475fd440e9932ab206682ee42cb18f6097403e9ee77ea62084c592d0f83597d  vendor/transformers.min.js
-8e33c1f2634a33de3e38715f9809ef86742aacbe31c310c66fc2636755458d56  models/Xenova/mobileclip_s0/config.json
-b031f09fbd69e22a605b6cc7433993249ee893b7fc1b79321f669cd015493dd4  models/Xenova/mobileclip_s0/preprocessor_config.json
-22b1d36ecc6837e8205aee05003440a25e1c1ee0c7e2945dbb9dd597211c59dc  models/Xenova/mobileclip_s0/onnx/vision_model_fp16.onnx
+fcb25ceac41cadb34b442d2084e424597714d748001cc967a87dee9da8251683  models/image-model.json
+a7694656da665f83a763868e53f598bd224df589123ad1f222cd49ad6699ed88  models/tinyclip-vit-40m-32-laion400m/config.json
+910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd  models/tinyclip-vit-40m-32-laion400m/preprocessor_config.json
+6d0b86438ac07844deba33a9f347ceb512ad39e0d99945aff4b2db50eb877335  models/tinyclip-vit-40m-32-laion400m/onnx/vision_model_fp16.onnx
+a3b5a956f085f6d0955c8e764f61e67e1daceb0bfa20eebcb0a87d2bc71d736d  models/tinyclip-vit-40m-32-laion400m/head.json

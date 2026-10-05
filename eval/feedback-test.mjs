@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SOURCE = fs.readFileSync(path.join(ROOT, 'background/feedback.js'), 'utf8');
+// Loaded first, as background.js does: feedback.js reads the model version from it.
+const MODEL_INFO = fs.readFileSync(path.join(ROOT, 'background/model-info.js'), 'utf8');
 const ENDPOINT = 'https://www.scaredycat.app/api/feedback';
 
 // The server's schema (scared-cat-web lib/feedback/schema.ts), restated so a
@@ -85,6 +87,7 @@ function load(responder = () => ({ status: 200 })) {
     console: { ...console, warn: (...a) => warnings.push(a.join(' ')), log() {} }
   };
   vm.createContext(sandbox);
+  vm.runInContext(MODEL_INFO, sandbox);
   const Feedback = vm.runInContext(`${SOURCE}\n;ScaredyCatFeedback`, sandbox);
   vm.runInContext('Date', sandbox).now = () => now;
   return {

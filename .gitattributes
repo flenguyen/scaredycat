@@ -1,0 +1,3 @@
+# Model weights live in Git LFS (models/README.md). The packed zip carries the
+# real files; only people who clone the repo need `git lfs install` + `git lfs pull`.
+models/**/*.onnx filter=lfs diff=lfs merge=lfs -text

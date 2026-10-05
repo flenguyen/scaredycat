@@ -6,7 +6,7 @@ A Chrome extension that protects you from horror-related content while browsing.
 
 - **Automatic Detection**: Scans images and video thumbnails on any webpage
 - **Hybrid Detection**: Fast text analysis (600+ title database, 200+ keywords) routes
-  uncertain cases to an **on-device image classifier** (MobileCLIP via WebGPU/WASM) that
+  uncertain cases to an **on-device image classifier** (TinyCLIP via WebGPU/WASM) that
   looks at the actual pixels — catching horror images with innocent text, and vetoing
   false positives where scary *words* sit over harmless images
 - **Blur Protection**: Blurs detected horror content with a friendly overlay
@@ -24,8 +24,11 @@ A Chrome extension that protects you from horror-related content while browsing.
 
 1. **Download/Clone this repository**
    ```bash
+   git lfs install              # once per machine: the image model is in Git LFS
    git clone https://github.com/yourusername/scaredycat.git
    ```
+   Without Git LFS the model file is a small pointer and image checks stay off
+   (`git lfs pull` fixes it).
 
 2. **Open Chrome Extensions page**
    - Navigate to `chrome://extensions/`
@@ -77,9 +80,11 @@ typos, all precompiled into fast indexes), which lands it in one of three bands:
    veto still protects them)
 2. **Ambiguous** — keyword-only signal, weak/fuzzy title match, or no text at all on a
    horror-adjacent page or media site → the image's pixels are scored by the bundled
-   MobileCLIP model in an offscreen document (WebGPU when available, WASM otherwise).
-   Image evidence ≥70 blocks on its own; ≤25 vetoes a keyword-only text block.
-   Title matches are never vetoed (horror posters often look innocuous).
+   image model (TinyCLIP ViT-40M/32 with a linear head, `models/image-model.json`) in an
+   offscreen document (WebGPU when available, WASM otherwise). Scores are calibrated to
+   one scale for any model: ≥80 blocks on its own with no text signal, ≥76 with some,
+   ≥65 on a horror page; ≤40 vetoes a non-definite text block. Definite title matches
+   are never vetoed (horror posters often look innocuous).
 3. **Likely safe** — revealed, zero ML cost
 
 ### Borrowed titles
@@ -153,36 +158,42 @@ browsing costs nothing. Text scoring is memoized per page.
 
 ### Dev setup (image classifier + eval)
 
-Text detection works out of the box. The ML model files are fetched once:
+Text detection works out of the box. The image model (`models/`, ~80MB) is in Git LFS:
 
 ```bash
+git lfs install && git lfs pull   # the real model file instead of its LFS pointer
 npm install
-npm run setup:model          # fp16 MobileCLIP-S0 vision tower (~23MB) into models/,
-                             # fp32 + text tower into eval/.model-cache (dev only),
-                             # transformers.js 4.x + its ORT wasm into vendor/
-npm run precompute:prompts   # embed zero-shot prompts -> data/prompt-embeddings.{json,bin}
+npm run setup:model          # checks models/ against its manifest, prints how to rebuild
+                             # it from the pinned weights; transformers.js 4.x + its ORT
+                             # wasm into vendor/
+npm run model:check          # setup:model --verify, browser parity, pack --check
 npm run eval                 # text-layer metrics, genre-signal, image-key, auto-title,
-                             # summary-lookup, release-notes, guard, list-signature
-                             # and report-sender tests
+                             # summary-lookup, release-notes, guard, list-signature,
+                             # report-sender and model-manifest tests
 npm run release:check        # versions + data/releases.json agree (pack runs it too)
 npm run eval:combined        # text + image verdict fixtures
 npm run lint:database        # safeTitles + definite-flag invariants
-npm run pack                 # dist/scaredycat-<version>.zip + size report (~26MB compressed)
+npm run pack                 # dist/scaredycat-<version>.zip + size report (~78MB compressed)
 ```
 
-The shipped vision tower is **fp16** (validated against fp32 with
-`eval/fp16-compare.mjs`: every calibration poster within 2 points, no decision-bar
-crossings, works on WebGPU and WASM). It needs the transformers.js 4.x runtime in
-`vendor/`; the 3.x runtime aborted loading fp16 on WebGPU. The vendored ONNX Runtime is
-its **JSPI** wasm build (16.8MB, Chrome 137+ — hence `minimum_chrome_version`), which
-loads ~40% faster than the bundle's default Asyncify build. The shipped
-`data/prompt-embeddings.bin` was computed with the 3.x runtime and is what the
-`ml-bridge.js` bars are calibrated against — if you regenerate it under 4.x, re-check
-calibration (components shift by up to ~0.025).
+The image model is chosen by `models/image-model.json`: the model directory, its
+precision (fp16), the decode view, the scorer (a linear head, or zero-shot prompts) and
+the calibration that maps its raw score onto the scale `ml-bridge.js`'s bars use. It is
+written by `eval/bakeoff/promote.mjs`, which is how a model is swapped; the runbook is
+[models/README.md](models/README.md). The current one, TinyCLIP ViT-40M/32 (MIT), won the
+bake-off in `eval/bakeoff/REPORT.md`. **Node scores are not authoritative**:
+`eval/image-classifier.mjs` decodes and resizes differently from Chrome, so any score
+that sets a bar comes from the browser (`eval/bakeoff/browser-embed.mjs`,
+`eval/bakeoff/browser-check.mjs`).
 
-Detection tuning = editing the prompt list in `eval/precompute-prompts.mjs` and
-re-running `precompute:prompts` — no retraining, no code changes. End-to-end pipeline
-tests (require Chrome for Testing — regular Chrome no longer supports --load-extension):
+The vision tower needs the transformers.js 4.x runtime in `vendor/`; the 3.x runtime
+aborted loading fp16 on WebGPU. The vendored ONNX Runtime is its **JSPI** wasm build
+(16.8MB, Chrome 137+ — hence `minimum_chrome_version`), which loads ~40% faster than the
+bundle's default Asyncify build. Third-party licences are in `THIRD_PARTY_NOTICES`
+(shipped in the zip).
+
+End-to-end pipeline tests (require Chrome for Testing — regular Chrome no longer
+supports --load-extension):
 
 ```bash
 npx @puppeteer/browsers install chrome@stable --path /tmp/sc-chrome
@@ -190,7 +201,7 @@ npm install --no-save puppeteer-core sharp
 export SC_CHROME_BIN=<path-to-chrome-for-testing-binary>
 npm run smoke                # blur/veto/overlay end-to-end
 npm run latency              # perf harness (add --live for real IMDb/YouTube pages)
-node eval/fp16-compare.mjs   # fp16 vs fp32 scores (needs fp32 copied into models/ for the run)
+node eval/fp16-compare.mjs   # fp16 vs fp32 scores (needs fp32 copied into models/<dir>/ for the run)
 ```
 
 ## Testing
@@ -267,13 +278,11 @@ scaredycat/
 │   └── content.js            # Main coordinator, viewport gating, perf marks
 ├── offscreen/
 │   ├── offscreen.html        # Offscreen document hosting the classifier
-│   └── classifier.js         # MobileCLIP vision tower (WebGPU/WASM), streaming port
+│   └── classifier.js         # Image model from models/image-model.json (WebGPU/WASM), streaming port
 ├── data/
 │   ├── releases.json         # Release notes: popup "What's new" + scaredycat.app/changelog
-│   ├── horror-database.json  # Horror titles (with curated `definite` flags) and keywords
-│   ├── prompt-embeddings.json # Prompt labels + logit scale
-│   └── prompt-embeddings.bin  # Float32 prompt embeddings
-├── models/                    # fp16 MobileCLIP-S0 vision tower (npm run setup:model)
+│   └── horror-database.json  # Horror titles (with curated `definite` flags) and keywords
+├── models/                    # Image model (Git LFS): image-model.json + its files; runbook in README.md
 ├── vendor/                    # transformers.js 4.x + ONNX runtime WASM (npm run setup:model)
 ├── scripts/
 │   ├── pack.mjs              # Builds the distributable zip, refuses dev files
@@ -284,8 +293,10 @@ scaredycat/
 │   ├── corpus.json           # Labeled test contexts (curated + generated)
 │   ├── verdict-corpus.json   # Text + image verdict fixtures (combined-eval.mjs)
 │   ├── legacy-core.mjs       # Pre-refactor scorer (parity baseline — do not edit)
-│   ├── precompute-prompts.mjs # Prompt ensemble -> embeddings
-│   ├── image-classifier.mjs  # Node-side classifier (dev model cache)
+│   ├── precompute-prompts.mjs # Prompt ensemble -> embeddings (zero-shot models only)
+│   ├── image-classifier.mjs  # Node-side classifier (dev model cache; not authoritative)
+│   ├── model-manifest-test.mjs # models/image-model.json, CHECKSUMS and model-info.js agree
+│   ├── bakeoff/              # Model bake-off; promote.mjs swaps the shipped model
 │   ├── image-key-test.mjs    # Canonical image key unit test
 │   ├── releases-test.mjs     # What's new helpers + release check unit tests
 │   ├── fp16-compare.mjs      # fp16 vs fp32 in the real extension runtime

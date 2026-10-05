@@ -25,8 +25,8 @@
  *
  * Consent: a report is only sent when settings.feedbackConsent is true. The
  * caller (content/popup) gates on consent too, but we re-check here so a UI bug
- * can never leak data. Loaded into the service worker via importScripts;
- * unit-tested in eval/feedback-test.mjs with a mocked chrome and fetch.
+ * can never leak data. Loaded into the service worker via importScripts,
+ * after model-info.js; unit-tested in eval/feedback-test.mjs with a mocked chrome and fetch.
  */
 
 const ScaredyCatFeedback = (function () {
@@ -36,9 +36,10 @@ const ScaredyCatFeedback = (function () {
   // an Origin of chrome-extension://<our id>, which the worker's fetch sends.
   const ENDPOINT = 'https://www.scaredycat.app/api/feedback';
 
-  // Kept in sync with ml-router.js's default; reported so corrections can be
-  // tied to the model that produced (or missed) the verdict.
-  const MODEL_VERSION = 'mobileclip_s0-fp16-v3';
+  // The shipped image model (model-info.js, generated with
+  // models/image-model.json); reported so corrections can be tied to the
+  // model that produced (or missed) the verdict.
+  const MODEL_VERSION = ScaredyCatModelInfo.version;
 
   const OUTBOX_KEY = 'feedbackOutbox';     // [{ report, attempts }] awaiting a retry
   const RECENT_KEY = 'feedbackRecent';     // hash -> ts, for dedupe

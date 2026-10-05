@@ -1,8 +1,12 @@
 /**
  * Scaredy Cat - Offscreen Image Classifier
- * Runs the MobileCLIP vision tower locally (WebGPU when available, WASM
- * otherwise) and scores images against precomputed prompt embeddings.
- * Nothing ever leaves the device.
+ * Runs the image model named in models/image-model.json locally (WebGPU when
+ * available, WASM otherwise): a CLIP-style vision tower whose image embedding
+ * is scored by a linear head or against zero-shot prompt embeddings. The raw
+ * score is then mapped through the manifest's calibration, so every model
+ * reports on the same scale (40 veto, 65 horror page, 76 block, 80 image
+ * only; see content/ml-bridge.js). Swap the model with
+ * eval/bakeoff/promote.mjs (models/README.md). Nothing ever leaves the device.
  *
  * Protocol (runtime Port named 'sc-classify', opened by the service worker):
  *   -> { type: 'CLASSIFY', key, url }   one image; answered as soon as ITS
@@ -26,18 +30,25 @@
 import { env, AutoProcessor, CLIPVisionModelWithProjection, RawImage }
   from '../vendor/transformers.min.js';
 
-const MODEL_ID = 'Xenova/mobileclip_s0';
+const MODEL_MANIFEST = 'models/image-model.json';
 const PORT_NAME = 'sc-classify';
 const FETCH_CONCURRENCY = 4;
 const FETCH_TIMEOUT_MS = 8000;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const INPUT_SIZE = 256; // MobileCLIP-S0: shortest edge 256, center crop 256x256
-// 'canvas' (shipped): the legacy pixels with one full-size buffer instead of
-// five (decodeLikeLegacy). 'bitmap': createImageBitmap resizes during decode,
-// no full-size buffer at all, but it scores differently on large images and
-// would need the ml-bridge bars recalibrated first. 'legacy': the old
-// RawImage.fromBlob path. The last two stay for eval/decode-compare.mjs.
-const DECODE_PATH = 'canvas';
+// Canvas size the decoders produce, from the manifest's decode.size at load.
+// 'crop': the short edge is resized to it and the centre square cut out (the
+// processor then resizes that square to the model's own input). 'squash': the
+// whole image is resized to this square, the model's input.
+let INPUT_SIZE = 256;
+// Decode path, from the manifest's decode.view at load. 'canvas' (view
+// 'crop'): the legacy pixels with one full-size buffer instead of five
+// (decodeLikeLegacy). 'squash' (view 'squash'): decodeSquash. 'bitmap':
+// createImageBitmap resizes during decode, no full-size buffer at all, but it
+// scores differently on large images and would need a recalibration first.
+// 'legacy': the old RawImage.fromBlob path. The last two stay for
+// eval/decode-compare.mjs.
+const DECODE_PATHS = { crop: 'canvas', squash: 'squash' };
+let DECODE_PATH = 'canvas';
 const RESIZE_QUALITY = 'high';
 
 // Fail closed if guards.js didn't load: no URL is fetchable.
@@ -63,32 +74,68 @@ env.backends.onnx.wasm.wasmPaths = {
 env.backends.onnx.logLevel = 'error';
 const SESSION_OPTIONS = { logSeverityLevel: 3 }; // 3 = error
 
-// Weight precision of the shipped vision tower: fp16 halves the package
-// (22.9MB vs 45.5MB) and eval/fp16-compare.mjs showed every calibration
-// poster within 2 points of fp32 with no decision-bar crossings, on both
-// WebGPU and WASM (needs the transformers.js 4.x / ORT 1.31 runtime in
-// vendor/ — the 3.x runtime aborted loading fp16 on WebGPU). The harness
-// drives the __scEval hook below to load another precision/backend per run.
-const DEFAULT_DTYPE = 'fp16';
+// The weight precision comes from the manifest (`dtype`, fp16 today: half the
+// size of fp32, checked against it with eval/fp16-compare.mjs; it needs the
+// transformers.js 4.x / ORT 1.31 runtime in vendor/, the 3.x runtime aborted
+// loading fp16 on WebGPU). The harness drives the __scEval hook below to load
+// another precision/backend per run.
 
 let loadPromise = null;
 let warmPromise = null;
+let manifest = null; // models/image-model.json, validated
 let processor = null;
 let visionModel = null;
-let promptData = null;
+let head = null;       // scorer 'head': { w: Float32Array, b, dim }
+let promptData = null; // scorer 'zero-shot': prompt embeddings
+let knots = null;      // calibration: [[raw, calibrated], ...], increasing in both
 let activeDevice = null;
 let activeDtype = null;
 let loadMs = 0;
 
+const modelUrl = (file) => chrome.runtime.getURL(`models/${manifest.dir}/${file}`);
+
 /**
- * Prompt embeddings ship as a small JSON header (labels, logit scale) plus a
- * Float32 blob (row-major [prompts x dim], L2-normalized) — ~70KB instead of
- * ~380KB of decimal text. Rebuilt by `npm run precompute:prompts`.
+ * models/image-model.json: which model to load and how to score it. Written
+ * by eval/bakeoff/promote.mjs and checked by eval/model-manifest-test.mjs;
+ * re-checked here so a broken file fails the load instead of scoring wrong.
+ */
+async function loadManifest() {
+  const res = await fetch(chrome.runtime.getURL(MODEL_MANIFEST));
+  if (!res.ok) throw new Error(`${MODEL_MANIFEST}: HTTP ${res.status}`);
+  const m = await res.json();
+  const k = m?.calibration?.knots;
+  const ok = m && m.schema === 1 && typeof m.dir === 'string' && typeof m.version === 'string' &&
+    ['fp16', 'fp32'].includes(m.dtype) && DECODE_PATHS[m.decode?.view] && Number.isInteger(m.decode?.size) &&
+    ['head', 'zero-shot'].includes(m.scorer?.type) && Array.isArray(k) && k.length >= 2 &&
+    k.every((p, i) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) &&
+      (i === 0 || (p[0] > k[i - 1][0] && p[1] >= k[i - 1][1])));
+  if (!ok) throw new Error(`${MODEL_MANIFEST} is malformed`);
+  return m;
+}
+
+/**
+ * Linear head: score = 100 * sigmoid(w . e + b) on the L2-normalised image
+ * embedding (trained in eval/bakeoff on in-browser embeddings).
+ */
+async function loadHead() {
+  const res = await fetch(modelUrl(manifest.scorer.file));
+  const h = await res.json();
+  if (!Array.isArray(h.w) || h.w.length !== h.dim || h.normalise !== 'l2' || !Number.isFinite(h.b)) {
+    throw new Error(`models/${manifest.dir}/${manifest.scorer.file} is malformed`);
+  }
+  return { w: Float32Array.from(h.w), b: h.b, dim: h.dim };
+}
+
+/**
+ * Zero-shot prompt embeddings ship as a small JSON header (labels, logit
+ * scale) plus a Float32 blob (row-major [prompts x dim], L2-normalized),
+ * ~70KB instead of ~380KB of decimal text. Rebuilt by
+ * `npm run precompute:prompts` for a zero-shot model.
  */
 async function loadPromptData() {
   const [metaRes, binRes] = await Promise.all([
-    fetch(chrome.runtime.getURL('data/prompt-embeddings.json')),
-    fetch(chrome.runtime.getURL('data/prompt-embeddings.bin'))
+    fetch(modelUrl('prompt-embeddings.json')),
+    fetch(modelUrl('prompt-embeddings.bin'))
   ]);
   const meta = await metaRes.json();
   const floats = new Float32Array(await binRes.arrayBuffer());
@@ -113,22 +160,27 @@ async function loadModel(dtypeOverride, deviceOverride) {
     if (typeof WebAssembly.Suspending !== 'function') {
       throw new Error('WebAssembly JSPI unavailable (Chrome 137+ required)');
     }
-    promptData = await loadPromptData();
-    processor = await AutoProcessor.from_pretrained(MODEL_ID);
+    manifest = await loadManifest();
+    INPUT_SIZE = manifest.decode.size;
+    DECODE_PATH = DECODE_PATHS[manifest.decode.view];
+    knots = manifest.calibration.knots;
+    if (manifest.scorer.type === 'head') head = await loadHead();
+    else promptData = await loadPromptData();
+    processor = await AutoProcessor.from_pretrained(manifest.dir);
 
-    // q8 vision is badly degraded for MobileCLIP (int8 scored Hereditary 2.2
-    // vs 97.9); only fp16/fp32 are acceptable.
-    const dtype = dtypeOverride || DEFAULT_DTYPE;
+    // q8 (dynamic int8) broke every model measured in the bake-off (score
+    // changes of 21 to 75 points); only fp16/fp32 are acceptable.
+    const dtype = dtypeOverride || manifest.dtype;
     let device = deviceOverride || (('gpu' in navigator) ? 'webgpu' : 'wasm');
     try {
-      visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, {
+      visionModel = await CLIPVisionModelWithProjection.from_pretrained(manifest.dir, {
         dtype, device, session_options: SESSION_OPTIONS
       });
     } catch (e) {
       if (device === 'webgpu') {
         console.warn('Scaredy Cat: WebGPU load failed, retrying on WASM', e);
         device = 'wasm';
-        visionModel = await CLIPVisionModelWithProjection.from_pretrained(MODEL_ID, {
+        visionModel = await CLIPVisionModelWithProjection.from_pretrained(manifest.dir, {
           dtype, device, session_options: SESSION_OPTIONS
         });
       } else {
@@ -138,7 +190,7 @@ async function loadModel(dtypeOverride, deviceOverride) {
     activeDevice = device;
     activeDtype = dtype;
     loadMs = Math.round(performance.now() - t0);
-    console.log(`Scaredy Cat: classifier ready (${device}, ${dtype}, ${loadMs}ms)`);
+    console.log(`Scaredy Cat: classifier ready (${manifest.version}, ${device}, ${dtype}, ${loadMs}ms)`);
   })();
   return loadPromise;
 }
@@ -148,28 +200,30 @@ async function loadModel(dtypeOverride, deviceOverride) {
 // builds on purpose: only extension contexts and DevTools can reach this
 // document's globals, and it fetches through the same URL checks as the port.
 // `opts.decode` / `opts.quality` pick the decode path for the comparison.
+// classify returns the calibrated `score`, the model's `raw` score and the
+// L2-normalised `embedding` (eval/bakeoff/browser-check.mjs compares them).
 globalThis.__scEval = {
   async ready(dtype, device) {
     await loadModel(dtype, device);
-    return { device: activeDevice, dtype: activeDtype, loadMs };
+    return { device: activeDevice, dtype: activeDtype, loadMs, modelVersion: manifest.version };
   },
   async classify(url, opts = {}) {
     await loadModel();
     const t0 = performance.now();
     const r = await classifyOne(url, new Set(), opts);
-    return { ...r, ms: Math.round(performance.now() - t0) };
+    return { ...r, embedding: r.embedding && Array.from(r.embedding), ms: Math.round(performance.now() - t0) };
   }
 };
 
-/** Load + one throwaway 256x256 inference. Idempotent. */
+/** Load + one throwaway inference on a grey square. Idempotent. */
 function warmUp() {
   if (warmPromise) return warmPromise;
   warmPromise = (async () => {
     await loadModel();
     const t0 = performance.now();
     try {
-      const pixels = new Uint8ClampedArray(256 * 256 * 3).fill(128);
-      const image = new RawImage(pixels, 256, 256, 3);
+      const pixels = new Uint8ClampedArray(INPUT_SIZE * INPUT_SIZE * 3).fill(128);
+      const image = new RawImage(pixels, INPUT_SIZE, INPUT_SIZE, 3);
       const inputs = await processor(image);
       await runInference(inputs);
       console.log(`Scaredy Cat: classifier warm (${Math.round(performance.now() - t0)}ms)`);
@@ -178,6 +232,31 @@ function warmUp() {
     }
   })();
   return warmPromise;
+}
+
+/** Linear head: 100 * sigmoid(w . e + b). Same math as eval/image-classifier.mjs. */
+function scoreWithHead(imageEmbedding) {
+  if (imageEmbedding.length !== head.dim) throw new Error('head does not match the model');
+  let z = head.b;
+  for (let i = 0; i < head.dim; i++) z += head.w[i] * imageEmbedding[i];
+  return 100 / (1 + Math.exp(-z));
+}
+
+/**
+ * Raw model score -> the shared scale, piecewise-linear through the
+ * manifest's knots. Monotone, so a verdict at each bar is the verdict the raw
+ * bar picked in the bake-off would give. Same math as eval/image-classifier.mjs.
+ */
+function calibrate(raw) {
+  if (raw <= knots[0][0]) return knots[0][1];
+  for (let i = 1; i < knots.length; i++) {
+    const [x1, y1] = knots[i];
+    if (raw <= x1) {
+      const [x0, y0] = knots[i - 1];
+      return y0 + (raw - x0) * (y1 - y0) / (x1 - x0);
+    }
+  }
+  return knots[knots.length - 1][1];
 }
 
 /** Same math as eval/image-classifier.mjs — keep the two in sync. */
@@ -281,10 +360,10 @@ function getCropContext() {
 }
 
 /**
- * Blob -> 256x256 RGB RawImage. The browser decodes straight to a bitmap
- * whose short side is 256 (portrait first; a landscape image is decoded
- * again by height), the center is cropped onto the reused canvas, and the
- * bitmap is freed at once. Same geometry as the processor's shortest-edge
+ * Blob -> INPUT_SIZE square RGB RawImage. The browser decodes straight to a
+ * bitmap whose short side is INPUT_SIZE (portrait first; a landscape image is
+ * decoded again by height), the center is cropped onto the reused canvas, and
+ * the bitmap is freed at once. Same geometry as the processor's shortest-edge
  * resize + center crop, which then has nothing left to do.
  */
 async function decodeToInput(blob, quality = RESIZE_QUALITY) {
@@ -307,14 +386,15 @@ async function decodeToInput(blob, quality = RESIZE_QUALITY) {
 }
 
 /**
- * Blob -> 256x256 RGB RawImage with exactly the pixels of the legacy path
- * (RawImage.fromBlob, then the processor's shortest-edge resize and center
- * crop, each a canvas drawImage; eval/decode-compare.mjs: Δ 0.00 on every
- * calibration image), minus its copies. Legacy held the decoded image as a
- * bitmap, a canvas, a full-size RGBA array, an RGB array and another canvas
- * (~140 MB for a 2000x3000 poster). Here the bitmap is drawn into one
- * full-size canvas and closed, that canvas is drawn down to 256 px and
- * released, and only 256x256 pixels ever reach the JS heap.
+ * Blob -> INPUT_SIZE square RGB RawImage (view 'crop', 256) with exactly the
+ * pixels of the legacy path (RawImage.fromBlob, then the processor's
+ * shortest-edge resize and center crop, each a canvas drawImage;
+ * eval/decode-compare.mjs: Δ 0.00 on every calibration image), minus its
+ * copies. Legacy held the decoded image as a bitmap, a canvas, a full-size
+ * RGBA array, an RGB array and another canvas (~140 MB for a 2000x3000
+ * poster). Here the bitmap is drawn into one full-size canvas and closed,
+ * that canvas is drawn down to INPUT_SIZE px and released, and only
+ * INPUT_SIZE x INPUT_SIZE pixels ever reach the JS heap.
  *
  * Drawing straight from the bitmap (skipping the full-size canvas) or
  * letting createImageBitmap resize would save that one buffer too, but both
@@ -330,7 +410,7 @@ async function decodeLikeLegacy(blob) {
   } finally {
     bitmap.close();
   }
-  // Processor.get_resize_output_image_size for { shortest_edge: 256 }.
+  // Processor.get_resize_output_image_size for { shortest_edge: INPUT_SIZE }.
   const scale = Math.max(INPUT_SIZE / full.width, INPUT_SIZE / full.height);
   const w = Math.floor(Number((full.width * scale).toFixed(2)));
   const h = Math.floor(Number((full.height * scale).toFixed(2)));
@@ -352,6 +432,22 @@ async function decodeLikeLegacy(blob) {
 }
 
 /**
+ * Blob -> INPUT_SIZE square RGB RawImage of the whole image, no crop (view
+ * 'squash'): the processor then has nothing left to resize.
+ */
+async function decodeSquash(blob) {
+  const bitmap = await createImageBitmap(blob, { resizeWidth: INPUT_SIZE, resizeHeight: INPUT_SIZE, resizeQuality: RESIZE_QUALITY });
+  try {
+    const ctx = new OffscreenCanvas(INPUT_SIZE, INPUT_SIZE).getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    const { data } = ctx.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
+    return new RawImage(data, INPUT_SIZE, INPUT_SIZE, 4).rgb();
+  } finally {
+    bitmap.close();
+  }
+}
+
+/**
  * Fetch, decode and preprocess one image. `controllers` lets the port's
  * disconnect handler abort everything still in flight for it. On success the
  * caller owns `release` and must call it once (when inference starts).
@@ -370,7 +466,8 @@ async function prepare(url, controllers, opts = {}) {
     if (!fetched.blob) { release(); return { reason: fetched.reason }; }
     try {
       const decode = opts.decode || DECODE_PATH;
-      const image = decode === 'legacy' ? await RawImage.fromBlob(fetched.blob)
+      const image = decode === 'squash' ? await decodeSquash(fetched.blob)
+        : decode === 'legacy' ? await RawImage.fromBlob(fetched.blob)
         : decode === 'canvas' ? await decodeLikeLegacy(fetched.blob)
         : await decodeToInput(fetched.blob, opts.quality || RESIZE_QUALITY);
       const inputs = await processor(image);
@@ -399,7 +496,9 @@ async function classifyOne(url, controllers, opts) {
     norm = Math.sqrt(norm);
     const normalized = new Float32Array(vec.length);
     for (let i = 0; i < vec.length; i++) normalized[i] = vec[i] / norm;
-    return { score: scoreEmbedding(normalized, promptData.prompts, promptData.logitScale), reason: 'ok' };
+    const raw = head ? scoreWithHead(normalized)
+      : scoreEmbedding(normalized, promptData.prompts, promptData.logitScale);
+    return { score: calibrate(raw), raw, reason: 'ok', embedding: normalized };
   } catch (e) {
     return { score: null, reason: 'infer' };
   } finally {
@@ -447,12 +546,12 @@ chrome.runtime.onConnect.addListener((port) => {
       }
       if (message.type === 'WARM') {
         await warmUp();
-        post({ type: 'WARM_DONE', modelVersion: promptData.modelVersion });
+        post({ type: 'WARM_DONE', modelVersion: manifest.version });
         return;
       }
       if (message.type !== 'CLASSIFY' || typeof message.url !== 'string') return;
       const result = await classifyOne(message.url, controllers);
-      post({ type: 'RESULT', key: message.key, score: result.score, reason: result.reason, modelVersion: promptData.modelVersion });
+      post({ type: 'RESULT', key: message.key, score: result.score, reason: result.reason, modelVersion: manifest.version });
     })();
   });
 });
