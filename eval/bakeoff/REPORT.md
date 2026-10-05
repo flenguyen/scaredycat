@@ -1,6 +1,6 @@
 # Model bake-off: replacing MobileCLIP-S0
 
-Date: 2026-10-05. Brief: `eval/MODEL_BAKEOFF_PROMPT.md`. Progress log and every decision: `eval/bakeoff/PROGRESS.md`. Raw numbers: `eval/bakeoff/results.json`. Nothing that ships has changed.
+Date: 2026-10-05. Brief: `eval/bakeoff/BRIEF.md`. Progress log and every decision: `eval/bakeoff/PROGRESS.md`. Raw numbers: `eval/bakeoff/results.json`. Nothing that ships has changed.
 
 ## Summary
 

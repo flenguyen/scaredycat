@@ -1,6 +1,6 @@
 # Model bake-off progress
 
-Spec: `~/.claude/plans/pasted-content-id-fd00-model-composed-balloon.md` (the brief is `eval/MODEL_BAKEOFF_PROMPT.md`).
+Spec: `~/.claude/plans/pasted-content-id-fd00-model-composed-balloon.md` (the brief is `eval/bakeoff/BRIEF.md`).
 Each phase agent appends a dated entry to the log below: what it finished, files written, key numbers, blockers.
 
 ## Checklist

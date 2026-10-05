@@ -59,7 +59,7 @@ the real offscreen classifier over CDP.
 ## Swapping the model
 
 1. **Bake-off.** Measure the candidate in `eval/bakeoff/` (brief:
-   `eval/MODEL_BAKEOFF_PROMPT.md`). The licence must allow commercial use; record it in
+   `eval/bakeoff/BRIEF.md`). The licence must allow commercial use; record it in
    `candidates.json` with role `candidate`. Export the vision tower with
    `eval/bakeoff/export.py`, embed every image in Chrome with `browser-embed.mjs`, then
    let `analyze.py --source browser` train the head and pick the bars on validation
