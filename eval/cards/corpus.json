@@ -1,0 +1,2704 @@
+{
+ "schema": 1,
+ "note": "Labels for eval/cards captures (local, .cache/captures). A card is horror when its picture or its title shows horror-genre content someone frightened of horror would want hidden. Labelled from contact sheets on 2026-10-05; borderline calls carry a note.",
+ "captures": {
+  "bd-home": {
+   "url": "https://bloody-disgusting.com/",
+   "capturedAt": "2026-10-05T17:15:41.261Z",
+   "set": "horror",
+   "cards": 42
+  },
+  "collider-trailers": {
+   "url": "https://collider.com/movie-trailers/",
+   "capturedAt": "2026-10-05T17:16:20.079Z",
+   "set": "negative",
+   "cards": 22
+  },
+  "dm-comedy": {
+   "url": "https://www.dailymotion.com/search/comedy%20trailer/videos",
+   "capturedAt": "2026-10-05T17:14:40.422Z",
+   "set": "negative",
+   "cards": 40
+  },
+  "dm-horror": {
+   "url": "https://www.dailymotion.com/search/horror%20trailer/videos",
+   "capturedAt": "2026-10-05T17:14:23.995Z",
+   "set": "horror",
+   "cards": 40
+  },
+  "rt-in-theaters": {
+   "url": "https://www.rottentomatoes.com/browse/movies_in_theaters",
+   "capturedAt": "2026-10-05T17:15:18.003Z",
+   "set": "negative",
+   "cards": 28
+  },
+  "vimeo-horror": {
+   "url": "https://vimeo.com/search?q=horror%20short",
+   "capturedAt": "2026-10-05T17:13:50.892Z",
+   "set": "horror",
+   "cards": 24
+  },
+  "yt-action-trailer": {
+   "url": "https://www.youtube.com/results?search_query=action+movie+trailer+2026",
+   "capturedAt": "2026-10-05T17:13:32.720Z",
+   "set": "negative",
+   "cards": 16
+  },
+  "yt-analog-horror": {
+   "url": "https://www.youtube.com/results?search_query=analog+horror",
+   "capturedAt": "2026-10-05T17:10:36.048Z",
+   "set": "horror",
+   "cards": 31
+  },
+  "yt-cooking": {
+   "url": "https://www.youtube.com/results?search_query=easy+pasta+recipe",
+   "capturedAt": "2026-10-05T17:13:12.988Z",
+   "set": "negative",
+   "cards": 19
+  },
+  "yt-creepypasta": {
+   "url": "https://www.youtube.com/results?search_query=creepypasta",
+   "capturedAt": "2026-10-05T17:10:55.662Z",
+   "set": "horror",
+   "cards": 23
+  },
+  "yt-found-footage": {
+   "url": "https://www.youtube.com/results?search_query=found+footage+horror",
+   "capturedAt": "2026-10-05T17:11:36.617Z",
+   "set": "horror",
+   "cards": 18
+  },
+  "yt-halloween-kids": {
+   "url": "https://www.youtube.com/results?search_query=halloween+costumes+kids",
+   "capturedAt": "2026-10-05T17:11:56.224Z",
+   "set": "negative",
+   "cards": 28
+  },
+  "yt-horror": {
+   "url": "https://www.youtube.com/results?search_query=horror",
+   "capturedAt": "2026-10-05T17:09:28.611Z",
+   "set": "horror",
+   "cards": 35
+  },
+  "yt-horror-short-film": {
+   "url": "https://www.youtube.com/results?search_query=horror+short+film",
+   "capturedAt": "2026-10-05T17:10:14.709Z",
+   "set": "horror",
+   "cards": 25
+  },
+  "yt-horror-trailer-2026": {
+   "url": "https://www.youtube.com/results?search_query=horror+trailer+2026",
+   "capturedAt": "2026-10-05T17:11:16.994Z",
+   "set": "horror",
+   "cards": 21
+  },
+  "yt-retail-horror-stories": {
+   "url": "https://www.youtube.com/results?search_query=retail+horror+stories",
+   "capturedAt": "2026-10-05T17:12:55.163Z",
+   "set": "negative",
+   "cards": 22
+  },
+  "yt-thriller-trailer": {
+   "url": "https://www.youtube.com/results?search_query=thriller+trailer+2026",
+   "capturedAt": "2026-10-05T17:12:35.556Z",
+   "set": "negative",
+   "cards": 16
+  },
+  "yt-true-crime": {
+   "url": "https://www.youtube.com/results?search_query=true+crime+documentary",
+   "capturedAt": "2026-10-05T17:12:16.010Z",
+   "set": "negative",
+   "cards": 18
+  },
+  "ign-trailers": {
+   "url": "https://www.ign.com/videos",
+   "capturedAt": "2026-10-05T17:24:05.077Z",
+   "set": "negative",
+   "cards": 26
+  }
+ },
+ "items": {
+  "bd-home#0": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 5 These 7 New Horror Movies Have Already Released This October"
+  },
+  "bd-home#1": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EDITORIALS / OCT 4 10 ‘Carrie’ Copycats Every Horror Fan Should See"
+  },
+  "bd-home#2": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 1 10 New Horror Movies Releasing In October 2026"
+  },
+  "bd-home#3": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 1 All The Horror Heading To Hulu, Netflix, Tubi & Other Streaming Services In October 2026"
+  },
+  "bd-home#4": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EXCLUSIVES / OCT 1 AMC FearFest 2026 Exclusive Trailer – The Crypt Keeper Is Back and We’ve Got the First Footage!"
+  },
+  "bd-home#5": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EDITORIALS / OCT 4 10 ‘Carrie’ Copycats Every Horror Fan Should See"
+  },
+  "bd-home#6": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EDITORIALS / OCT 3 The Bloody Legacy of Elizabeth Báthory, Horror’s Original Female Monster"
+  },
+  "bd-home#7": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EDITORIALS / OCT 2 5 of the Most Memorable Music Performances in Horror",
+   "borderline": true,
+   "note": "Horror editorial title; picture is a singer on stage, only faint blood-red shirt"
+  },
+  "bd-home#8": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EDITORIALS / OCT 2 The South Korean ‘Tucker & Dale Vs. Evil’ Remake Gets It Right",
+   "borderline": true,
+   "note": "Tucker & Dale Vs. Evil is horror-comedy; picture shows two men, mild"
+  },
+  "bd-home#9": {
+   "label": "horror",
+   "kind": "image",
+   "text": "THE ANTIQUARIUM OF DOCUMENTED ATROCITIES"
+  },
+  "bd-home#10": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MAYFAIR WATCHERS SOCIETY"
+  },
+  "bd-home#11": {
+   "label": "horror",
+   "kind": "image",
+   "text": "JOHN CARPENTER PRESENTS: SOMETHING WICKED"
+  },
+  "bd-home#12": {
+   "label": "horror",
+   "kind": "image",
+   "text": "THE ANTIQUARIUM OF SINISTER HAPPENINGS"
+  },
+  "bd-home#13": {
+   "label": "horror",
+   "kind": "image",
+   "text": "THE DEAD"
+  },
+  "bd-home#14": {
+   "label": "horror",
+   "kind": "image",
+   "text": "SCARE YOU TO SLEEP",
+   "borderline": true,
+   "note": "Horror podcast cover that is text only (Scare You To Sleep)"
+  },
+  "bd-home#15": {
+   "label": "horror",
+   "kind": "image",
+   "text": "HORROR QUEERS",
+   "borderline": true,
+   "note": "Horror Queers podcast cover is a cartoon of two hosts; horror only by title"
+  },
+  "bd-home#16": {
+   "label": "horror",
+   "kind": "image",
+   "text": "HAUNTED AMERICAN HISTORY"
+  },
+  "bd-home#17": {
+   "label": "horror",
+   "kind": "image",
+   "text": "DEAD SPACE: DEEP COVER"
+  },
+  "bd-home#18": {
+   "label": "horror",
+   "kind": "image",
+   "text": "DEAD MEAT PODCAST",
+   "borderline": true,
+   "note": "Dead Meat podcast cover is a bloody-text logo; could be treated as a logo"
+  },
+  "bd-home#19": {
+   "label": "horror",
+   "kind": "image",
+   "text": "BOOKS / OCT 5, 12:07 PM ‘Joe Bob Goes to the Drive-In’ Gets Audiobook Edition With Narration By The Horror Host Himself",
+   "borderline": true,
+   "note": "Joe Bob Briggs audiobook cover: horror host portrait with small skull figure; horror news"
+  },
+  "bd-home#20": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 5, 11:23 AM ‘Buddy’ Comes to Home Video Next Week and He’s Getting a VHS Release"
+  },
+  "bd-home#21": {
+   "label": "horror",
+   "kind": "image",
+   "text": "TV / OCT 5, 11:14 AM ‘The Institute’ Season 2 Trailer: Stephen King’s Gifted Teens Fight Back This November",
+   "borderline": true,
+   "note": "Stephen King The Institute is a sci-fi thriller with horror ties; image is a boy in a lab headset, not scary"
+  },
+  "bd-home#22": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 5, 10:48 AM ‘Insidious: Out of the Further’ Lands on Digital This Week"
+  },
+  "bd-home#23": {
+   "label": "horror",
+   "kind": "image",
+   "text": "VIDEO GAMES / OCT 5, 10:30 AM ‘BrokenLore: MIKI-CHAN’ Traps You With a Jealous AI Assistant [Trailer]"
+  },
+  "bd-home#24": {
+   "label": "horror",
+   "kind": "image",
+   "text": "BOOKS / OCT 5, 10:25 AM Read an Exclusive Excerpt from ‘Off The Reservation’, Stephen Graham Jones’ Sequel To ‘The Only "
+  },
+  "bd-home#25": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 5, 10:14 AM These 7 New Horror Movies Have Already Released This October"
+  },
+  "bd-home#26": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EXCLUSIVES / OCT 5, 10:00 AM Ernest Dickerson’s ‘V/H/S/Mixtape’ Segment Introduces Tormented Musician In Eerie First Loo"
+  },
+  "bd-home#27": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 5, 9:20 AM ‘Victorian Psycho’ – Maika Monroe Is All the Rage on New Official Poster for November Horror Mov"
+  },
+  "bd-home#28": {
+   "label": "safe",
+   "kind": "image",
+   "text": "NEWS / OCT 5, 8:30 AM ‘High Crimes’ is a Milquetoast Entry in the Ashley Judd Thriller Canon [Horror Queers Podcast]",
+   "borderline": true,
+   "note": "High Crimes is a thriller (no horror genre) but the image is a woman with her mouth taped in the dark, and the podcast is Horror Queers"
+  },
+  "bd-home#29": {
+   "label": "horror",
+   "kind": "image",
+   "text": "VIDEO GAMES / OCT 5, 8:30 AM First DLC for ‘Halloween: The Game’ Arrives October 27, Featuring a Free ‘Halloween 5’ Map"
+  },
+  "bd-home#30": {
+   "label": "horror",
+   "kind": "image",
+   "text": "VIDEO GAMES / OCT 5, 8:30 AM Third-Person Survival Horror Title ‘Signal Veil’ Announced for PC, Consoles [Trailer]"
+  },
+  "bd-home#31": {
+   "label": "safe",
+   "kind": "image",
+   "text": "VIDEO GAMES / OCT 5, 6:30 AM Next-Gen Updates for ‘METRO 2033 Redux’ and ‘METRO Last Light Redux’ Release This Month",
+   "borderline": true,
+   "note": "METRO Redux is a post-apocalyptic shooter with horror elements; image is a gas-mask soldier"
+  },
+  "bd-home#32": {
+   "label": "horror",
+   "kind": "image",
+   "text": "VIDEO GAMES / OCT 4, 12:39 PM ‘Dark Pals’ DLC “The 2nd Floor” Announced for 2027 Release [Trailer]",
+   "borderline": true,
+   "note": "Dark Pals DLC on a horror site; image is a dark room with a pink light beam, nothing explicitly scary"
+  },
+  "bd-home#33": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EDITORIALS / OCT 4, 10:00 AM 10 ‘Carrie’ Copycats Every Horror Fan Should See"
+  },
+  "bd-home#34": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 2 ‘Erie’ Review: Lo-Fi Found Footage Mystery Breaks Its Own Rules"
+  },
+  "bd-home#35": {
+   "label": "horror",
+   "kind": "image",
+   "text": "REVIEWS / OCT 1 ‘Carrie’ Review: Mike Flanagan’s Series Modernizes Stephen King’s Classic With Mixed Results"
+  },
+  "bd-home#36": {
+   "label": "horror",
+   "kind": "image",
+   "text": "BOOKS / SEP 30 ‘Trad Wife’ Review: Sarah Langan Merges Influencer and Folk Horror in a Terrifying New Novel",
+   "borderline": true,
+   "note": "Folk horror novel review; the book cover itself is not scary"
+  },
+  "bd-home#37": {
+   "label": "horror",
+   "kind": "image",
+   "text": "REVIEWS / SEP 30 ‘End of Abyss’ Review: Atmospheric Sci-Fi Horror Metroidvania Rewards Patient Exploration",
+   "borderline": true,
+   "note": "Sci-fi horror game review; image is a calm figure in a blue tunnel"
+  },
+  "bd-home#38": {
+   "label": "horror",
+   "kind": "image",
+   "text": "TV / OCT 5 ‘The Institute’ Season 2 Trailer: Stephen King’s Gifted Teens Fight Back This November",
+   "borderline": true,
+   "note": "Duplicate of #21: Stephen King The Institute, image not scary"
+  },
+  "bd-home#39": {
+   "label": "horror",
+   "kind": "image",
+   "text": "EXCLUSIVES / OCT 5 Ernest Dickerson’s ‘V/H/S/Mixtape’ Segment Introduces Tormented Musician In Eerie First Look Images ["
+  },
+  "bd-home#40": {
+   "label": "horror",
+   "kind": "image",
+   "text": "TV / OCT 1 Pamela Voorhees Is Covered In Blood In ‘Crystal Lake’ Opening Scene Sneak Peek"
+  },
+  "bd-home#41": {
+   "label": "horror",
+   "kind": "image",
+   "text": "MOVIES / OCT 1 HBO Max Celebrates Halloween With “Horror Comes Home” Collection"
+  },
+  "collider-trailers#0": {
+   "label": "safe",
+   "kind": "video",
+   "text": "16:32 Heart of the Beast: Brad Pitt Changed His Acting for the Dog | Collider BTS Brad Pitt wasn’t number one on the cal"
+  },
+  "collider-trailers#1": {
+   "label": "safe",
+   "kind": "video",
+   "text": "9:26 The Love Hypothesis: Tom Bateman Was Told Not to Read the Book | Set Stories Adapting a BookTok phenomenon comes wi"
+  },
+  "collider-trailers#2": {
+   "label": "safe",
+   "kind": "video",
+   "text": "10:04 The Love Hypothesis: Lili Reinhart's Wig Had to Disappear | Collider BTS The Love Hypothesis transformed Lili Rein"
+  },
+  "collider-trailers#3": {
+   "label": "safe",
+   "kind": "video",
+   "text": "6:05 Sunny Dancer: One Rule Erased the Star Hierarchy on Set | Collider BTS Neil Patrick Harris and director George Jaqu"
+  },
+  "collider-trailers#4": {
+   "label": "safe",
+   "kind": "video",
+   "text": "4:14 Bad Apples: Saoirse Ronan Left Set Ready to Direct | Set Stories Saoirse Ronan reveals how Bad Apples helped crysta"
+  },
+  "collider-trailers#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "3:37 Resident Evil: Austin Abrams Cracked His Tailbone on Set | Collider BTS In this Collider interview, writer-director",
+   "borderline": true,
+   "note": "Behind-the-scenes interview for Resident Evil (horror film); thumbnail shows a grimy figure in the dark but no overt gore"
+  },
+  "collider-trailers#6": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:30 Collider Readers Get The First Look At ‘Optimus Prime: Awakening’ “My jaw was dropping throughout the entire scene!"
+  },
+  "collider-trailers#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:17 Celebrating 40 Years of ‘Transformers: The Movie’ With Collider Readers “It was like time travelling!\" 🚀 40 years "
+  },
+  "collider-trailers#8": {
+   "label": "safe",
+   "kind": "video",
+   "text": "6:35 Most Likely to Curse Their Enemies...? | The Practical Magic 2 Cast Plays Superlatives Maisie Williams and Joey Kin"
+  },
+  "collider-trailers#9": {
+   "label": "safe",
+   "kind": "video",
+   "text": "9:30 Harry Potter: How HBO Is Rebuilding the Wizarding World Harry Potter is being rebuilt on an enormous scale for HBO,"
+  },
+  "collider-trailers#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "11:45 Mayday: One Shot Had to Make America Feel Free | Collider BTS John Francis Daley and Jonathan Goldstein wanted May"
+  },
+  "collider-trailers#11": {
+   "label": "safe",
+   "kind": "video",
+   "text": "12:04 The Mandalorian & Grogu: Grogu’s Puppet Dictated His CG | Collider BTS Grogu may have made the jump from streaming"
+  },
+  "collider-trailers#12": {
+   "label": "safe",
+   "kind": "video",
+   "text": "9:39 Idiots: Why Dave Franco Put a Jagged Rock in His Shoe | Set Stories Kiernan Shipka, Dave Franco, Macon Blair, Mason"
+  },
+  "collider-trailers#13": {
+   "label": "safe",
+   "kind": "video",
+   "text": "6:49 We Asked the Cast of 'One Night Only' to Assign Superlatives | Callum Turner & Monica Barbaro Callum Turner and Mon"
+  },
+  "collider-trailers#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "7:28 The Devil’s Mouth: The Caves Could Lock Them Inside | Collider BTS Go behind the scenes of The Devil's Mouth with c"
+  },
+  "collider-trailers#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:43 Hadestown's Eva Noblezada and Reeve Carney Spill On All the \"Behind the Curtain\" Stories Who's the best duo in Hade"
+  },
+  "collider-trailers#16": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:56 The Devil’s Mouth: Real Sharks Were Only the Start | Set Stories Tommi Rose, Nico Hiraga, Gavin Casalegno, and Lana"
+  },
+  "collider-trailers#17": {
+   "label": "safe",
+   "kind": "video",
+   "text": "13:32 Kevin Hart, Marcello Hernández & the 72 Hours Cast Hand Out Superlatives Kevin Hart and the 72 Hours cast put each"
+  },
+  "collider-trailers#18": {
+   "label": "safe",
+   "kind": "video",
+   "text": "7:10 The Odyssey: Nolan Pushed Practical Filmmaking to Extremes Christopher Nolan's The Odyssey pushed practical filmmak"
+  },
+  "collider-trailers#19": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:39 Tom Hiddleston: Pompeii Changed Him at 17 | Set Stories Tom Hiddleston on Pompeii: Why the Past Still Matters. The "
+  },
+  "collider-trailers#20": {
+   "label": "safe",
+   "kind": "image",
+   "text": "Subscribe to the newsletter for curated movie trailer highlights Get more from the newsletter: subscribing delivers cura"
+  },
+  "collider-trailers#21": {
+   "label": "skip",
+   "kind": "ad",
+   "text": "Advertisement: 0:06"
+  },
+  "dm-comedy#0": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:13 FUNNY STORY Official Trailer Fresh Movie Trailers 7 years ago"
+  },
+  "dm-comedy#1": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:16 BREAKING AND EXITING Official Trailer Fresh Movie Trailers 8 years ago"
+  },
+  "dm-comedy#2": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:26 Rush Hour 3 Trailer JeuxVideo.com 1 year ago"
+  },
+  "dm-comedy#3": {
+   "label": "safe",
+   "kind": "video",
+   "text": "3:33 Daadi Ki Shaadi Official Trailer | Kapil Sharma, Neetu Kapoor | Funny Comedy Movie 2026 Super V 304 5 months ago"
+  },
+  "dm-comedy#4": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:03 Funny Or Die Presents Trailer (HBO) Trailers Series 12 years ago"
+  },
+  "dm-comedy#5": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:02 SAUSAGE PARTY Trailer # 2 (Uncensored - Comedy, 2016) Burger Buzz 10 years ago"
+  },
+  "dm-comedy#6": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:15 NARUTO : The Movie - Teaser Trailer (2025) | Live Action TAHIR JADI 1 year ago"
+  },
+  "dm-comedy#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:02 Reptile (2026) - Trailer | Jason Statham, Dwayne Johnson, Chris Hemsworth | Concept Trailer TAHIR JADI 8 months ago"
+  },
+  "dm-comedy#8": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:45 BІTCH Official Trailer (2017) Jason Ritter, Martin Starr, Woman become Dog Comedy Movie HD ALL FOR VIDEOS 9 years a"
+  },
+  "dm-comedy#9": {
+   "label": "safe",
+   "kind": "video",
+   "text": "58:30 TRAILER PARK JESUS - Comedy movie HD funny - Best Comedy romantic movies Rererree 11 years ago"
+  },
+  "dm-comedy#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:54 Golem Man (2026) – Dwayne Johnson & Jason Statham - Concept Trailer TAHIR JADI 7 months ago"
+  },
+  "dm-comedy#11": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:00 Dolittle Trailer (2020) Comedy Movie Trailers 7 years ago"
+  },
+  "dm-comedy#12": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:24 Crazy Rich Asians Trailer #1 (2018) Comedy Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-comedy#13": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:39 Battleship 2 (2026) Teaser Trailer | Tom Cruise | Concept Trailer TAHIR JADI 7 months ago"
+  },
+  "dm-comedy#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:46 Do You Wanna Partner (2025) Official Trailer | Tamannaah Bhatia, Diana Penty | New Bollywood Romantic Comedy | Comi"
+  },
+  "dm-comedy#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:38 Daddy Daughter Trip - Trailer © 2022 Comedy Trailers & Clips 4 years ago"
+  },
+  "dm-comedy#16": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:11 The Little Witch Trailer #1 (2018) Karoline Herfurth Comedy Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-comedy#17": {
+   "label": "safe",
+   "kind": "video",
+   "text": "0:58 Funny Farm | movie | 1988 | Official Trailer JustWatch 4 years ago"
+  },
+  "dm-comedy#18": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:20 Honey Don't! - Trailer - Ethan Coen Live for Films 1 year ago"
+  },
+  "dm-comedy#19": {
+   "label": "safe",
+   "kind": "video",
+   "text": "3:12 Godday Godday Chaa (Official Trailer) | Punjabi Comedy Movie Movie Trailer 3 years ago"
+  },
+  "dm-comedy#20": {
+   "label": "safe",
+   "kind": "video",
+   "text": "8:28 Invasion of the Mermaids: The Becoming (2025) Trailer | Fantasy | HD | Teaser Concept AI Movie TAHIR JADI 1 year ag"
+  },
+  "dm-comedy#21": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:04 Breaking and Exiting Trailer #1 (2018) Jordan Hinson Comedy Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-comedy#22": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:38 THE LAYOVER Trailer (Comedy, 2017) Alexandra Daddario, Kate Upton Trailer's Coverage 4 years ago"
+  },
+  "dm-comedy#23": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:30 Extended Trailer for Comedy Central’s “Chocolate News” Wiredset LLC 18 years ago"
+  },
+  "dm-comedy#24": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:04 Apache (2025) - Jason Statham Best Action Movie Concept Trailer TAHIR JADI 1 year ago"
+  },
+  "dm-comedy#25": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:44 PLAYDATE (2025) – Official Trailer | Alan Ritchson, Kevin James | Action Comedy Movie | 4K ULTRA HD Series Hub 11 m"
+  },
+  "dm-comedy#26": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:42 BITCH Official Trailer (2017) Comedy Movie HD Rapid Trailer 8 years ago"
+  },
+  "dm-comedy#27": {
+   "label": "safe",
+   "kind": "video",
+   "text": "4:33 Joan Rivers: A Dead Funny All-Star Tribute - Trailer FilmAffinity 1 year ago"
+  },
+  "dm-comedy#28": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:21 King Full Movie Hindi Dubbed 2026 New Release Trailer - Shahr... TAHIR JADI 4 months ago"
+  },
+  "dm-comedy#29": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:39 Yeti: The Abominable Hunter (2026) - Tom Cruise, Dwayne Johnson | Concept Trailer TAHIR JADI 8 months ago",
+   "borderline": true,
+   "note": "Yeti monster-hunter concept trailer; thumbnail shows no creature"
+  },
+  "dm-comedy#30": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:47 The WONDERFOOLS | Action Comedy K-Drama Official Trailer | Netflix Korean Series 2026 | Funny & Thrilling | [ENG SU"
+  },
+  "dm-comedy#31": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:18 Lord of War 2 (2025) - First Trailer | Nicolas Cage | Concept TAHIR JADI 1 year ago"
+  },
+  "dm-comedy#32": {
+   "label": "safe",
+   "kind": "video",
+   "text": "3:11 JUSTICЕ LЕАGUЕ Official NY Comic Con TRAILER Fresh Movie Trailers 9 years ago"
+  },
+  "dm-comedy#33": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:17 jackass forever Trailer #2 (2022) Johnny Knoxville, Steve-O Comedy Movie HD Zero Trailers 5 years ago"
+  },
+  "dm-comedy#34": {
+   "label": "safe",
+   "kind": "video",
+   "text": "0:11 New Funny Video , Must Watch Funny Video try not to laugh #short P4170 Kids world 2 years ago"
+  },
+  "dm-comedy#35": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:42 THE PROFESSIONAL (2025) | Jason Statham | New Action Movie Trailer TAHIR JADI 1 year ago"
+  },
+  "dm-comedy#36": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:57 GOOD KIDS Trailer Fresh Movie Trailers 9 years ago"
+  },
+  "dm-comedy#37": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:57 Candy Jar Trailer #1 (2018) Comedy Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-comedy#38": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:28 JINN WEDDING - Official Trailer | Kareena Kapoor | Horror Movie | New Hindi Movie Trailer 2026 TAHIR JADI 7 months "
+  },
+  "dm-comedy#39": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:46 Last Friday (2026) – First Trailer | Ice Cube, Mike Epps, Chris Tucker | Concept Trailer TAHIR JADI 8 months ago"
+  },
+  "dm-horror#0": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:30 HOOD OF HORROR (2007) Trailer VO - HQ [Full Movie] FeatureEngineeringWatch 1 week ago"
+  },
+  "dm-horror#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:24 X : Official Trailer - Horror - A24 2022 Burger Buzz 5 years ago"
+  },
+  "dm-horror#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:14 DRACULA (2025) – Official Trailer 4K Ultra HD New Horror Movie ComingSoonCinema ComingSoonCinema 11 months ago"
+  },
+  "dm-horror#3": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:32 HAUNTED 3D (2026) | Official Horror Trailer | The Most Terrifying Supernatural Movie of the Year Super V 304 5 mont"
+  },
+  "dm-horror#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:26 Scary Movie - Trailer Oh My Gore ! 18 years ago",
+   "borderline": true,
+   "note": "Scary Movie is a horror parody; tile is just the title text"
+  },
+  "dm-horror#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:05 Scary Movie (2026) - Official Trailer FilmAffinity 7 months ago",
+   "borderline": true,
+   "note": "Scary Movie (horror parody) but thumbnail shows Ghostface"
+  },
+  "dm-horror#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:05 Wrong Turn- Final Chapter (2025) - First Trailer - Horror Movie - 4k Concept Version Mr Funkaaar 1 year ago"
+  },
+  "dm-horror#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "0:24 Night of No Return | Official Zombie Movie Trailer (Veo 3 AI 2025) | Apocalypse Horror Thriller MzrMovies 1 year ag"
+  },
+  "dm-horror#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:34 Sinister - Official Trailer - Horror vost Burger Buzz 6 years ago"
+  },
+  "dm-horror#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:00 Unfriended: Dark Web Trailer - \"The Terror\" (2018) Horror Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-horror#10": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:40 In a Violent Nature Trailer #1 (2024) Ry Barrett Horror Movie HD Zero Trailers 3 years ago"
+  },
+  "dm-horror#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:00 ASIH Teaser Trailer #1 (2018) Horror Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-horror#12": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:41 Scary Movie (2000) Trailer #1 - Movieclips Classic Trailers Xataka México 3 years ago",
+   "borderline": true,
+   "note": "Scary Movie (2000) horror parody; thumbnail is a pageant scene with no horror imagery"
+  },
+  "dm-horror#13": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:06 Scary Movie 6 : full trailer LEAKED - 2026 Burger Buzz 7 months ago",
+   "borderline": true,
+   "note": "Scary Movie 6 horror parody; thumbnail shows Ghostface and a clown"
+  },
+  "dm-horror#14": {
+   "label": "horror",
+   "kind": "video",
+   "text": "3:40 In Search of Darkness Trailer #1 (2018) Jason Voorhees, Michael Myers Horror Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-horror#15": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:34 The Borderlands Official Trailer 1 (2014) - British Found Footage Horror Movie HD Filmow 3 years ago"
+  },
+  "dm-horror#16": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:24 Latest Horror Hollywood Movie \"The Strangers\"_ Chapter 1 (2024) Official Trailer - Madelaine Petsch, Froy Gutierrez"
+  },
+  "dm-horror#17": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:12 Terrified | movie | 2018 | Official Trailer JustWatch 4 years ago"
+  },
+  "dm-horror#18": {
+   "label": "horror",
+   "kind": "video",
+   "text": "8:16 SCREAM 8 (2027) First Trailer | Anna Camp & Anah Diamanty | Ghostface Returns | Horror Movie Concept Film Royalty 3"
+  },
+  "dm-horror#19": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:22 The Thing 2 (2025) - First Trailer - Universal Pictures - Kurt Russell Mr Funkaaar 1 year ago"
+  },
+  "dm-horror#20": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:37 FANTASY ISLAND - Official Trailer - Horror Blumhouse 2020 Burger Buzz 7 years ago"
+  },
+  "dm-horror#21": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:07 HORROR IN THE FOREST Official Trailer (2023) US Horror Movie Filmow 3 years ago"
+  },
+  "dm-horror#22": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:40 Fubar Trailer #1 (2018) Horror Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-horror#23": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:43 Lifechanger Trailer #1 (2018) Rachel VanDuzer Horror Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-horror#24": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:09 DIABOLIC (2026) Official Trailer | Horror Thriller Movie HD | SeriesHub Series Hub 7 weeks ago"
+  },
+  "dm-horror#25": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:46 Host - official trailer - Horror Scariest Film Ever Burger Buzz 5 years ago"
+  },
+  "dm-horror#26": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:56 WRONG TURN_ FINAL CHAPTER (NEW 2024) Teaser Trailer _ Horror Movie HD Google Trends 3 years ago"
+  },
+  "dm-horror#27": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:28 Hell Fest - red band trailer - Horror Hellfest Burger Buzz 8 years ago"
+  },
+  "dm-horror#28": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:26 The Conjuring: Last Rites (2025) – Official Trailer | Warner Bros. Pictures | Horror Movie | 4K UHD Series Hub 11 m"
+  },
+  "dm-horror#29": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:27 Ça (IT) - Trailer VOST - Bande-annonce (2017 - Stephen King - Horror Movie - Film d'horreur - Bill Skarsgård) [Full"
+  },
+  "dm-horror#30": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:56 WRONG TURN FINAL CHAPTER (NEW 2024) Teaser Trailer Horror Movie HD Fun-knock Media 2 years ago"
+  },
+  "dm-horror#31": {
+   "label": "horror",
+   "kind": "video",
+   "text": "4:13 Scary Stories to Tell in the Dark - Jangly Man Trailer FanReviews 7 years ago"
+  },
+  "dm-horror#32": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:28 The Nursery Trailer #1 (2018) Horror Movie HD Zero Trailers 8 years ago"
+  },
+  "dm-horror#33": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:21 MONSTERS INC - Horror Movie Trailer (2025) Mr Funkaaar 2 years ago",
+   "borderline": true,
+   "note": "Fan-made Monsters Inc horror parody trailer; picture is feet under a bed"
+  },
+  "dm-horror#34": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:36 MICHAEL MYERS vs GHOSTFACE - Movie Trailer (2025) Mr Funkaaar 2 years ago"
+  },
+  "dm-horror#35": {
+   "label": "horror",
+   "kind": "video",
+   "text": "5:06 SIREN (Horror Thriller, 2016) - TRAILER + Behind The Scenes [Full HD,1920x1080p] NoPopCorn 10 years ago"
+  },
+  "dm-horror#36": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:54 The Devil Below - Official Trailer - Horror Monster Movie 2021 Burger Buzz 6 years ago"
+  },
+  "dm-horror#37": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:07 Michael Jackson's Thriller | movie | 1983 | Official Trailer JustWatch 2 years ago",
+   "borderline": true,
+   "note": "Michael Jackson's Thriller (zombie/werewolf music film); picture is just MJ's face"
+  },
+  "dm-horror#38": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:33 INSIDIOUS: OUT OF THE FURTHER Official Trailer (4K) | Horror Movie HD | SeriesHub Series Hub 7 weeks ago"
+  },
+  "dm-horror#39": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:20 A Ghost Story - Trailer #1 (2017 - Horror Movie) [Full HD,1920x1080] NoPopCorn 10 years ago",
+   "borderline": true,
+   "note": "A Ghost Story is an arthouse drama with a bedsheet ghost, billed as horror in the title"
+  },
+  "rt-in-theaters#0": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#1": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#2": {
+   "label": "horror",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#3": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#4": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#5": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#6": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#7": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#8": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#9": {
+   "label": "horror",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#10": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#11": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#12": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#13": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#14": {
+   "label": "horror",
+   "kind": "image",
+   "text": "",
+   "borderline": true,
+   "note": "Pan's Labyrinth is dark fantasy with horror imagery; the poster itself (girl before a tree) is mild"
+  },
+  "rt-in-theaters#15": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#16": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#17": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#18": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#19": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#20": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#21": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#22": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#23": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#24": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#25": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#26": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "rt-in-theaters#27": {
+   "label": "safe",
+   "kind": "image",
+   "text": ""
+  },
+  "vimeo-horror#0": {
+   "label": "horror",
+   "kind": "video",
+   "text": "971 64 03:02 Pictured - Horror short David F. Sandberg 99.2K views • July 24, 2014"
+  },
+  "vimeo-horror#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2143 115 06:46 Suckablood - short fairytale horror BLOODY CUTS 523K views • June 17, 2012"
+  },
+  "vimeo-horror#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1548 113 02:03 SALT - Short Horror Film Rob Savage 154K views • October 25, 2018"
+  },
+  "vimeo-horror#3": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1184 74 03:00 Attic Panic - Short horror film David F. Sandberg 106K views • February 13, 2015"
+  },
+  "vimeo-horror#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "772 42 02:59 Shadowed - Short Horror David F. Sandberg 48.2K views • April 1, 2020"
+  },
+  "vimeo-horror#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "447 13 27:56 Short Horror Film - Momo DDark Films 31.4K views • June 30, 2019"
+  },
+  "vimeo-horror#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "713 47 02:59 Coffer - Short horror film David F. Sandberg 82.4K views • October 19, 2014"
+  },
+  "vimeo-horror#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "496 59 11:45 LUNA - A Short Horror Film Antonio Perez 22.9K views • October 23, 2013"
+  },
+  "vimeo-horror#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "334 31 08:55 Alexia - Horror short film Andrés Borghi 25.2K views • January 6, 2015"
+  },
+  "vimeo-horror#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "128 39 07:32 The Hole - short, horror James Cookson 22.7K views • November 12, 2011"
+  },
+  "vimeo-horror#10": {
+   "label": "horror",
+   "kind": "video",
+   "text": "107 10 02:49 Hacked - Horror Short Stephen Lubin 20.7K views • July 28, 2011"
+  },
+  "vimeo-horror#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "128 16 05:30 Creep - A short horror film Stuart Stanton 24.7K views • January 7, 2015"
+  },
+  "vimeo-horror#12": {
+   "label": "horror",
+   "kind": "video",
+   "text": "7 5 03:04 WRITTEN | a Horror Short Film | Yap Brothers 12.5K views • October 20, 2020"
+  },
+  "vimeo-horror#13": {
+   "label": "horror",
+   "kind": "video",
+   "text": "59 9 08:38 TOYS - Short Horror Film DDark Films 9,777 views • April 7, 2017"
+  },
+  "vimeo-horror#14": {
+   "label": "horror",
+   "kind": "video",
+   "text": "90 30 09:03 \"Mr.Dentonn\" - Horror/Fantasy Short Iván Villamel 40.5K views • March 2, 2018"
+  },
+  "vimeo-horror#15": {
+   "label": "horror",
+   "kind": "video",
+   "text": "73 2 01:55 bath (short surreal horror) Roma Glova 3,509 views • December 12, 2021"
+  },
+  "vimeo-horror#16": {
+   "label": "horror",
+   "kind": "video",
+   "text": "42 2 12:15 Oscar's Bell (horror short) Chris Cronin April 24, 2018"
+  },
+  "vimeo-horror#17": {
+   "label": "horror",
+   "kind": "video",
+   "text": "43 8 01:28 See/Saw - short, horror James Cookson 2,725 views • May 27, 2012"
+  },
+  "vimeo-horror#18": {
+   "label": "horror",
+   "kind": "video",
+   "text": "58 16 11:36 Ayuda (Horror Short) Patrick Mason 5,675 views • October 22, 2018"
+  },
+  "vimeo-horror#19": {
+   "label": "horror",
+   "kind": "video",
+   "text": "40 2 03:21 BILL - Horror Short Film Sketchbook Pictures 2,081 views • May 11, 2020"
+  },
+  "vimeo-horror#20": {
+   "label": "horror",
+   "kind": "video",
+   "text": "24 3 06:34 KISSED Horror Short Film Elwood Quincy Walker 28.6K views • June 12, 2020"
+  },
+  "vimeo-horror#21": {
+   "label": "horror",
+   "kind": "video",
+   "text": "33 2 02:15 deleve (short surreal horror) Roma Glova 1,695 views • December 28, 2020"
+  },
+  "vimeo-horror#22": {
+   "label": "horror",
+   "kind": "video",
+   "text": "16 2 06:01 Horror Short: Helping Hand Alessandro Cima 3,353 views • October 27, 2010"
+  },
+  "vimeo-horror#23": {
+   "label": "horror",
+   "kind": "video",
+   "text": "16 0 04:11 THE SHOES - short horror film Kevin Mendiboure 1,949 views • September 16, 2016"
+  },
+  "yt-action-trailer#0": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Exclusively in theatres October 9 - Get Tickets Now! Based on the shocking true story Sponsored Sony Pictures Canada Wat"
+  },
+  "yt-action-trailer#1": {
+   "label": "safe",
+   "kind": "video",
+   "text": "28:24 Now playing NEW MOVIE TRAILERS (2026 - 2027) 336K 10d ago Rapid Trailer The Best New & Upcoming Movies 2026 & 2027"
+  },
+  "yt-action-trailer#2": {
+   "label": "safe",
+   "kind": "video",
+   "text": "42:27 Now playing THE BEST UPCOMING ACTION MOVIES 2026 & 2027 (Trailers) 106K 5d ago KinoCheck.com Top Upcoming Action M"
+  },
+  "yt-action-trailer#3": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Other Mommy (2026) - In Theatres This October From the producers of Obsession and Backrooms, experience the horror this "
+  },
+  "yt-action-trailer#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "21:07 Now playing NEW MOVIE TRAILERS (2026 - 2027) Sci-Fi | 4K 143K 1d ago MovieGasm‍․com Note: Your rogue Audio Claims ",
+   "borderline": true,
+   "note": "Action/sci-fi trailer compilation, but the thumbnail is a giant monster eye on tentacle legs"
+  },
+  "yt-action-trailer#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "35:39 Now playing NEW MOVIE TRAILERS (2026 - 2027) 4K 710K 10d ago MovieGasm‍․com Check out the latest upcoming movie tr"
+  },
+  "yt-action-trailer#6": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Ready. Set. FIGHT. Street Fighter Movie - only in theaters October 16 The fiercest, strongest, deadliest. Get your ticke"
+  },
+  "yt-action-trailer#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "35:25 Now playing BEST UPCOMING ACTION MOVIES 2026 (Trailers) 112K 9mo ago FilmSpot Trailer Best Upcoming Action Movies "
+  },
+  "yt-action-trailer#8": {
+   "label": "safe",
+   "kind": "video",
+   "text": "26:52 Now playing The Best Upcoming ACTION Trailers (2026-2028) 4K 9.6K 10d ago JoBlo Movie Network Including in this li"
+  },
+  "yt-action-trailer#9": {
+   "label": "safe",
+   "kind": "video",
+   "text": "55:39 Now playing NEW MOVIE TRAILERS 2026 & 2027 (Action) 4K ULTRA HD 576K 4d ago TrailerSpot New Movie Trailers 2026 & ",
+   "borderline": true,
+   "note": "Kaiju creature thumbnail (Godzilla x Kong style); monster-movie action, not horror"
+  },
+  "yt-action-trailer#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:49 Now playing Street Fighter | New Trailer (2026 Movie) 26M 1mo ago Paramount Pictures and Legendary PERFECT! Watch t"
+  },
+  "yt-action-trailer#11": {
+   "label": "safe",
+   "kind": "video",
+   "text": "34:49 Now playing BEST UPCOMING ACTION MOVIES 2026 (Trailers) 520K 1mo ago FilmSpot Trailer BEST UPCOMING ACTION MOVIES "
+  },
+  "yt-action-trailer#12": {
+   "label": "safe",
+   "kind": "video",
+   "text": "21:24 Now playing NEW MOVIE TRAILERS (2026 - 2027) Sci-Fi | 4K UHD 95K 1d ago GameGasm Note: Your rogue Audio Claims wil"
+  },
+  "yt-action-trailer#13": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:33 Now playing The Love of Street Fighter (2026 Movie) 337K 2d ago Paramount Pictures For everyone who's ever said “on"
+  },
+  "yt-action-trailer#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "55:42 Now playing BEST UPCOMING ACTION MOVIES 2026 & 2027 (Trailers) 69K 3d ago FilmSpot Trailer BEST UPCOMING ACTION MO"
+  },
+  "yt-action-trailer#15": {
+   "label": "horror",
+   "kind": "video",
+   "text": "37:47 Now playing NEW MOVIE TRAILERS (2026 - 2027) 4K UHD 187K 10d ago GameGasm Check out the latest upcoming movie trai"
+  },
+  "yt-analog-horror#0": {
+   "label": "horror",
+   "kind": "video",
+   "text": "35:12 Now playing Watching FOUND FOOTAGE Horror Until I'm Scared 76K 21h ago GregBroDudeMan Promise me you wont get scar"
+  },
+  "yt-analog-horror#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "30:03 Now playing The World is Empty. I Went to the City (Found Footage / Analog Horror) 547K 3d ago The Glendale Archiv"
+  },
+  "yt-analog-horror#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:56:18 Now playing The SCARIEST Analog Horror Series I've Covered So Far - Gemini Home Entertainment 208K 4d ago Mr. Co"
+  },
+  "yt-analog-horror#3": {
+   "label": "horror",
+   "kind": "video",
+   "text": "14:15 Now playing The Boy Who Cried Wolf (Analog Horror) 521K 4d ago Foxymations The Boy Who \"Created\" Wolf \"He is comin"
+  },
+  "yt-analog-horror#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "11:54 Now playing SIV-24 Virus Outbreak | Analog Horror 978K 1y ago Rogue Signal Custom Closed Captioning is available. "
+  },
+  "yt-analog-horror#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "21:31 Now playing the terrifying horrors of bouncy's playhouse 44K 4d ago 4 Plus THE TERRIFYING HORRORS OF BOUNCY'S PLAY"
+  },
+  "yt-analog-horror#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "5:22 Now playing DOORS - [Analog Horror] 810K 3y ago High Strange TV [DO NOT try to find the DOOR] EDIT: This is Drew fr"
+  },
+  "yt-analog-horror#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:37 Now playing Family Dinner 522K 1mo ago LARA'S HORROR SOUNDS Been experimenting a lot with analog horror lately, and"
+  },
+  "yt-analog-horror#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "13:25 Now playing The Forgotten Humanoid - Basswood County Analog Horror 332K 1y ago Dark Mind The 8th episode from Bass"
+  },
+  "yt-analog-horror#9": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Gubby analog horror 7 147K views"
+  },
+  "yt-analog-horror#10": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Old Analog Horror💀#edit#analoghorror #like#subscribe#shorts 6.2M views"
+  },
+  "yt-analog-horror#11": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Don’t look outside #weirdcore #analoghorror #mandelacatalogue #alternates #uncanny #uncannyvalley 2.2M views"
+  },
+  "yt-analog-horror#12": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Father Eats in the Basement – Analog Horror 5.7M views"
+  },
+  "yt-analog-horror#13": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Idksterling Peanut Butter Analog Horror… | #shorts #viral #idksterling 262K views"
+  },
+  "yt-analog-horror#14": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:37 Now playing One of Your Classmates Is Not Real - Analog Horror 699K 1y ago Dusk Broadcast An unclassified anomaly h"
+  },
+  "yt-analog-horror#15": {
+   "label": "horror",
+   "kind": "video",
+   "text": "10:00 Now playing The Cat in the Hat - The Costume (Analog Horror) 60K 21h ago Kris Archives What really happened to the"
+  },
+  "yt-analog-horror#16": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Analog Horror Worst Nightmares #creatures #horror #analoghorror #drnowhere 9.8K views"
+  },
+  "yt-analog-horror#17": {
+   "label": "horror",
+   "kind": "short",
+   "text": "ANALOG HORROR - Cute Cats! 7.1M views",
+   "borderline": true,
+   "note": "Title says analog horror but the picture is a plain blue screen with a stick figure and a cat"
+  },
+  "yt-analog-horror#18": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Story Of Dexter Analog Horror Explain in Just One Minute 243K views"
+  },
+  "yt-analog-horror#19": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Fourth Heaven Breach | Analog Horror #analoghorror 441K views"
+  },
+  "yt-analog-horror#20": {
+   "label": "horror",
+   "kind": "short",
+   "text": "W Nathan Cole | \"The Painter\" Analog Horror Edit #edit#frpシ 10M views"
+  },
+  "yt-analog-horror#21": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Story of “The Cat in The Hat Analog Horror” in Under One Minute 1.7M views"
+  },
+  "yt-analog-horror#22": {
+   "label": "horror",
+   "kind": "short",
+   "text": "This Cat in the Hat Horror Is GENUINELY SCARY #catinthehat #analoghorror 4.1M views"
+  },
+  "yt-analog-horror#23": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Analog Horror - If Your Mom Calls You From Another Room… Don’t Answer 45K views"
+  },
+  "yt-analog-horror#24": {
+   "label": "horror",
+   "kind": "short",
+   "text": "If you've been bad this year... 75K views"
+  },
+  "yt-analog-horror#25": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Mom Who Eats Her Babies! [Analog Horror] 8.4M views"
+  },
+  "yt-analog-horror#26": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Analog horror - DO NOT GO TO THE BATHROOM🥶 108K views"
+  },
+  "yt-analog-horror#27": {
+   "label": "horror",
+   "kind": "short",
+   "text": "If a Mimic Enters Your Home | Analog Horror 2.3M views"
+  },
+  "yt-analog-horror#28": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Protect Your Home This Halloween | Analog Horror #analoghorror 447K views"
+  },
+  "yt-analog-horror#29": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New This tape was kept secret until 2026… 📼 | Brawl Stars Analog Horror 46K views"
+  },
+  "yt-analog-horror#30": {
+   "label": "horror",
+   "kind": "video",
+   "text": "4:46 Now playing Identity Test | Analog Horror 940K 3y ago Dark Mind The third video from the Basswood County Series Mus"
+  },
+  "yt-cooking#0": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Canada's #1 Ready-to-Eat Meal Chef-prepared, dietitian-approved meals delivered weekly. Order now & save up to $90! Spon"
+  },
+  "yt-cooking#1": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Easy Pasta Recipe | 15-Minute Pasta Recipe 🍝 24M views"
+  },
+  "yt-cooking#2": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Garlic Butter Pasta 🔥 (Full recipe pinned in the comments) 9M views"
+  },
+  "yt-cooking#3": {
+   "label": "safe",
+   "kind": "short",
+   "text": "You can never go wrong with this pasta!🤗 #viralshort #recipe #pasta #food 4.9M views"
+  },
+  "yt-cooking#4": {
+   "label": "safe",
+   "kind": "short",
+   "text": "The Perfect Pasta Recipe For Success 26M views"
+  },
+  "yt-cooking#5": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Lazy pasta 😎 24M views"
+  },
+  "yt-cooking#6": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing Pasta | Pasta recipe | How to make pasta 🍝🍝😋 50M 1y ago CookTube Official pasta | Pasta recipe | How to m"
+  },
+  "yt-cooking#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:28 Now playing Creamy Garlic Lemon Pasta | One Of The Easiest Pasta Recipes 3M 3y ago Chef Jack Ovens This creamy garl"
+  },
+  "yt-cooking#8": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Make this one pot pasta for dinner in just 30 minutes! #easyrecipe #pastarecipes#recipe #dinnerideas 1.4M views"
+  },
+  "yt-cooking#9": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Simple yet incredible pasta recipe - olive oil infused with Garlic and basil#shorts#shortsfeed 3.7M views"
+  },
+  "yt-cooking#10": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Desi masala pasta recipe #shorts #recipe #pasta #masalapasta #trending #viral #shortvideo #macaroni 23M views"
+  },
+  "yt-cooking#11": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Italian Creamy Tuna Pasta 🍝 10 minute meal 🤌🏼 #italianfood #shortscooking #recipeshare #pasta 1.5M views"
+  },
+  "yt-cooking#12": {
+   "label": "safe",
+   "kind": "short",
+   "text": "10-Minute Creamy Pasta Recipe 🍝 1.4M views"
+  },
+  "yt-cooking#13": {
+   "label": "safe",
+   "kind": "video",
+   "text": "6:52 Now playing The Easiest One Pot Pasta Ever (3 Ways) 2.5M 3y ago Joshua Weissman All you need is one pot and a dream"
+  },
+  "yt-cooking#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:22 Now playing Simple Pastas: Spaghetti with Garlic and Oil 6.9M 9y ago Lidia Bastianich Recipe: http://lidiasitaly.co"
+  },
+  "yt-cooking#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "8:09 Now playing Simple One Pot Ground Beef Pasta Recipe: Perfect for Weeknights 4.9M 1y ago Essen Recipes Click \"CC\" in"
+  },
+  "yt-cooking#16": {
+   "label": "safe",
+   "kind": "video",
+   "text": "34:10 Now playing 5 Easy Pasta Recipes By Jamie Oliver 206K 1mo ago Jamie Oliver Learn how to make 5 easy pasta recipes "
+  },
+  "yt-cooking#17": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing Aglio e Olio (Spaghetti with garlic and olive oil) midnight recipe! 4.6M 2y ago Marquis 0:11 ... situation a"
+  },
+  "yt-cooking#18": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:06 Now playing I Tried the Viral Creamy Ground Beef Pasta Recipe – So Easy and Delicious! 1.4M 1y ago Timeless Food Re"
+  },
+  "yt-creepypasta#0": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:05:09 Now playing \"I Found Something Horrifying Behind a Store in the Abandoned Mall.\" Creepypasta 19K 19h ago Mr. Cre"
+  },
+  "yt-creepypasta#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "41:36 Now playing \"We Found A Tomb From Outer Space.\" Creepypasta 65K 5d ago Mr. Creeps Become a Channel Member: https:/"
+  },
+  "yt-creepypasta#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:08:44 Now playing Every Single Original CreepyPasta.. (Vol. I) 4M 3y ago tuv Today we explore every single original cr"
+  },
+  "yt-creepypasta#3": {
+   "label": "horror",
+   "kind": "video",
+   "text": "11:13 Now playing “Silence in the Rain” | Creepypasta Storytime 17K 3d ago MrCreepyPasta Happy First Day of Halloween my"
+  },
+  "yt-creepypasta#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "13:14 Now playing Creepypasta’s Most Terrifying Monsters Explained in 13 Minutes 52K 7d ago Ficknime Creepypasta's Most "
+  },
+  "yt-creepypasta#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "36:14 Now playing \"The Aquarius Project\" | Creepypasta Storytime 103K 2y ago MrCreepyPasta Click to Subscribe to Mr. Cre"
+  },
+  "yt-creepypasta#6": {
+   "label": "skip",
+   "kind": "image",
+   "text": "MrCreepyPasta @MrCreepyPasta•1.72M subscribers CreepyPasta Story Time is a collection of terrifying stories that are bro"
+  },
+  "yt-creepypasta#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:55:25 Now playing The Creepypasta Iceberg Explained 518K 2y ago Snook Secure your privacy with Surfshark! Enter coupon"
+  },
+  "yt-creepypasta#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "44:37 Now playing Keep Your DOORS LOCKED! Minecraft Creepypasta RayGloom Creepypasta 482K 1y ago"
+  },
+  "yt-creepypasta#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:18:03 Now playing Something Evil Haunts This Beach! Creepypasta RayGloom Creepypasta BEDROCK 35K 3w ago"
+  },
+  "yt-creepypasta#10": {
+   "label": "horror",
+   "kind": "video",
+   "text": "24:35 Now playing If This Appears in Your Window, BLOCK ALL EXITS! Minecraft Creepypasta RayGloom Creepypasta 1.4M 2y ag"
+  },
+  "yt-creepypasta#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:05:00 Now playing 1999 | THE TERRIFYING ALL-TIME GREAT CREEPYPASTA 342K 2y ago Dr. Creepen ''The year 1999 exists as a"
+  },
+  "yt-creepypasta#12": {
+   "label": "horror",
+   "kind": "video",
+   "text": "42:57 Now playing \"I Found a Staircase Leading Deep Down in a National Park\" Creepypasta 88K 10d ago Mr. Creeps Become a"
+  },
+  "yt-creepypasta#13": {
+   "label": "horror",
+   "kind": "video",
+   "text": "6:22 Now playing We Hunted Organic Pebble... and it FOUND US 😨 | Dandy's World Creepypasta 👁️ RaraAndLeha 368K 7mo ago",
+   "borderline": true,
+   "note": "Dandy's World Roblox creepypasta; cartoonish kid-game art, title says creepypasta"
+  },
+  "yt-creepypasta#14": {
+   "label": "horror",
+   "kind": "video",
+   "text": "11:14 Now playing Dandy’s World Creepypastas Just Got WAY Worse… Hoplas 370K 9mo ago 4K",
+   "borderline": true,
+   "note": "Dandy's World Roblox creepypasta; cartoonish kid-game art, title says creepypasta"
+  },
+  "yt-creepypasta#15": {
+   "label": "horror",
+   "kind": "video",
+   "text": "16:18 Now playing I SUMMONED THE 3 WORST CREEPYPASTAS… I REGRET THIS! dandy's_world creepypastas 398K 5mo ago"
+  },
+  "yt-creepypasta#16": {
+   "label": "skip",
+   "kind": "image",
+   "text": "CreepsMcPasta @CreepsMcPasta•2.08M subscribers Creepypastas are the urban legends of the internet. CreepsMcPasta is a Yo"
+  },
+  "yt-creepypasta#17": {
+   "label": "horror",
+   "kind": "video",
+   "text": "35:09:45 Now playing the entire Creepypasta iceberg 402K 10mo ago sourcebrew the entire Creepypasta iceberg Copyright Di"
+  },
+  "yt-creepypasta#18": {
+   "label": "horror",
+   "kind": "short",
+   "text": "CreepyPastas that are pure evil or broken #creepypasta 1.2M views"
+  },
+  "yt-creepypasta#19": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Jeff The Killer [Creepypasta] #horror #animation #jeffthekiller #creepypasta 25M views"
+  },
+  "yt-creepypasta#20": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Army Dreamers//MEME//CreepyPasta 13M views"
+  },
+  "yt-creepypasta#21": {
+   "label": "horror",
+   "kind": "short",
+   "text": "If your dog did this, follow this rules | #creepypasta #scary #backrooms 129K views"
+  },
+  "yt-creepypasta#22": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New top 4 the scariest creepypastas #edit #short #horrors #creepypasta 2.3K views"
+  },
+  "yt-found-footage#0": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Other Mommy Only in Theatres October 9. Sponsored Universal Pictures Canada Watch Learn more",
+   "borderline": true,
+   "note": "Sponsored ad for Other Mommy (Universal horror film); picture is a dim woman, nothing overtly scary"
+  },
+  "yt-found-footage#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "381 videos Found Footage/Horror💀😈👻🔥 Tricia Paige Playlist Updated 5 days ago [HD] Ghost Webcam | Haunted Live-Stream"
+  },
+  "yt-found-footage#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "30:03 Now playing The World is Empty. I Went to the City (Found Footage / Analog Horror) 547K 3d ago The Glendale Archiv"
+  },
+  "yt-found-footage#3": {
+   "label": "horror",
+   "kind": "video",
+   "text": "139 videos FOUND FOOTAGE FILMS Shane George Playlist Updated 6 days ago Pigman | Horror Found Footage Movie · 1:34:36 10"
+  },
+  "yt-found-footage#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:04:29 Now playing IT WASN'T ME I A Found Footage Horror Film 53K 1mo ago JainaFilms IT WASN'T ME is a student made fou"
+  },
+  "yt-found-footage#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "11:10 Now playing The Sidney Barber Tapes (Found Footage Horror Film) 1.4M 2y ago TJR Films On October 2nd, 2008, 19-yea"
+  },
+  "yt-found-footage#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:11:06 Now playing DOC 05 - A Found Footage Horror Film (2026) 167K 7mo ago Wyatt Knoell and 2 more Our Film Collection"
+  },
+  "yt-found-footage#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:10:55 Now playing v2 (Found Footage Horror Film) 26K 1mo ago Skymack Three young writers struggle to finish the first "
+  },
+  "yt-found-footage#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:18:30 Now playing Hollows Grove (Found Footage Horror Movie) | Real Drama 155K 2y ago Real Drama Terror strikes when a"
+  },
+  "yt-found-footage#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:25:30 Now playing The Campana Factory Tapes (Found Footage) 168K 11mo ago [🔴VIRAL] film These tapes were recovered fr"
+  },
+  "yt-found-footage#10": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New The Last Recording | FOUND FOOTAGE HORROR FILM #shorts #scary #shortfilm 1.3K views"
+  },
+  "yt-found-footage#11": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Scariest Found Footage Movies #scary #movie #creepy 263K views"
+  },
+  "yt-found-footage#12": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The 10 Best Found Footage Horror Movies 13K views"
+  },
+  "yt-found-footage#13": {
+   "label": "horror",
+   "kind": "short",
+   "text": "10 Scariest Found Footage Horror Movies #halloween #foundfootage #horror 25K views"
+  },
+  "yt-found-footage#14": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Most Disturbing Found Footage Horror Movie: Lake Mungo 😱 #summerofgoals 47K views"
+  },
+  "yt-found-footage#15": {
+   "label": "horror",
+   "kind": "video",
+   "text": "24:27 Now playing 10 More Found Footage Horror HIDDEN Gems 17K 2d ago The Movie Blues Yet another crop of Found Footage "
+  },
+  "yt-found-footage#16": {
+   "label": "horror",
+   "kind": "video",
+   "text": "81 videos Found footage horror movies Isobel Bauch Playlist Updated 2 days ago Five Friends Vanished Without a Trace... "
+  },
+  "yt-found-footage#17": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:21:31 Now playing The Speak (Full Movie) | Supernatural Horror | Found Footage Thriller 31K 2mo ago One World Cinema W"
+  },
+  "yt-halloween-kids#0": {
+   "label": "safe",
+   "kind": "ad",
+   "text": ""
+  },
+  "yt-halloween-kids#1": {
+   "label": "safe",
+   "kind": "ad",
+   "text": ""
+  },
+  "yt-halloween-kids#2": {
+   "label": "safe",
+   "kind": "ad",
+   "text": ""
+  },
+  "yt-halloween-kids#3": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "",
+   "borderline": true,
+   "note": "Kids Huggy Wuggy (Poppy Playtime horror game) costume product photo"
+  },
+  "yt-halloween-kids#4": {
+   "label": "safe",
+   "kind": "ad",
+   "text": ""
+  },
+  "yt-halloween-kids#5": {
+   "label": "safe",
+   "kind": "ad",
+   "text": ""
+  },
+  "yt-halloween-kids#6": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "",
+   "borderline": true,
+   "note": "Kids Huggy Wuggy (Poppy Playtime horror game) costume in dark red-lit set"
+  },
+  "yt-halloween-kids#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing Halloween Costume Ideas (groups of 3 edition) 2.1M 3y ago Hudson James"
+  },
+  "yt-halloween-kids#8": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Amazon Halloween Costumes - 10 Kids in 10 Years 9.3M views"
+  },
+  "yt-halloween-kids#9": {
+   "label": "safe",
+   "kind": "short",
+   "text": "DIY Halloween Costume for Kids! 2.8M views"
+  },
+  "yt-halloween-kids#10": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Halloween costumes for 5 KIDS checkkkk… 5 million views on TikTok 🤯 36M views"
+  },
+  "yt-halloween-kids#11": {
+   "label": "safe",
+   "kind": "short",
+   "text": "HOW A 10 YEAR OLD BOY DOES HALLOWEEN COSTUMES #halloween #shorts 76M views"
+  },
+  "yt-halloween-kids#12": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Scary Kid's Costumes 1.1M views",
+   "borderline": true,
+   "note": "'Scary Kid's Costumes': kid in a full red demon mask and costume"
+  },
+  "yt-halloween-kids#13": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Kids' Halloween Costumes - One-Of-A-Kind Costumes - Etsy Reimagine Your Halloween With Unique Costumes, Decor & More. Ma"
+  },
+  "yt-halloween-kids#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "0:21 Now playing 🤡 Spooktacular Halloween Costumes for Kids | Top Picks from Costumebox! 465K 2y ago CostumeBox Looking",
+   "borderline": true,
+   "note": "Kids in horror-character costumes (Ghostface, clown, Beetlejuice, pumpkin-head)"
+  },
+  "yt-halloween-kids#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing How we try on Halloween costumes 👻🎃 #funnykids #shorts #halloween @MadilynCurtis 379M 1y ago Scarlett and "
+  },
+  "yt-halloween-kids#16": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Turn Back-to-Back Meetings into Instant Action Items & Summaries automatically Automate your meeting notes. Get instant "
+  },
+  "yt-halloween-kids#17": {
+   "label": "safe",
+   "kind": "video",
+   "text": "11:25 Now playing 🎃HALLOWEEN COSTUMES! 5.7M 6y ago J House Vlogs Welcome to J House - an imperfect family working toget"
+  },
+  "yt-halloween-kids#18": {
+   "label": "safe",
+   "kind": "video",
+   "text": "26:19 Now playing 100+ UNIQUE HALLOWEEN COSTUME IDEAS ☆ 2026 (& where to shop) ! 57K 4d ago Kayli Sandoval 100+ HALLOWEE"
+  },
+  "yt-halloween-kids#19": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing unique & weird halloween costumes 🎃🎃🎃 #lisishops #grwm #lisi #preppy #getreadywithme #halloween 195K 4d a"
+  },
+  "yt-halloween-kids#20": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing NON BASIC & EASY AMAZON HALLOWEEN COSTUME IDEAS 🎃 #girls #relatable #halloween 5.3M 3y ago Niki Patton"
+  },
+  "yt-halloween-kids#21": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Now playing last minute halloween costumes 3M 11mo ago hudsonstuffy"
+  },
+  "yt-halloween-kids#22": {
+   "label": "safe",
+   "kind": "short",
+   "text": "7 Best Kids' Halloween Costumes for 10 years That Are Popular in 2025 2.1M views"
+  },
+  "yt-halloween-kids#23": {
+   "label": "safe",
+   "kind": "short",
+   "text": "halloween costumes for 8 years old girls 959K views",
+   "borderline": true,
+   "note": "Girl in skeleton face paint costume; cute kids costume but skull makeup"
+  },
+  "yt-halloween-kids#24": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Kids Halloween Costume Ideas 230K views"
+  },
+  "yt-halloween-kids#25": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Cute Costume Ideas For Sisters 73K views"
+  },
+  "yt-halloween-kids#26": {
+   "label": "safe",
+   "kind": "short",
+   "text": "7 Best Halloween Costumes for Kids 2025! 160K views"
+  },
+  "yt-halloween-kids#27": {
+   "label": "safe",
+   "kind": "video",
+   "text": "6:05 Now playing The Perfect, Last-Minute Kids' Costumes! 133M 11y ago TheEllenShow Ellen's done it again! She's put tog"
+  },
+  "yt-horror#0": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Other Mommy (2026) - In Theatres This October From the producers of Obsession and Backrooms, experience the horror this "
+  },
+  "yt-horror#1": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Which cursed image is most cursed? #cursed #weirdcore #creepy #shorts #scary 3.4M views"
+  },
+  "yt-horror#2": {
+   "label": "horror",
+   "kind": "short",
+   "text": "DON'T LOOK AWAY! | Horror Short Film 1.1M views"
+  },
+  "yt-horror#3": {
+   "label": "horror",
+   "kind": "short",
+   "text": "SCARY VIDEOS #4 !! #scary #horror #ghost 621K views"
+  },
+  "yt-horror#4": {
+   "label": "horror",
+   "kind": "short",
+   "text": "If board games were horror movies 😱 #shorts 914K views"
+  },
+  "yt-horror#5": {
+   "label": "horror",
+   "kind": "short",
+   "text": "I found something disturbing in this abandoned school #urbex #abandoned #creepy #fyp #shorts 10M views"
+  },
+  "yt-horror#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "Now playing Ranking The Best Scary Moments 20M 2mo ago FailZone Ranking The Best Scary Moments of All Time. #ranking #sc"
+  },
+  "yt-horror#7": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Turn Back-to-Back Meetings into Instant Action Items & Summaries automatically Automate your meeting notes. Get instant "
+  },
+  "yt-horror#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "Now playing The Story of Buddy in One Minute #buddy #buddymovie #horror #horrormovie #horrormovies 3.1M 1mo ago Idle Joh",
+   "borderline": true,
+   "note": "Horror movie Buddy by title; thumbnail is a goofy purple mailbox puppet"
+  },
+  "yt-horror#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "18:49 Now playing 3 AMAZON DELIVERY True Horror Stories ANIMATED 342K 4d ago Horror Shorts Party HORROR SHORTS PARTY (AN",
+   "borderline": true,
+   "note": "Animated \"true horror stories\" about Amazon deliveries; creepy grinning cartoon face, could be read as anecdote cartoon"
+  },
+  "yt-horror#10": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Every dream needs a domain. Find yours and start your dream with Squarespace Domains. Whatever you're into, there's a Sq"
+  },
+  "yt-horror#11": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Ranking scary videos p.13 #ranking #scaryvideos 141K views"
+  },
+  "yt-horror#12": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Wrong Turn 😈🔥 Wrong Turn WhatsApp Status 🥵 Horror Movie Status 🔥 #shorts #shortvideo #whatsappstatus 4.5M views"
+  },
+  "yt-horror#13": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Haunted Playground | True horror stories animated 622K views"
+  },
+  "yt-horror#14": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New I’m think a little bit obsessed #shortfilm #horror 280K views"
+  },
+  "yt-horror#15": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Story of Buddy in One Minute #buddy #buddymovie #horror #horrormovie #horrormovies 3.1M views",
+   "borderline": true,
+   "note": "Horror movie Buddy by title; thumbnail is a goofy purple mailbox puppet"
+  },
+  "yt-horror#16": {
+   "label": "horror",
+   "kind": "video",
+   "text": "35:12 Now playing Watching FOUND FOOTAGE Horror Until I'm Scared 76K 21h ago GregBroDudeMan Promise me you wont get scar"
+  },
+  "yt-horror#17": {
+   "label": "horror",
+   "kind": "video",
+   "text": "22:01 Now playing 11 Scary Videos That Are Unexplained 265K 6d ago Sir Spooks Maybe you can explain these videos. TWITTE"
+  },
+  "yt-horror#18": {
+   "label": "horror",
+   "kind": "short",
+   "text": "cooking me food #scary #horrorstories #ghost #creepy #paranormal #jumpscare #demon #nightmare 7.8M views"
+  },
+  "yt-horror#19": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Oh my Limbs #horror #horrorstories #ghost #scary #spooky #creepy #spooky #jumpscare #demon #film 877K views"
+  },
+  "yt-horror#20": {
+   "label": "horror",
+   "kind": "short",
+   "text": "He lives in the corner of your eye #horror #horrorstories #ghost #scary #spooky #creepy #spooky 409K views"
+  },
+  "yt-horror#21": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Mom won’t go to sleep #horror #horrorstories #ghost #scary #spooky #creepy #spooky #jumpscare #demon 340K views"
+  },
+  "yt-horror#22": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New roomie #horror #horrorstories #ghost #scary #spooky #creepy #spooky #jumpscare #demon #film 188K views"
+  },
+  "yt-horror#23": {
+   "label": "horror",
+   "kind": "video",
+   "text": "22:09 Now playing Scary Comp. V100 7.4M 1y ago BizarreBub One hundred... Got any scary videos? Send them over to scaryvi"
+  },
+  "yt-horror#24": {
+   "label": "horror",
+   "kind": "video",
+   "text": "33:59 Now playing Don't Answer Your Mom's Voice | Analog Horror 2.6M 5mo ago Textify and Texts From History Become a mem"
+  },
+  "yt-horror#25": {
+   "label": "horror",
+   "kind": "video",
+   "text": "41:02 Now playing The History of the Ice Cream Man | Horror History 224K 1d ago CZsWorld Instagram: https://www.instagra"
+  },
+  "yt-horror#26": {
+   "label": "horror",
+   "kind": "short",
+   "text": "HORROR MOVIES BASED ON TRUE STORIES😱 #scary #movie #horrorstories #film #creepypasta 17M views"
+  },
+  "yt-horror#27": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Horror Movies Based On True Stories 🕷 7.5M views",
+   "borderline": true,
+   "note": "Title is horror movies based on true stories; picture is a real killer's arrest photo"
+  },
+  "yt-horror#28": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Horror movies to watch alone 2.9M views"
+  },
+  "yt-horror#29": {
+   "label": "horror",
+   "kind": "video",
+   "text": "New She wasn't who you thought she was 🩸 #horror #edit #lizzieborden 24K views"
+  },
+  "yt-horror#30": {
+   "label": "horror",
+   "kind": "short",
+   "text": "The Weight of Stillness | Short Horror Story 712 views"
+  },
+  "yt-horror#31": {
+   "label": "horror",
+   "kind": "video",
+   "text": "24:15 Now playing Scary Comp. V83 12M 3y ago BizarreBub You're watching this alone, aren't you Got any scary videos? Sen"
+  },
+  "yt-horror#32": {
+   "label": "horror",
+   "kind": "video",
+   "text": "Now playing EX BEST FRIEND !! PT. 2 #horror #comedy #horrormovies 19M 1y ago amandaprescottfx"
+  },
+  "yt-horror#33": {
+   "label": "horror",
+   "kind": "video",
+   "text": "Now playing Father Eats in the Basement – Analog Horror 5.7M 1y ago The Hidden Transmission This is not a warning. It's "
+  },
+  "yt-horror#34": {
+   "label": "horror",
+   "kind": "video",
+   "text": "Now playing Don’t Ignore Your Dog At Midnight #scary #shorts #creepy 17M 1y ago Mr.spinechill Don't Ignore Your Dog At M"
+  },
+  "yt-horror-short-film#0": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Other Mommy Only in Theatres October 9. Sponsored Universal Pictures Canada Watch Learn more",
+   "borderline": true,
+   "note": "Ad for horror film Other Mommy; picture is a smiling woman and card text never says horror"
+  },
+  "yt-horror-short-film#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:54 Now playing That's Not Me | Horror Short Film 393K 2mo ago The Noctuary Inquiries: thenoctuaryfiles@gmail.com ☕️ Wa"
+  },
+  "yt-horror-short-film#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "5:03 Now playing \"Double Vision\" | Independent Horror Short Film 8.7M 1y ago Isabelle Kiser A girl is on her way home wh"
+  },
+  "yt-horror-short-film#3": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Turn Back-to-Back Meetings into Instant Action Items & Summaries automatically Automate your meeting notes. Get instant "
+  },
+  "yt-horror-short-film#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "3:54 Now playing Hotel Visitor - Horror Short 3.3M 4y ago Full Stop Films Directed and Written by Connor Hatten Starring"
+  },
+  "yt-horror-short-film#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "15:09 Now playing Shut Eye | Horror Short Film | ALTER 231K 13d ago ALTER Subscribe to ALTER on YouTube: https://goo.gl/"
+  },
+  "yt-horror-short-film#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "19:24 Now playing WARNINGS (Horror Short Film) 3.7M 2y ago that's a bad idea When Sean (Curry Barker) finds a mysterious"
+  },
+  "yt-horror-short-film#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "4:42 Now playing Look Closer | Award Winning Horror Short Film 588K 1y ago Tyson Edwards Please like, comment, and subsc"
+  },
+  "yt-horror-short-film#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "15:50 Now playing Other Side of the Box | Award-Winning Horror Short Film 8.6M 6y ago Short of the Week SUBMIT YOUR SHOR"
+  },
+  "yt-horror-short-film#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "3:12 Now playing 6-7 | Short Horror Film 4.8M 10mo ago ACMofficial 67. Horror story based on the six-seven meme. Watch t"
+  },
+  "yt-horror-short-film#10": {
+   "label": "horror",
+   "kind": "video",
+   "text": "Popular in Montreal 12:08 Now playing THE DOGSITTER | Horror Short Film 299K 1mo ago Jiya Kapur Films What was supposed "
+  },
+  "yt-horror-short-film#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "13:14 Now playing RAIN RAIN GO AWAY - Horror Short Film | Award Winning 219K 2y ago null_film - indie & horror films Sup"
+  },
+  "yt-horror-short-film#12": {
+   "label": "horror",
+   "kind": "video",
+   "text": "3:23 Now playing THE HAT | Horror Short Film 202K 3w ago Colby Delgross THE HAT | HORROR SHORT FILM is a fan made adapta"
+  },
+  "yt-horror-short-film#13": {
+   "label": "horror",
+   "kind": "short",
+   "text": "A Smiling Woman Story | Horror Short Film #horrorshorts #acmofficial 6.8M views"
+  },
+  "yt-horror-short-film#14": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Night Shift | Horror Short Film #acmofficial #horrorshorts 73K views"
+  },
+  "yt-horror-short-film#15": {
+   "label": "horror",
+   "kind": "short",
+   "text": "DON'T LOOK AWAY! | Horror Short Film 1.1M views"
+  },
+  "yt-horror-short-film#16": {
+   "label": "horror",
+   "kind": "short",
+   "text": "How to Survive The Smiling Man - Horror Short Film 18M views"
+  },
+  "yt-horror-short-film#17": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Weirdest Short Films On YouTube You CAN’T Unsee #scary #shortfilm #creepy #fim #movie 367K views"
+  },
+  "yt-horror-short-film#18": {
+   "label": "horror",
+   "kind": "video",
+   "text": "24:23 Now playing THE CHAIR (Award Winning Horror Short Film Directed by Curry Barker) 12M 3y ago that's a bad idea Afte"
+  },
+  "yt-horror-short-film#19": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:45 Now playing Mama Agnes - Short Horror Film 11M 2y ago Alexanderthetitan A doppelgänger is a biologically unrelated "
+  },
+  "yt-horror-short-film#20": {
+   "label": "horror",
+   "kind": "short",
+   "text": "“Most Terrific Monster” 🔥💀 | Mimic: Short Film | House Of Memories | #edit #shorts 10M views"
+  },
+  "yt-horror-short-film#21": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Still Got It | A One-Minute Horror Short Film 1.8M views"
+  },
+  "yt-horror-short-film#22": {
+   "label": "horror",
+   "kind": "short",
+   "text": "SLUG GIRL 🐌 JUNJI ITO #edit #horror #shortfilm 53M views"
+  },
+  "yt-horror-short-film#23": {
+   "label": "horror",
+   "kind": "short",
+   "text": "POV: You Find a Haunted Doll 😨 | Horror Short Film 3.6K views"
+  },
+  "yt-horror-short-film#24": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New I’m think a little bit obsessed #shortfilm #horror 280K views",
+   "borderline": true,
+   "note": "Title tagged #horror #shortfilm but the picture is a girl in a heart-themed edit, nothing scary"
+  },
+  "yt-horror-trailer-2026#0": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Other Mommy (2026) - In Theatres This October From the producers of Obsession and Backrooms, experience the horror this "
+  },
+  "yt-horror-trailer-2026#1": {
+   "label": "horror",
+   "kind": "video",
+   "text": "33:21 Now playing THE BEST UPCOMING HORROR MOVIES 2026 (Trailers) 344K 1mo ago KinoCheck.com Top Upcoming Horror Movies "
+  },
+  "yt-horror-trailer-2026#2": {
+   "label": "horror",
+   "kind": "video",
+   "text": "35:13 Now playing THE BEST UPCOMING HORROR MOVIES 2026 (Trailers) 173K 3w ago KinoCheck.com Top Upcoming Horror Movies 2"
+  },
+  "yt-horror-trailer-2026#3": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Turn Back-to-Back Meetings into Instant Action Items & Summaries automatically Automate your meeting notes. Get instant "
+  },
+  "yt-horror-trailer-2026#4": {
+   "label": "horror",
+   "kind": "video",
+   "text": "45:09 Now playing NEW UPCOMING HORROR MOVIES 2026 (Trailers) 61K 13d ago KinoCheck Horror Best New Upcoming Horror Movie"
+  },
+  "yt-horror-trailer-2026#5": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:36 Now playing Ebenezer | Official Trailer 2 (2026 Movie) - Johnny Depp, Ian McKellen, Rupert Grint, Sam Claflin 13M 4",
+   "borderline": true,
+   "note": "Ebenezer (Ti West Christmas Carol) is dark period drama, not marketed as horror; candlelit eerie Scrooge"
+  },
+  "yt-horror-trailer-2026#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "33:14 Now playing THE BEST UPCOMING HORROR MOVIES 2026 (Trailers) 571K 2mo ago Rapid Trailer The Best New & Upcoming Hor"
+  },
+  "yt-horror-trailer-2026#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:07 Now playing BREEDER Official Trailer (2026) 746K 1mo ago Rapid Trailer Official Breeder Movie Trailer 2026 | Maddie",
+   "borderline": true,
+   "note": "Breeder is a horror film per card text, but the thumbnail is just a smiling woman"
+  },
+  "yt-horror-trailer-2026#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:01 Now playing WORM Official Trailer (2026) 34K 3d ago Movie Trailers Source First horror movie trailer for Worm. New"
+  },
+  "yt-horror-trailer-2026#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:33 Now playing RESIDENT EVIL – Official Trailer (4K) 19M 2mo ago Sony Pictures Entertainment 𝙽𝚘 𝚜𝚠𝚎𝚊𝚝. From the"
+  },
+  "yt-horror-trailer-2026#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Popular in Montreal 2:27 Now playing NOCTURNE Official Trailer (2026) Liev Schreiber, Stephen Graham 150K 6d ago ONE Med"
+  },
+  "yt-horror-trailer-2026#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:19 Now playing The Cycle - Official Trailer (2026) Deborah Ann Woll 290K 6d ago IGN Movie Trailers Here's the Official"
+  },
+  "yt-horror-trailer-2026#12": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:31 Now playing THE CYCLE Official Trailer (2026) 844K 6d ago ONE Media + THE CYCLE Official Trailer (2026) Deborah Ann"
+  },
+  "yt-horror-trailer-2026#13": {
+   "label": "horror",
+   "kind": "short",
+   "text": "Lilith (2026) – First Trailer | Angelina Jolie & Megan Fox | Concept Trailer 2M views",
+   "borderline": true,
+   "note": "Lilith concept trailer (demon myth); thumbnail is a calm woman, genre unclear"
+  },
+  "yt-horror-trailer-2026#14": {
+   "label": "horror",
+   "kind": "short",
+   "text": "You Can't Leave | Official Trailer October 2026 Spencer Boldman Paola Andino #horror #movie 2.9M views"
+  },
+  "yt-horror-trailer-2026#15": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New 7 Horror Movies Releasing in October 2026 12 views"
+  },
+  "yt-horror-trailer-2026#16": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New 5 Horror Movies In 2026 You SHOULD Be Excited About! Scary Movie 6 & Evil Dead Burn! 1 view"
+  },
+  "yt-horror-trailer-2026#17": {
+   "label": "horror",
+   "kind": "short",
+   "text": "OBITUS — Official Teaser 2026 #horrormovies 8K views"
+  },
+  "yt-horror-trailer-2026#18": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:45 Now playing EBENEZER Official Trailer 2 (NEW 2026) 5.6K 3d ago FilmSpot Trailer official new movie trailer for Eben",
+   "borderline": true,
+   "note": "Ebenezer (Ti West Christmas Carol) is dark period drama, not marketed as horror"
+  },
+  "yt-horror-trailer-2026#19": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:54 Now playing Hokum - Official Trailer (2026) Adam Scott 1.2M 6mo ago IGN Movie Trailers Check out the trailer for Ho"
+  },
+  "yt-horror-trailer-2026#20": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:46 Now playing WERWULF - Official Trailer 2 [HD] - Only In Theaters This Christmas 14M 9d ago Focus Features Thy soule"
+  },
+  "yt-retail-horror-stories#0": {
+   "label": "horror",
+   "kind": "video",
+   "text": "11:48 Now playing 3 Disturbing True Retail Stories 3.9M 5y ago Mr. Nightmare Here is what was the losing (but close) vot",
+   "borderline": true,
+   "note": "Mr. Nightmare scary-story narration; dark empty store with lone figure"
+  },
+  "yt-retail-horror-stories#1": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:05:08 Now playing INSANE retail horror stories | 1 hour compilation #tiktok #horrorstories #retail #storytime 43K 11mo"
+  },
+  "yt-retail-horror-stories#2": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:05:26 Now playing Retail workers, what are your horror stories? 211K 2y ago UnderSparked Podcast: ... Summary UnderSpa"
+  },
+  "yt-retail-horror-stories#3": {
+   "label": "safe",
+   "kind": "video",
+   "text": "16:12 Now playing retail HORROR stories | the reality of working retail 33K 1y ago cjades FIND OUR ETSY SHOP HERE [ http"
+  },
+  "yt-retail-horror-stories#4": {
+   "label": "safe",
+   "kind": "video",
+   "text": "26:36 Now playing Retail Workers, What Are Some Black Friday Horror Stories? | People Stories #881 116K 4y ago Updoot St"
+  },
+  "yt-retail-horror-stories#5": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:07:05 Now playing 26 TRUE Scary RETAIL Horror Stories | True Scary Stories 108K 2y ago Southern Cannibal This is an ov",
+   "borderline": true,
+   "note": "Southern Cannibal true scary stories compilation; night Walmart with blood-red HORROR STORIES text"
+  },
+  "yt-retail-horror-stories#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "44:43 Now playing 7 True Scary Corner Store Horror Stories 416K 7y ago Lets Read! 7 True Scary Corner Store Horror Stori",
+   "borderline": true,
+   "note": "Lets Read! true scary stories narration; dark creepy corner store"
+  },
+  "yt-retail-horror-stories#7": {
+   "label": "horror",
+   "kind": "video",
+   "text": "15:26 Now playing 3 Creepy True Supermarket Horror Stories 2.7M 3y ago Mr. Nightmare Next time be a little careful when ",
+   "borderline": true,
+   "note": "Mr. Nightmare creepy stories; dark supermarket with HORROR STORIES text"
+  },
+  "yt-retail-horror-stories#8": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:52:45 Now playing How Retail Destroys Your Mental Health, Retail Horror Stories And Channel Update! 267K 2y ago ThePro"
+  },
+  "yt-retail-horror-stories#9": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Retail horror stories: dealing with the unexpected #retail 212 views"
+  },
+  "yt-retail-horror-stories#10": {
+   "label": "safe",
+   "kind": "short",
+   "text": "When they actually work in retail | Retail Life 1.6M views"
+  },
+  "yt-retail-horror-stories#11": {
+   "label": "horror",
+   "kind": "short",
+   "text": "New The Voice On Aisle 4 Said My Name.. 😱 #Shorts#shortsfeed #truehorrorstory 1.2K views"
+  },
+  "yt-retail-horror-stories#12": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Retail Employees of Reddit. What Are Your Black Friday Horror Stories? #askreddit #reddit 2.8K views"
+  },
+  "yt-retail-horror-stories#13": {
+   "label": "safe",
+   "kind": "short",
+   "text": "New Things got way too real at Target #insane #retail 18K views"
+  },
+  "yt-retail-horror-stories#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "6:41 Now playing Retail Workers Share Their Horror Stories 103K 6y ago BuzzFeedVideo \"You just pelted your grandma with "
+  },
+  "yt-retail-horror-stories#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "35:08 Now playing Story Time | How my nightmare coworker was fired because of me | Retail Stories | Cosmetic Retail 128K"
+  },
+  "yt-retail-horror-stories#16": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:06:42 Now playing Reading And Reacting To My Viewers Retail Horror Stories And Channel Update 36K 1y ago TheProfession"
+  },
+  "yt-retail-horror-stories#17": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Retail HORROR Stories👀 #shorts 110K views"
+  },
+  "yt-retail-horror-stories#18": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Walmart Employee Horror Story! 😱 #shorts 1.4M views"
+  },
+  "yt-retail-horror-stories#19": {
+   "label": "safe",
+   "kind": "short",
+   "text": "this is actually insane #belliwelli #fiber #walmart #karen 75M views"
+  },
+  "yt-retail-horror-stories#20": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Retail Workers, What Are Some Black Friday Horror Stories ? #shorts (r/AskReddit) 9.5K views"
+  },
+  "yt-retail-horror-stories#21": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Part 2 retail horror stories 35 views"
+  },
+  "yt-thriller-trailer#0": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Get showtimes - Other Mommy - In Theatres October 9. Get tickets now to experience Other Mommy. Sponsored Universal Pict",
+   "borderline": true,
+   "note": "Other Mommy horror film ad; thumbnail is only a smiling woman"
+  },
+  "yt-thriller-trailer#1": {
+   "label": "safe",
+   "kind": "video",
+   "text": "37:39 Now playing THE BEST UPCOMING THRILLER MOVIES 2026 (Trailers) 49K 7mo ago Rapid Trailer New & Upcoming Thriller Mo"
+  },
+  "yt-thriller-trailer#2": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:27 Now playing NOCTURNE Official Trailer (2026) Liev Schreiber, Stephen Graham 150K 6d ago ONE Media NOCTURNE Official"
+  },
+  "yt-thriller-trailer#3": {
+   "label": "horror",
+   "kind": "ad",
+   "text": "Other Mommy (2026) - In Theatres This October From the producers of Obsession and Backrooms, experience the horror this "
+  },
+  "yt-thriller-trailer#4": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:00:00 Now playing THE BEST UPCOMING THRILLER MOVIES 2026 (Trailers) 51K 2mo ago KinoCheck.com Top Upcoming Thriller Mo",
+   "borderline": true,
+   "note": "Thriller compilation; thumbnail shows a gas-masked figure strapped in an electric chair, somewhat creepy"
+  },
+  "yt-thriller-trailer#5": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:23 Now playing Nocturne — Official Trailer | Apple TV 6.4M 6d ago Apple TV Catching a killer means crossing the line. "
+  },
+  "yt-thriller-trailer#6": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:01 Now playing DREAMQUIL Official Trailer (2026) Elizabeth Banks, John C. Reilly 64K 5d ago Rapid Trailer Official Dre"
+  },
+  "yt-thriller-trailer#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:23 Now playing Phony | Official Trailer | Hulu 11M 6d ago Hulu Connie Britton and Sam Nivola star in PHONY. A coming-o"
+  },
+  "yt-thriller-trailer#8": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:45 Now playing Confinement (2026) | Official Trailer | Paramount Movies 436K 2mo ago Paramount Movies Watch At Home Se"
+  },
+  "yt-thriller-trailer#9": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:19 Now playing The Cycle - Official Trailer (2026) Deborah Ann Woll 290K 6d ago IGN Movie Trailers Here's the Official"
+  },
+  "yt-thriller-trailer#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:17 Now playing Nocturne - Official Trailer (2026) Liev Schreiber, Zazie Beetz 13K 2d ago IGN Movie Trailers Take a loo"
+  },
+  "yt-thriller-trailer#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:07 Now playing BREEDER Official Trailer (2026) 746K 1mo ago Rapid Trailer Official Breeder Movie Trailer 2026 | Maddie",
+   "borderline": true,
+   "note": "Breeder is a horror film per card text, but the thumbnail is just a smiling woman"
+  },
+  "yt-thriller-trailer#12": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:36 Now playing Ebenezer | Official Trailer 2 (2026 Movie) - Johnny Depp, Ian McKellen, Rupert Grint, Sam Claflin 13M 4",
+   "borderline": true,
+   "note": "Ebenezer (Ti West Christmas Carol) is dark period drama, not marketed as horror; candlelit eerie Scrooge"
+  },
+  "yt-thriller-trailer#13": {
+   "label": "safe",
+   "kind": "video",
+   "text": "40:52 Now playing BEST UPCOMING THRILLER MOVIES 2026 (4K Trailers) 89K 3mo ago Trailer Feed Watch the most anticipated n"
+  },
+  "yt-thriller-trailer#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:17 Now playing Primetime | Official Trailer HD | A24 49M 1mo ago A24 SUBSCRIBE: http://bit.ly/A24subscribe From direct"
+  },
+  "yt-thriller-trailer#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "50:55 Now playing THE BEST UPCOMING THRILLER MOVIES 2026 (Trailers) 50K 6mo ago KinoCheck.com Top New & Upcoming Thrille"
+  },
+  "yt-true-crime#0": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Visit the official Stu Plus Who? page to learn more. Stu's going on vacation, but who's going with him? See the trailer "
+  },
+  "yt-true-crime#1": {
+   "label": "safe",
+   "kind": "video",
+   "text": "27:33 Now playing What Happened Inside This House Was Terrifying! True Crime Documentary 42K 1d ago Unreal True Crime Wh"
+  },
+  "yt-true-crime#2": {
+   "label": "safe",
+   "kind": "video",
+   "text": "27:03 Now playing CAUTION!!! This Case Made ME Question HUMANITY - True Crime Documentary 917K 3mo ago Unreal True Crime"
+  },
+  "yt-true-crime#3": {
+   "label": "safe",
+   "kind": "ad",
+   "text": "Turn Back-to-Back Meetings into Instant Action Items & Summaries automatically Automate your meeting notes. Get instant "
+  },
+  "yt-true-crime#4": {
+   "label": "safe",
+   "kind": "video",
+   "text": "46:41 Now playing Rich Mass Killer Realizes She's Been Caught 8 Years Later 37M 1mo ago Dr Insanity Save 50% on your sys"
+  },
+  "yt-true-crime#5": {
+   "label": "safe",
+   "kind": "video",
+   "text": "44:07 Now playing Canada’s Youngest Serial Killer | Making A Serial Killer 2.5M 1y ago FilmRise True Crime Operating wit"
+  },
+  "yt-true-crime#6": {
+   "label": "safe",
+   "kind": "video",
+   "text": "27:31 Now playing A Secret She Thought No One Would Ever Discover | True Crime Documentary 414K 2mo ago Unreal True Crim"
+  },
+  "yt-true-crime#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "45:23 Now playing Youngest Woman on Death Row: Christa Pike | World’s Most Evil Prisoners 6M 2y ago FilmRise True Crime "
+  },
+  "yt-true-crime#8": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:47:46 Now playing 5 Darkest True Crime Stories You've Never Heard Of 109K 4d ago Ty Notts Five true crime cases nobody"
+  },
+  "yt-true-crime#9": {
+   "label": "safe",
+   "kind": "video",
+   "text": "45:36 Now playing The Twilight Killers | The Killer Within | Full True Crime Documentary 13K 5d ago True Crime Uncut In "
+  },
+  "yt-true-crime#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Popular in Montreal 1:30:43 Now playing 2 Most Brutal Cases: Police Needed Therapy After Witnessing This Crime | True Cr"
+  },
+  "yt-true-crime#11": {
+   "label": "safe",
+   "kind": "video",
+   "text": "29:07 Now playing This Story Will Give You Chills! No Movie Can Top This Story! True Crime Documentary 241K 2mo ago Unre"
+  },
+  "yt-true-crime#12": {
+   "label": "safe",
+   "kind": "video",
+   "text": "29:29 Now playing A Betrayal So Cold-Blooded It’s Chilling: He Framed His Wife to Hide a Sinister Secret... 476K 3mo ago"
+  },
+  "yt-true-crime#13": {
+   "label": "horror",
+   "kind": "short",
+   "text": "She Hid 11 Men in Her Basement #HorrorStory #CreepyStory #DarkMystery #scarystories #MysteryStory 921K views",
+   "borderline": true,
+   "note": "Tagged #HorrorStory/#CreepyStory with a distorted creepy face among children; otherwise a true-crime story"
+  },
+  "yt-true-crime#14": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Christa Pike’s Execution Is Days Away | True Crime Documentary 1.6K views"
+  },
+  "yt-true-crime#15": {
+   "label": "safe",
+   "kind": "short",
+   "text": "Celebrities with Disturbing Connections to Serial Killers | Crime 101 955K views"
+  },
+  "yt-true-crime#16": {
+   "label": "safe",
+   "kind": "short",
+   "text": "From Killer to Cook: Joe Metheny’s Horrifying Secret | True Cime Documentary 1.2M views"
+  },
+  "yt-true-crime#17": {
+   "label": "safe",
+   "kind": "short",
+   "text": "New The Murder of Nancy Cooper: How a Deleted Computer Map Caught Her Husband 1.5K views"
+  },
+  "ign-trailers#0": {
+   "label": "safe",
+   "kind": "video",
+   "text": "Videos 16:26 Popular Stories 01 3d 8 Years Isn't Enough: Why This Console Generation Needs to Be Longer - Next-Gen Conso"
+  },
+  "ign-trailers#1": {
+   "label": "safe",
+   "kind": "short",
+   "text": ""
+  },
+  "ign-trailers#2": {
+   "label": "safe",
+   "kind": "short",
+   "text": ""
+  },
+  "ign-trailers#3": {
+   "label": "horror",
+   "kind": "short",
+   "text": "",
+   "borderline": true,
+   "note": "Resident Evil talk short; game-horror reference, mild picture"
+  },
+  "ign-trailers#4": {
+   "label": "safe",
+   "kind": "short",
+   "text": ""
+  },
+  "ign-trailers#5": {
+   "label": "safe",
+   "kind": "short",
+   "text": ""
+  },
+  "ign-trailers#6": {
+   "label": "horror",
+   "kind": "video",
+   "text": "0:55 BrokenLore: MIKI-CHAN - Official Announcement Trailer 13m ago"
+  },
+  "ign-trailers#7": {
+   "label": "safe",
+   "kind": "video",
+   "text": "4:45 Surviving Subnautica 2 Before This Room Crushes Me 23m ago SUBNAUTICA 2 JEFFREY VEGA"
+  },
+  "ign-trailers#8": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:05 Broken Horror Anthology - Official Gameplay Trailer 29m ago"
+  },
+  "ign-trailers#9": {
+   "label": "safe",
+   "kind": "video",
+   "text": "5:56 Tomb Raider: Legacy of Atlantis - Official 'Meet Larson' Overview Trailer 1h ago TOMB RAIDER: LEGACY OF ATLANTIS"
+  },
+  "ign-trailers#10": {
+   "label": "safe",
+   "kind": "video",
+   "text": "26:22 Top 25 Best PS5 Games 1h ago - The top 25 games for PlayStation 5 in 2026. GOD OF WAR: RAGNAROK MARK MEDINA + 2 MO"
+  },
+  "ign-trailers#11": {
+   "label": "horror",
+   "kind": "video",
+   "text": "2:27 Black Tides Draga's Wake - Official Trailer 1h ago - An upcoming third-person action horror shooter. 1"
+  },
+  "ign-trailers#12": {
+   "label": "safe",
+   "kind": "video",
+   "text": "15:58 Call of Duty: Modern Warfare 4 - Official 'DMZ: Addition of Extraction' From The Ward Ep. 7 Video 2h ago - DMZ ret",
+   "borderline": true,
+   "note": "masked soldier"
+  },
+  "ign-trailers#13": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:54 March of Giants - Official Solace Ability Gameplay Trailer 2h ago MARCH OF GIANTS"
+  },
+  "ign-trailers#14": {
+   "label": "safe",
+   "kind": "video",
+   "text": "0:56 Stellar Blade - Official Boss Challenge Trailer 2h ago STELLAR BLADE"
+  },
+  "ign-trailers#15": {
+   "label": "safe",
+   "kind": "video",
+   "text": "4:27 Guns of Eschaton - Official Demo Launch Trailer 3h ago - A first-person action soulslike shooter with a demo availa",
+   "borderline": true,
+   "note": "creature-eye shooter art, not horror-marketed"
+  },
+  "ign-trailers#16": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:32 World War Z - Official Waves of Lead Update Launch Trailer 3h ago WORLD WAR Z"
+  },
+  "ign-trailers#17": {
+   "label": "horror",
+   "kind": "video",
+   "text": "0:26 Halloween: The Game - Official Halloween 5: The Revenge of Michael Myers DLC Reveal Trailer 4h ago - Return to 1989"
+  },
+  "ign-trailers#18": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:02 Frostpunk - Official Nintendo Switch Release Date Trailer 4h ago - Coming to Switch 1 and Switch 2 later this month"
+  },
+  "ign-trailers#19": {
+   "label": "horror",
+   "kind": "video",
+   "text": "0:51 Insidious: Out of the Further Exclusive Deleted Scene 4h ago - Available on digital October 6 and on Blu-ray and DV"
+  },
+  "ign-trailers#20": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:00 Lenin Street Geek Shop - Official Demo Launch Trailer 8h ago LENIN STREET GEEK SHOP"
+  },
+  "ign-trailers#21": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:15 Silicone Heart - Official Demo Trailer 9h ago SILICONE HEART"
+  },
+  "ign-trailers#22": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:39 The Royal Restoration Society - Official Announcement Trailer 22h ago THE ROYAL RESTORATION SOCIETY"
+  },
+  "ign-trailers#23": {
+   "label": "safe",
+   "kind": "video",
+   "text": "2:27 Call of Duty: Modern Warfare 4 - Official DMZ Worldbuilder Trailer 23h ago - Coming October 23rd! CALL OF DUTY: MOD"
+  },
+  "ign-trailers#24": {
+   "label": "safe",
+   "kind": "video",
+   "text": "1:03 LUCY - Official Announcement Trailer 1d ago LUCY"
+  },
+  "ign-trailers#25": {
+   "label": "horror",
+   "kind": "video",
+   "text": "1:06 Creepy Surveillance Horror Game VCR83 Drops First Gameplay Trailer 1d ago - Cut to camera two. VCR83"
+  }
+ }
+}
