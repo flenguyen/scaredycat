@@ -1,0 +1,34 @@
+{
+ "reviewedSheets": [
+  "safe-game-art-01..04",
+  "safe-family-halloween-01..02",
+  "safe-trailer-thumb-safe-01..04"
+ ],
+ "decisions": [
+  {
+   "id": "wp-Q170331",
+   "action": "drop",
+   "reason": "not-the-art: Travian logo on near-blank dark tile, no usable cover art"
+  },
+  {
+   "id": "yt-Q15140437",
+   "action": "drop",
+   "reason": "wrong-video: family picnic frame, not a Terminator Genisys trailer thumbnail"
+  },
+  {
+   "id": "cm-138652407",
+   "action": "drop",
+   "reason": "ambiguous-genre: not Halloween, bound-pose photo"
+  },
+  {
+   "id": "cm-138652406",
+   "action": "drop",
+   "reason": "ambiguous-genre: not Halloween, bound-pose photo"
+  },
+  {
+   "id": "cm-6249292",
+   "action": "drop",
+   "reason": "ambiguous-genre: scareactor in creature mask, a horror-averse viewer may expect blur"
+  }
+ ]
+}

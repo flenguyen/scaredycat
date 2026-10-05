@@ -1,0 +1,980 @@
+{
+ "reviewedSheets": [
+  "horror-classic-01.jpg",
+  "horror-classic-02.jpg",
+  "horror-classic-03.jpg",
+  "horror-classic-04.jpg",
+  "horror-classic-05.jpg",
+  "horror-creature-gore-01.jpg",
+  "horror-creature-gore-02.jpg",
+  "horror-creature-gore-03.jpg",
+  "horror-creature-gore-04.jpg",
+  "horror-minimalist-01.jpg",
+  "horror-minimalist-02.jpg",
+  "horror-minimalist-03.jpg",
+  "horror-minimalist-04.jpg",
+  "horror-moody-01.jpg",
+  "horror-moody-02.jpg",
+  "horror-moody-03.jpg",
+  "horror-moody-04.jpg",
+  "horror-possession-ghost-01.jpg",
+  "horror-possession-ghost-02.jpg",
+  "horror-possession-ghost-03.jpg",
+  "horror-possession-ghost-04.jpg",
+  "horror-slasher-01.jpg",
+  "horror-slasher-02.jpg",
+  "horror-slasher-03.jpg",
+  "horror-slasher-04.jpg",
+  "horror-trailer-thumb-01.jpg",
+  "horror-trailer-thumb-02.jpg",
+  "horror-trailer-thumb-03.jpg",
+  "horror-trailer-thumb-04.jpg"
+ ],
+ "decisions": [
+  {
+   "id": "wp-Q162255",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q182692",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q190908",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q202508",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q660950",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q155018",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q190575",
+   "action": "drop",
+   "reason": "surrealist short film, not a horror poster"
+  },
+  {
+   "id": "wp-Q1210947",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q651923",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q289204",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q751921",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q237222",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q849656",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q204725",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q581178",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q529106",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q431140",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q47296",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q39970",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q5493376",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q785087",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q937762",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1127281",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q503343",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q498990",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q728488",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q886719",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1616747",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q179798",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1215918",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q500488",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q589713",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q536676",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q616301",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1193924",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1740809",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q939385",
+   "action": "drop",
+   "reason": "title card of an animated short, not poster art"
+  },
+  {
+   "id": "wp-Q1137583",
+   "action": "drop",
+   "reason": "kaiju film, not horror"
+  },
+  {
+   "id": "wp-Q494367",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q570004",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1197501",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1236347",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1740544",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q183555",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q200804",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q108745",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q164417",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q249967",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q372514",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q165325",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q21451640",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q57317060",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q102180106",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q159870",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q24075",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q864592",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q15270775",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q28840385",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q65973230",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1051023",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q492214",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q128493",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q720357",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q380667",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q379877",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q16994327",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q63862159",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q23999279",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q25461297",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q54854465",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q128187",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1142862",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q598860",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1755864",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q287960",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1194465",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q4366287",
+   "action": "drop",
+   "reason": "sci-fi arthouse, not horror"
+  },
+  {
+   "id": "wp-Q210364",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q426828",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q272608",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q9125658",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q82430214",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q124077893",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q794151",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1990704",
+   "action": "drop",
+   "reason": "animated superhero film"
+  },
+  {
+   "id": "wp-Q107675912",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q2579784",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q190525",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q116928",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q64211112",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q201819",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q320461",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q240713",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q41754",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q474093",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q164813",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q650613",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q27957869",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q707880",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q23759268",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q55405369",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q41854",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q30939513",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q18703038",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q472165",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q21433535",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q990976",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q14512114",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q815608",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q21450484",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q313874",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q110842446",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q21647114",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q5815826",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q863963",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q49003",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q64744044",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q274520",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q632668",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q244398",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q725842",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q323318",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q635937",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q61883088",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1048166",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q20120108",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q936302",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q839123",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q86791",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q517958",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q642501",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q198028",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q75539",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q221846",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q16386237",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q621529",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q60370884",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q581666",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q42914959",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1212923",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q59721",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q906705",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q449743",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q113300586",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q3012553",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q748186",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1326650",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q788520",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q599013",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1327671",
+   "action": "drop",
+   "reason": "psychedelic drama, not horror"
+  },
+  {
+   "id": "wp-Q1304578",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q535395",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q219424",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q1137310",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q544434",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "wp-Q592445",
+   "action": "drop",
+   "reason": "not a horror film (family, comedy, thriller, action or sci-fi)"
+  },
+  {
+   "id": "yt-Q162255",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q2579784",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q190908",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q202508",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q210364",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q64211112",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q320461",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q240713",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q632668",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q219424",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q24075",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q1210947",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q204725",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q27957869",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q110842446",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q725842",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q65973230",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q23759268",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q55405369",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q379877",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q751921",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q839123",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q529106",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q23999279",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q25461297",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q785087",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q937762",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q14512114",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q503343",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q61927376",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q100801718",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q867294",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  },
+  {
+   "id": "yt-Q815608",
+   "action": "drop",
+   "reason": "not a horror film (trailer thumb)"
+  }
+ ]
+}

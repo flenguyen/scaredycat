@@ -1,0 +1,215 @@
+{
+ "reviewedSheets": [
+  "safe-food-01.jpg",
+  "safe-food-02.jpg",
+  "safe-kids-cartoon-01.jpg",
+  "safe-kids-cartoon-02.jpg",
+  "safe-logo-01.jpg",
+  "safe-logo-02.jpg",
+  "safe-people-01.jpg",
+  "safe-people-02.jpg",
+  "safe-photo-01.jpg",
+  "safe-photo-02.jpg",
+  "safe-product-01.jpg",
+  "safe-product-02.jpg",
+  "safe-ui-screenshot-01.jpg",
+  "safe-ui-screenshot-02.jpg"
+ ],
+ "decisions": [
+  {
+   "id": "cm-185222405",
+   "action": "drop",
+   "reason": "near-duplicate Opera screenshot of same page"
+  },
+  {
+   "id": "cm-198051917",
+   "action": "drop",
+   "reason": "near-duplicate Opera screenshot of same page"
+  },
+  {
+   "id": "cm-151957503",
+   "action": "drop",
+   "reason": "near-duplicate of cm-151957501 (Vim lorem ipsum)"
+  },
+  {
+   "id": "cm-79287246",
+   "action": "drop",
+   "reason": "microscope crystals, not food"
+  },
+  {
+   "id": "cm-24413653",
+   "action": "drop",
+   "reason": "private snapshot of identifiable people eating, not food-focused"
+  },
+  {
+   "id": "cm-40761788",
+   "action": "drop",
+   "reason": "storefront at night, not food"
+  },
+  {
+   "id": "cm-6521485",
+   "action": "drop",
+   "reason": "medical diagram (raw fish infection), not food"
+  },
+  {
+   "id": "cm-53989910",
+   "action": "drop",
+   "reason": "politicians/press at event, not a product"
+  },
+  {
+   "id": "cm-45738185",
+   "action": "drop",
+   "reason": "politicians/press at event, not a product"
+  },
+  {
+   "id": "cm-48563854",
+   "action": "drop",
+   "reason": "politicians/press at event, not a product"
+  },
+  {
+   "id": "cm-49181736",
+   "action": "drop",
+   "reason": "politicians/press at event, not a product"
+  },
+  {
+   "id": "cm-147335963",
+   "action": "drop",
+   "reason": "politicians/press at event, not a product"
+  },
+  {
+   "id": "cm-187616245",
+   "action": "drop",
+   "reason": "woman using phone, a people shot not a product"
+  },
+  {
+   "id": "cm-187499403",
+   "action": "drop",
+   "reason": "candid of identifiable private repairer, not product"
+  },
+  {
+   "id": "cm-2310972",
+   "action": "drop",
+   "reason": "street/interior scene, not a product"
+  },
+  {
+   "id": "cm-37808730",
+   "action": "drop",
+   "reason": "street/interior scene, not a product"
+  },
+  {
+   "id": "cm-95615230",
+   "action": "drop",
+   "reason": "infographic, not a product"
+  },
+  {
+   "id": "cm-83130852",
+   "action": "drop",
+   "reason": "infographic, not a product"
+  },
+  {
+   "id": "cm-46744806",
+   "action": "drop",
+   "reason": "old printed text page, not a product"
+  },
+  {
+   "id": "cm-53205310",
+   "action": "drop",
+   "reason": "near-duplicate of cm-53205319 (power cord)"
+  },
+  {
+   "id": "cm-53205320",
+   "action": "drop",
+   "reason": "near-duplicate of cm-53205319 (power cord)"
+  },
+  {
+   "id": "cm-85144730",
+   "action": "drop",
+   "reason": "candid street photo of private stranger"
+  },
+  {
+   "id": "cm-85145223",
+   "action": "drop",
+   "reason": "candid street photo of private stranger"
+  },
+  {
+   "id": "cm-85885286",
+   "action": "drop",
+   "reason": "candid street photo of private stranger"
+  },
+  {
+   "id": "cm-148813538",
+   "action": "drop",
+   "reason": "candid street photo of private stranger"
+  },
+  {
+   "id": "cm-53213936",
+   "action": "drop",
+   "reason": "private individual snapshot/headshot"
+  },
+  {
+   "id": "cm-76008669",
+   "action": "drop",
+   "reason": "private individual snapshot/headshot"
+  },
+  {
+   "id": "cm-95837861",
+   "action": "drop",
+   "reason": "private individual snapshot/headshot"
+  },
+  {
+   "id": "cm-46825581",
+   "action": "drop",
+   "reason": "private individual snapshot/headshot"
+  },
+  {
+   "id": "cm-45451792",
+   "action": "drop",
+   "reason": "minors at teen filmmaker event, private individuals"
+  },
+  {
+   "id": "cm-45451904",
+   "action": "drop",
+   "reason": "minors at teen filmmaker event, private individuals"
+  },
+  {
+   "id": "cm-45451836",
+   "action": "drop",
+   "reason": "minors at teen filmmaker event, private individuals"
+  },
+  {
+   "id": "cm-41228618",
+   "action": "drop",
+   "reason": "landscape/scene with no person focus, not people"
+  },
+  {
+   "id": "cm-145963388",
+   "action": "drop",
+   "reason": "landscape/scene with no person focus, not people"
+  },
+  {
+   "id": "cm-97239869",
+   "action": "drop",
+   "reason": "landscape/scene with no person focus, not people"
+  },
+  {
+   "id": "cm-46639998",
+   "action": "drop",
+   "reason": "landscape/scene with no person focus, not people"
+  },
+  {
+   "id": "cm-41331632",
+   "action": "drop",
+   "reason": "landscape/scene with no person focus, not people"
+  },
+  {
+   "id": "cm-86334505",
+   "action": "drop",
+   "reason": "homeless person sleeping on street, sensitive and identifiable"
+  },
+  {
+   "id": "cm-100209986",
+   "action": "drop",
+   "reason": "ritual with preserved corpses, horror-adjacent"
+  }
+ ]
+}

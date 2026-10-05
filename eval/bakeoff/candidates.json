@@ -1,0 +1,223 @@
+[
+  {
+    "name": "tinyclip-vit-8m-16-yfcc15m",
+    "hfId": "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M",
+    "revision": "a2a8c6eaa2549ad66eb7c31b85022bf58273a26c",
+    "upstreamRepo": "microsoft/Cream (TinyCLIP)",
+    "licence": "MIT",
+    "licenceQuote": "license: mit (HF card header); card section '## License' links https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE, which begins 'MIT License / Copyright (c) Microsoft Corporation.'",
+    "licenceUrls": [
+      "https://huggingface.co/wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M",
+      "https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE",
+      "https://huggingface.co/api/models/wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M"
+    ],
+    "commercialOk": true,
+    "caveats": "Trained on YFCC-15M (public Flickr CC-licensed images); no separate weights licence stated anywhere.",
+    "role": "candidate",
+    "approach": "zero-shot+head",
+    "onnxAvailable": "none in this repo (safetensors 93.8 MB full CLIP); ONNX copy: onnx-community/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M-ONNX @ 9463a9c508a344c837ffefe9d724f3827bf2dc79 (license: mit; onnx/model.onnx 94.1 MB, model_fp16 47.2 MB, model_int8 24.3 MB, files hold both towers)",
+    "visionParamsM": 8,
+    "estFp16MB": 16,
+    "notes": "Vision ~8M params (name). ONNX copy also MIT-tagged and inherits upstream MIT. Export vision tower alone for shipping.",
+    "family": "hf-clip"
+  },
+  {
+    "name": "tinyclip-vit-8m-16-yfcc15m-onnx",
+    "hfId": "onnx-community/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M-ONNX",
+    "revision": "9463a9c508a344c837ffefe9d724f3827bf2dc79",
+    "upstreamRepo": "microsoft/Cream (TinyCLIP)",
+    "licence": "MIT",
+    "licenceQuote": "license: mit (HF card header); card links https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE (MIT)",
+    "licenceUrls": [
+      "https://huggingface.co/onnx-community/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M-ONNX",
+      "https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE",
+      "https://huggingface.co/api/models/onnx-community/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M-ONNX"
+    ],
+    "commercialOk": true,
+    "caveats": "Converted copy; licence inherited from upstream (verified MIT).",
+    "role": "candidate",
+    "approach": "zero-shot+head",
+    "onnxAvailable": "onnx/model.onnx 94,071,688; model_fp16 47,180,275; model_int8 24,281,512; model_quantized 24,281,512; model_q4f16 32,118,827 (combined text+vision graphs)",
+    "visionParamsM": 8,
+    "estFp16MB": 16,
+    "notes": "Same weights as the wkcn entry; this is the pre-converted ONNX source option. Not an independent candidate.",
+    "family": "hf-clip"
+  },
+  {
+    "name": "tinyclip-resnet-19m-laion400m",
+    "hfId": "(no HF repo found)",
+    "revision": "n/a (GitHub release asset TinyCLIP-ResNet-19M-Text-19M-LAION400M.pt, 126,949,695 bytes, tag 'checkpoints')",
+    "upstreamRepo": "microsoft/Cream (TinyCLIP); weights hosted at wkcn/TinyCLIP-model-zoo",
+    "licence": "MIT for code (Cream); weights file has NO explicit licence statement",
+    "licenceQuote": "No quote for this weights file. wkcn/TinyCLIP-model-zoo GitHub API license=null, repo has only README.md and figure/, README has no licence text. Cream/TinyCLIP/LICENSE (code) begins 'MIT License'.",
+    "licenceUrls": [
+      "https://github.com/wkcn/TinyCLIP-model-zoo",
+      "https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE",
+      "https://api.github.com/repos/wkcn/TinyCLIP-model-zoo/releases",
+      "https://huggingface.co/api/models?search=ResNet-19M (no results)"
+    ],
+    "commercialOk": false,
+    "caveats": "Not rejected on content: the same authors tag their sibling checkpoints (ViT-8M, ViT-40M) MIT on HF and the Cream README points to the MIT LICENSE. But this file has no HF copy and no licence statement of its own, so by the never-guess rule it is rejected pending a coordinator decision. Also needs a custom torch export (ModifiedResNet, open_clip fork) and is .pt only.",
+    "role": "rejected",
+    "approach": "zero-shot+head",
+    "onnxAvailable": "none (pt only)",
+    "visionParamsM": 19,
+    "estFp16MB": 38,
+    "notes": "Would be a candidate (38 MB est. fp16) if the coordinator accepts MIT-by-association. Decision needed."
+  },
+  {
+    "name": "tinyclip-vit-45m-32-auto-laionyfcc400m",
+    "hfId": "(no HF repo found)",
+    "revision": "n/a (GitHub release asset TinyCLIP-auto-ViT-45M-32-Text-18M-LAIONYFCC400M.pt, 177,288,677 bytes)",
+    "upstreamRepo": "microsoft/Cream (TinyCLIP); weights hosted at wkcn/TinyCLIP-model-zoo",
+    "licence": "MIT for code (Cream); weights file has NO explicit licence statement",
+    "licenceQuote": "No quote for this weights file; model-zoo repo has no licence (see ResNet-19M entry).",
+    "licenceUrls": [
+      "https://github.com/wkcn/TinyCLIP-model-zoo",
+      "https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE",
+      "https://api.github.com/repos/wkcn/TinyCLIP-model-zoo/releases"
+    ],
+    "commercialOk": false,
+    "caveats": "Same licence gap as ResNet-19M. Independently over the size cap: ~90 MB fp16, so it could only ever be a reference.",
+    "role": "rejected",
+    "approach": "zero-shot+head",
+    "onnxAvailable": "none (pt only)",
+    "visionParamsM": 45,
+    "estFp16MB": 90,
+    "notes": "Over 50 MB fp16, so it would be role 'reference' anyway; licence gap makes it rejected. Reconsider only if the coordinator accepts MIT-by-association."
+  },
+  {
+    "name": "tinyclip-vit-40m-32-laion400m",
+    "hfId": "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M",
+    "revision": "95ec8197b3f2fe7f747865c61ca556cf0768b2f7",
+    "upstreamRepo": "microsoft/Cream (TinyCLIP)",
+    "licence": "MIT",
+    "licenceQuote": "license: mit (HF card header); card links https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE (MIT)",
+    "licenceUrls": [
+      "https://huggingface.co/wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M",
+      "https://github.com/microsoft/Cream/blob/main/TinyCLIP/LICENSE",
+      "https://huggingface.co/api/models/wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M"
+    ],
+    "commercialOk": true,
+    "caveats": "Over the 50 MB cap at fp16 (~80 MB), so reference only. Trained on LAION-400M (web-scraped; dataset caveats).",
+    "role": "reference",
+    "approach": "zero-shot+head",
+    "onnxAvailable": "none in this repo (safetensors 336.9 MB); ONNX copy onnx-community/TinyCLIP-ViT-40M-32-Text-19M-LAION400M-ONNX @ 737108a175dc6c043d9e64cf738baa91a272f7cb (HF tag has NO licence field; inherits upstream MIT; model_fp16 168.8 MB, model_int8 85.6 MB, both towers)",
+    "visionParamsM": 40,
+    "estFp16MB": 80,
+    "notes": "int8 vision would be ~40 MB but stays a reference per plan (never recommended).",
+    "family": "hf-clip"
+  },
+  {
+    "name": "dinov2-small",
+    "hfId": "facebook/dinov2-small",
+    "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+    "upstreamRepo": "facebookresearch/dinov2",
+    "licence": "Apache-2.0",
+    "licenceQuote": "license: apache-2.0 (HF card header at the pinned sha); dinov2 README: 'DINOv2 code and model weights are released under the Apache License 2.0.'",
+    "licenceUrls": [
+      "https://huggingface.co/facebook/dinov2-small",
+      "https://github.com/facebookresearch/dinov2/blob/main/LICENSE",
+      "https://huggingface.co/api/models/facebook/dinov2-small",
+      "https://github.com/facebookresearch/dinov2#license"
+    ],
+    "commercialOk": true,
+    "caveats": "The upstream README also lists FAIR Noncommercial Research weights, but only for the separate X-ray DINO and Cell-DINO models, not for DINOv2 ViT-S/14. Trained on LVD-142M (curated web images). Latency risk: ViT-S/14 at 224 is 256 tokens.",
+    "role": "candidate",
+    "approach": "head",
+    "onnxAvailable": "none in this repo (safetensors 88.2 MB); ONNX copies: onnx-community/dinov2-small-ONNX @ 08c606e3123472a388efa59181b677d428f69bbd (model_fp16 45.5 MB, int8 24.4 MB, no licence tag) and Xenova/dinov2-small @ c2bb04a51fab207c420665f1946016107bffc701 (fp16 44.4 MB, no licence tag)",
+    "visionParamsM": 22,
+    "estFp16MB": 44,
+    "notes": "Safetensors is 88.2 MB fp32 = ~22M params. 44 MB fp16 is under the 50 MB cap but over the 25 MB preferred. Not CLIP, so head only.",
+    "family": "hf-backbone"
+  },
+  {
+    "name": "mobilenetv3-large-100",
+    "hfId": "timm/mobilenetv3_large_100.ra_in1k",
+    "revision": "96f46a1c52932f27492dff66c72378eb99b443a7",
+    "upstreamRepo": "huggingface/pytorch-image-models",
+    "licence": "Apache-2.0",
+    "licenceQuote": "license: apache-2.0 (HF card header; datasets: imagenet-1k); pytorch-image-models LICENSE: 'Apache License Version 2.0, January 2004'",
+    "licenceUrls": [
+      "https://huggingface.co/timm/mobilenetv3_large_100.ra_in1k",
+      "https://github.com/huggingface/pytorch-image-models/blob/main/LICENSE",
+      "https://huggingface.co/api/models/timm/mobilenetv3_large_100.ra_in1k"
+    ],
+    "commercialOk": true,
+    "caveats": "ImageNet-1k caveat: weights are tagged Apache-2.0 but were trained on ImageNet-1k, whose dataset terms are research/non-commercial. Not a rejection; the report must state it.",
+    "role": "candidate",
+    "approach": "head",
+    "onnxAvailable": "none in this repo (safetensors 22.1 MB); ONNX copy onnx-community/mobilenetv3_large_100.ra_in1k @ ded3e24c1c5a7972b79cf589903e00353a253217 (model_fp16 11.0 MB, int8 5.7 MB, no licence tag, includes classifier)",
+    "visionParamsM": 4.2,
+    "estFp16MB": 10,
+    "notes": "5.5M params with the 1000-way classifier, ~4.2M for backbone plus 1280-d head. Embedding is not a CLIP space, so head only.",
+    "family": "timm"
+  },
+  {
+    "name": "efficientnet-lite0",
+    "hfId": "timm/tf_efficientnet_lite0.in1k",
+    "revision": "e074755b39c3cd8ca77d917a7cfb62e70da6bf88",
+    "upstreamRepo": "huggingface/pytorch-image-models",
+    "licence": "Apache-2.0",
+    "licenceQuote": "license: apache-2.0 (HF card header; datasets: imagenet-1k); pytorch-image-models LICENSE: 'Apache License Version 2.0, January 2004'",
+    "licenceUrls": [
+      "https://huggingface.co/timm/tf_efficientnet_lite0.in1k",
+      "https://github.com/huggingface/pytorch-image-models/blob/main/LICENSE",
+      "https://huggingface.co/api/models/timm/tf_efficientnet_lite0.in1k"
+    ],
+    "commercialOk": true,
+    "caveats": "ImageNet-1k caveat as for MobileNetV3. Weights are ported from the Google TF EfficientNet-Lite release (tensorflow/tpu, Apache-2.0); upstream not separately checked.",
+    "role": "candidate",
+    "approach": "head",
+    "onnxAvailable": "none in this repo (safetensors 18.8 MB, fp32 = ~4.7M params)",
+    "visionParamsM": 3.5,
+    "estFp16MB": 8,
+    "notes": "Safetensors 18.8 MB includes ~1.3M-param classifier; backbone about 3.4M. Head only.",
+    "family": "timm"
+  },
+  {
+    "name": "clip-vit-b-32",
+    "hfId": "openai/clip-vit-base-patch32",
+    "revision": "3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268",
+    "upstreamRepo": "openai/CLIP",
+    "licence": "MIT (code repo); HF model has no licence tag",
+    "licenceQuote": "openai/CLIP LICENSE: 'MIT License / Copyright (c) 2021 OpenAI'. HF API cardData.license is absent; model card has no licence line and says 'The model is intended as a research output for research communities.'",
+    "licenceUrls": [
+      "https://huggingface.co/openai/clip-vit-base-patch32",
+      "https://github.com/openai/CLIP/blob/main/LICENSE",
+      "https://huggingface.co/api/models/openai/clip-vit-base-patch32"
+    ],
+    "commercialOk": true,
+    "caveats": "HF model repo carries no licence tag or LICENSE file; MIT comes from the code repo only. Card says intended for research. Moot because it is a ceiling reference only and never shipped. Trained on undisclosed web data.",
+    "role": "reference",
+    "approach": "zero-shot+head",
+    "onnxAvailable": "none in this repo (pytorch_model.bin 605 MB)",
+    "visionParamsM": 88,
+    "estFp16MB": 176,
+    "notes": "Vision tower ~88M. Ceiling reference only.",
+    "family": "hf-clip"
+  },
+  {
+    "name": "mobileclip-s0",
+    "hfId": "Xenova/mobileclip_s0",
+    "revision": "757d59c9c6870a76a4b0306f05f5061bca15c39f",
+    "upstreamRepo": "apple/ml-mobileclip (weights: apple/MobileCLIP-S0)",
+    "licence": "apple-amlr (Apple Machine Learning Research Model licence)",
+    "licenceQuote": "Upstream apple/MobileCLIP-S0 LICENSE: 'This Apple Machine Learning Research Model is specifically developed and released by Apple Inc. (\"Apple\") for the sole purpose of scientific research of artificial intelligence and machine-learning technology.' ... '\"Research Purposes\" means non-commercial scientific research'",
+    "licenceUrls": [
+      "https://huggingface.co/Xenova/mobileclip_s0",
+      "https://huggingface.co/apple/MobileCLIP-S0/raw/main/LICENSE",
+      "https://huggingface.co/api/models/Xenova/mobileclip_s0",
+      "https://huggingface.co/api/models/apple/MobileCLIP-S0"
+    ],
+    "commercialOk": false,
+    "caveats": "Research-only, cannot ship in the store build. Xenova copy is tagged 'license: other' and its LICENSE file is Apple's generic software notice, which does not override the upstream weights licence. Baseline only.",
+    "role": "baseline",
+    "approach": "zero-shot+head (shipped prompts + head)",
+    "onnxAvailable": "onnx/vision_model.onnx 45,543,630; vision_model_fp16 22,876,479 (shipped); vision_model_int8 11,846,808 (known broken)",
+    "visionParamsM": 11.4,
+    "estFp16MB": 22.9,
+    "notes": "Measured fp16 vision size is 22.9 MB, matching models/ in the repo.",
+    "family": "hf-clip"
+  }
+]

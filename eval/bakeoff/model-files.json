@@ -1,0 +1,282 @@
+{
+  "tinyclip-vit-8m-16-yfcc15m": {
+    "hfId": "wkcn/TinyCLIP-ViT-8M-16-Text-3M-YFCC15M",
+    "revision": "a2a8c6eaa2549ad66eb7c31b85022bf58273a26c",
+    "files": {
+      "config.json": "c586d856dbd5589b67525db9e791ee0917402405672c7773aead373efb7d7bca",
+      "preprocessor_config.json": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+      "tokenizer.json": "b556ac8c99757ffb677208af34bc8c6721572114111a6e0aaf5fa69ff0b8d842",
+      "model.safetensors": "9339ee3d736344d0ddcaa6c03edc9f89688f08caaea5401220885233da726fcc"
+    },
+    "listed": [
+      "config.json",
+      "preprocessor_config.json",
+      "tokenizer.json",
+      "model.safetensors"
+    ],
+    "exports": {
+      "text_model.onnx": {
+        "bytes": 60742519,
+        "deflate_bytes": 35897404,
+        "sha256": "8bdb1a6d13d4ad0ea4579a9334e5d105c261b83d022cbfaf68690fc55b2832bf",
+        "params": 15169024
+      },
+      "vision_model.onnx": {
+        "bytes": 33273722,
+        "deflate_bytes": 19647901,
+        "sha256": "fa15a19e4bad04bc0d0b79efe74f88448465327db22bdab0601b8a88a350342e",
+        "params": 8276992
+      },
+      "vision_model_fp16.onnx": {
+        "bytes": 16782102,
+        "deflate_bytes": 15370950,
+        "sha256": "940f2e999ae2e855bc0c6a2e76f4a3bc5d9870b57a693878335ac5fa82fa6068"
+      },
+      "vision_model_quantized.onnx": {
+        "bytes": 8692735,
+        "deflate_bytes": 6414067,
+        "sha256": "296b48e4ffdf1638a1125a18c15a1f9521d75e637b09a2ca0d2331755f9e292b"
+      },
+      "config.json": {
+        "bytes": 52,
+        "deflate_bytes": 56,
+        "sha256": "a7694656da665f83a763868e53f598bd224df589123ad1f222cd49ad6699ed88"
+      },
+      "preprocessor_config.json": {
+        "bytes": 316,
+        "deflate_bytes": 189,
+        "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd"
+      }
+    }
+  },
+  "tinyclip-vit-40m-32-laion400m": {
+    "hfId": "wkcn/TinyCLIP-ViT-40M-32-Text-19M-LAION400M",
+    "revision": "95ec8197b3f2fe7f747865c61ca556cf0768b2f7",
+    "files": {
+      "config.json": "b786ac49b5cdcb16496a33c8ab4884de036b2f64de27d0b73caf8391f94c9bee",
+      "preprocessor_config.json": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+      "tokenizer.json": "b556ac8c99757ffb677208af34bc8c6721572114111a6e0aaf5fa69ff0b8d842",
+      "model.safetensors": "1b08131ac0ac54429aab216c397c550527d31f5682afb5d21d35091ad39538ae"
+    },
+    "listed": [
+      "config.json",
+      "preprocessor_config.json",
+      "tokenizer.json",
+      "model.safetensors"
+    ],
+    "exports": {
+      "text_model.onnx": {
+        "bytes": 178171630,
+        "deflate_bytes": 104486207,
+        "sha256": "18f961dfd0b42d3438632001c06709ae304897d619f1ca24b514a6e9ade34a47",
+        "params": 44513792
+      },
+      "vision_model.onnx": {
+        "bytes": 158963701,
+        "deflate_bytes": 94176807,
+        "sha256": "3d520189deef3d2fc12aeeb34f6c0a265e728ada145ee271e7d85a276090acbd",
+        "params": 39691776
+      },
+      "vision_model_fp16.onnx": {
+        "bytes": 79654451,
+        "deflate_bytes": 73638053,
+        "sha256": "6d0b86438ac07844deba33a9f347ceb512ad39e0d99945aff4b2db50eb877335"
+      },
+      "vision_model_quantized.onnx": {
+        "bytes": 40310278,
+        "deflate_bytes": 28336711,
+        "sha256": "ac24f0a41db1d436e9c202817cb23b8314fb2bb45bf449a15f1e304059513ae5"
+      },
+      "config.json": {
+        "bytes": 52,
+        "deflate_bytes": 56,
+        "sha256": "a7694656da665f83a763868e53f598bd224df589123ad1f222cd49ad6699ed88"
+      },
+      "preprocessor_config.json": {
+        "bytes": 316,
+        "deflate_bytes": 189,
+        "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd"
+      }
+    }
+  },
+  "dinov2-small": {
+    "hfId": "facebook/dinov2-small",
+    "revision": "ed25f3a31f01632728cabb09d1542f84ab7b0056",
+    "files": {
+      "config.json": "1809f83e3bdb1609a501a610ad4a742f4fd8ae44d72ca4aa0df52d1f2ac8628d",
+      "preprocessor_config.json": "14e780d86fa1861f8751f868d7f45425b5feb55c38ca26f152ca5097ab30f828",
+      "model.safetensors": "ae1e99fcefd534ed978cdeb8326f08030c96e28b7a81ffcbc98a857c84d14be1"
+    },
+    "listed": [
+      "config.json",
+      "preprocessor_config.json",
+      "model.safetensors"
+    ],
+    "exports": {
+      "vision_model.onnx": {
+        "bytes": 86689074,
+        "deflate_bytes": 80372622,
+        "sha256": "6ff55305f30a0d01b10bd7e3807ceb4bdbc8a6353ca8a04039f67aa1e84169d7",
+        "params": 21530112
+      },
+      "vision_model_fp16.onnx": {
+        "bytes": 43500488,
+        "deflate_bytes": 40079953,
+        "sha256": "c7ed09f709115b9b288279cdaf71ecb91d70e434b5aecda114fe272102c67662"
+      },
+      "vision_model_quantized.onnx": {
+        "bytes": 22468427,
+        "deflate_bytes": 15481973,
+        "sha256": "f80bf5fea800bd2d777af5cef4d07cc9e31a892e3e08bbd72abdf0375797d837"
+      },
+      "config.json": {
+        "bytes": 51,
+        "deflate_bytes": 54,
+        "sha256": "16a1d7e1b9e7b186e5374d9a8dbec65d31df00f39ac1d5ee584e504fa90009bb"
+      },
+      "preprocessor_config.json": {
+        "bytes": 436,
+        "deflate_bytes": 231,
+        "sha256": "14e780d86fa1861f8751f868d7f45425b5feb55c38ca26f152ca5097ab30f828"
+      }
+    }
+  },
+  "mobilenetv3-large-100": {
+    "hfId": "timm/mobilenetv3_large_100.ra_in1k",
+    "revision": "96f46a1c52932f27492dff66c72378eb99b443a7",
+    "files": {
+      "config.json": "0823b9dd769e485a33b12783116b511ed7035961db29372c792577193e44f751",
+      "model.safetensors": "f425af34cc1cead2b5d6211f789a1f30b94835dc32f9c0fcc5a916e4fd2dde85"
+    },
+    "listed": [
+      "config.json",
+      "model.safetensors"
+    ],
+    "exports": {
+      "vision_model.onnx": {
+        "bytes": 16797610,
+        "deflate_bytes": 15588943,
+        "sha256": "8d89162646c33f8ccc999567e555979c8b8ff41bb210dfa99fa8d961e933babf",
+        "params": 4189832
+      },
+      "vision_model_fp16.onnx": {
+        "bytes": 8431188,
+        "deflate_bytes": 7777051,
+        "sha256": "426b4746f5483cca8d068f58aaa77efe3263841d3b26ea0709f76b361c4f3048"
+      },
+      "vision_model_quantized.onnx": {
+        "bytes": 4417420,
+        "deflate_bytes": 3043333,
+        "sha256": "6496d3478bc4efab9364372ceeef2663b6838acfdd987c264b84c053414e55ed"
+      },
+      "config.json": {
+        "bytes": 94,
+        "deflate_bytes": 89,
+        "sha256": "689862b7ac3f23e3fc46b31dab3bfe6c422b371497a13f9badbc2cf97f9f7d4a"
+      },
+      "preprocessor_config.json": {
+        "bytes": 491,
+        "deflate_bytes": 250,
+        "sha256": "0cb590b9f31b2a7594825d9e8ec184aaa91af4907f54b30ddc5cc35e4dadc760"
+      }
+    }
+  },
+  "efficientnet-lite0": {
+    "hfId": "timm/tf_efficientnet_lite0.in1k",
+    "revision": "e074755b39c3cd8ca77d917a7cfb62e70da6bf88",
+    "files": {
+      "config.json": "7c006d122b46d5ada51651726636c56d1d1d379c67e4a586f66cbd19be0063f0",
+      "model.safetensors": "1b2a452450b5cf3f8f42da5b6214e71d5fda5666bef4dfae0699407e5bef13e1"
+    },
+    "listed": [
+      "config.json",
+      "model.safetensors"
+    ],
+    "exports": {
+      "vision_model.onnx": {
+        "bytes": 13515595,
+        "deflate_bytes": 12453346,
+        "sha256": "8ffc69e9236f271e9198871d8fe228e6b3f6d2edc1301b60a61eb6ae8c21ee18",
+        "params": 3350000
+      },
+      "vision_model_fp16.onnx": {
+        "bytes": 6857724,
+        "deflate_bytes": 6227189,
+        "sha256": "b890853e5978654891e51ee61264f70070ac070e28a78e13b391fe58d19200df"
+      },
+      "vision_model_quantized.onnx": {
+        "bytes": 3662073,
+        "deflate_bytes": 2590105,
+        "sha256": "52478d834ae739d2b18675b9473feed402d577f34065666fa0fcb029f91a5ba4"
+      },
+      "config.json": {
+        "bytes": 94,
+        "deflate_bytes": 87,
+        "sha256": "a7efda14936deb5d23fc6e38ea237521a62cc7b1f681d7859a4be96b84b92745"
+      },
+      "preprocessor_config.json": {
+        "bytes": 479,
+        "deflate_bytes": 237,
+        "sha256": "0e1e5edabb19710dd2d29e56cb6ed34fe807b62e0374730113c2c3d1b6252300"
+      }
+    }
+  },
+  "clip-vit-b-32": {
+    "hfId": "openai/clip-vit-base-patch32",
+    "revision": "3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268",
+    "files": {
+      "config.json": "b575ef3c36f2a057fa19e221650105052d61cc9c1a972ec15019c6261ec98770",
+      "merges.txt": "f526393189112391ce6f9795d4695f704121ce452c3aad1f5335cc41337eba85",
+      "preprocessor_config.json": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd",
+      "special_tokens_map.json": "f8c0d6c39aee3f8431078ef6646567b0aba7f2246e9c54b8b99d55c22b707cbf",
+      "tokenizer.json": "b556ac8c99757ffb677208af34bc8c6721572114111a6e0aaf5fa69ff0b8d842",
+      "tokenizer_config.json": "34b7336e4bee12e0a9730eaf5189f582ef3c3eea5027f65730e5717256755aad",
+      "vocab.json": "5047b556ce86ccaf6aa22b3ffccfc52d391ea4accdab9c2f2407da5b742d4363",
+      "pytorch_model.bin": "a63082132ba4f97a80bea76823f544493bffa8082296d62d71581a4feff1576f"
+    },
+    "listed": [
+      "config.json",
+      "merges.txt",
+      "preprocessor_config.json",
+      "special_tokens_map.json",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "vocab.json",
+      "pytorch_model.bin"
+    ],
+    "exports": {
+      "text_model.onnx": {
+        "bytes": 253919314,
+        "deflate_bytes": 183678025,
+        "sha256": "71f52ae2e59bde9a408c1f5f51f8d398eb704b421b8811889f504281c9544b75",
+        "params": 63428096
+      },
+      "vision_model.onnx": {
+        "bytes": 351583554,
+        "deflate_bytes": 207900598,
+        "sha256": "fcf30b48abc8059fb33be1c05ddb8f5668e7cac5c4a2776c5a61b7895c968c70",
+        "params": 87849216
+      },
+      "vision_model_fp16.onnx": {
+        "bytes": 175955253,
+        "deflate_bytes": 162599037,
+        "sha256": "bf83972f96f42df375206a33a87e6162a0b3a10a8e42020185ec6a625c532fec"
+      },
+      "vision_model_quantized.onnx": {
+        "bytes": 88577289,
+        "deflate_bytes": 62289240,
+        "sha256": "964488d3dda019ab1cd9ac507f716864fb7443a69153d720a7d4f94b8da94599"
+      },
+      "config.json": {
+        "bytes": 52,
+        "deflate_bytes": 56,
+        "sha256": "a7694656da665f83a763868e53f598bd224df589123ad1f222cd49ad6699ed88"
+      },
+      "preprocessor_config.json": {
+        "bytes": 316,
+        "deflate_bytes": 189,
+        "sha256": "910e70b3956ac9879ebc90b22fb3bc8a75b6a0677814500101a4c072bd7857bd"
+      }
+    }
+  }
+}

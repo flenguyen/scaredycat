@@ -1,0 +1,149 @@
+{
+ "reviewedSheets": [
+  "safe-action-fantasy-01.jpg",
+  "safe-action-fantasy-02.jpg",
+  "safe-action-fantasy-03.jpg",
+  "safe-action-fantasy-04.jpg",
+  "safe-action-fantasy-05.jpg",
+  "safe-collision-01.jpg",
+  "safe-collision-02.jpg",
+  "safe-collision-03.jpg",
+  "safe-crime-01.jpg",
+  "safe-crime-02.jpg",
+  "safe-crime-03.jpg",
+  "safe-crime-04.jpg",
+  "safe-dark-drama-01.jpg",
+  "safe-dark-drama-02.jpg",
+  "safe-dark-drama-03.jpg",
+  "safe-dark-drama-04.jpg",
+  "safe-dark-thriller-01.jpg",
+  "safe-dark-thriller-02.jpg",
+  "safe-dark-thriller-03.jpg",
+  "safe-dark-thriller-04.jpg",
+  "safe-dark-thriller-05.jpg",
+  "safe-scifi-01.jpg",
+  "safe-scifi-02.jpg",
+  "safe-scifi-03.jpg",
+  "safe-war-01.jpg",
+  "safe-war-02.jpg",
+  "safe-war-03.jpg"
+ ],
+ "decisions": [
+  {
+   "id": "wp-Q218172",
+   "action": "drop",
+   "reason": "ambiguous-genre: Zodiac serial-killer thriller"
+  },
+  {
+   "id": "wp-Q459057",
+   "action": "drop",
+   "reason": "ambiguous-genre: Monster, grisly serial-killer drama"
+  },
+  {
+   "id": "wp-Q748986",
+   "action": "drop",
+   "reason": "ambiguous-genre: Natural Born Killers, graphic slasher-crime"
+  },
+  {
+   "id": "wp-Q5416274",
+   "action": "drop",
+   "reason": "horror: Evelyn, the Cutest Evil Dead Girl"
+  },
+  {
+   "id": "wp-Q108372702",
+   "action": "drop",
+   "reason": "ambiguous-genre: Ted Bundy serial killer horror-adjacent"
+  },
+  {
+   "id": "wp-Q112221364",
+   "action": "drop",
+   "reason": "ambiguous-genre: Left Behind Antichrist apocalyptic thriller"
+  },
+  {
+   "id": "wp-Q1186461",
+   "action": "drop",
+   "reason": "ambiguous-genre: Demon Pond, fantasy horror"
+  },
+  {
+   "id": "wp-Q4701947",
+   "action": "drop",
+   "reason": "not-poster: BUCK-TICK band logo"
+  },
+  {
+   "id": "wp-Q5245367",
+   "action": "drop",
+   "reason": "not-poster: music video cover with skull art"
+  },
+  {
+   "id": "wp-Q124380480",
+   "action": "drop",
+   "reason": "ambiguous-genre: Jurassic World Rebirth, monster-horror leaning"
+  },
+  {
+   "id": "wp-Q184768",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q104123",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q47075",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q72962",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q47221",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q484675",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q183081",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q47703",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q202326",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q42047",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  },
+  {
+   "id": "wp-Q172975",
+   "action": "regroup",
+   "newGroup": "crime",
+   "reason": "crime film, not action-fantasy/dark-thriller"
+  }
+ ]
+}
