@@ -57,17 +57,19 @@ for (const [url, a] of Object.entries(assetIndex)) {
   if (a.ok && r && !routes.has(r)) routes.set(r, { file: path.join(ASSETS, a.key), type: a.type });
 }
 
-const certDir = path.join(CACHE, 'cert');
-if (!fs.existsSync(path.join(certDir, 'cert.pem'))) {
-  fs.mkdirSync(certDir, { recursive: true });
-  execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '3650',
-    '-keyout', path.join(certDir, 'key.pem'), '-out', path.join(certDir, 'cert.pem'),
-    '-subj', '/CN=scaredycat-replay'], { stdio: 'ignore' });
-}
-const server = https.createServer({
+// A throwaway self-signed certificate, made outside the repo and deleted
+// at once: a key file inside the extension folder makes Chrome warn when the
+// unpacked extension is loaded.
+const certDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sc-replay-cert-'));
+execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+  '-keyout', path.join(certDir, 'key.pem'), '-out', path.join(certDir, 'cert.pem'),
+  '-subj', '/CN=scaredycat-replay'], { stdio: 'ignore' });
+const tls = {
   key: fs.readFileSync(path.join(certDir, 'key.pem')),
   cert: fs.readFileSync(path.join(certDir, 'cert.pem'))
-}, (req, res) => {
+};
+fs.rmSync(certDir, { recursive: true, force: true });
+const server = https.createServer(tls, (req, res) => {
   const host = (req.headers.host || '').replace(/:\d+$/, '');
   const hit = routes.get(`https://${host}:${REPLAY_PORT}${req.url}`);
   if (!hit) { res.writeHead(404); res.end(); return; }
