@@ -75,7 +75,9 @@ const ScaredyCatDetector = (function () {
       // The worker vouched for a stored list this build still can't compile:
       // ask for the copy shipped with the extension.
       if (compileDatabase(await requestWorkerDatabase({ bundled: true }))) return true;
-      console.error('Scaredy Cat: Failed to load horror database');
+      // An orphaned script (the extension was reloaded or updated under an
+      // open tab) can't reach storage or the worker. Expected; not an error.
+      if (chrome.runtime?.id) console.error('Scaredy Cat: Failed to load horror database');
       compileDatabase({ version: '0', titles: [], keywords: getDefaultKeywords() }, { allowEmpty: true });
       // The page signal is computed by the first scan (content.js calls
       // refreshPageSignal before scoring), not here — avoids doing it twice.

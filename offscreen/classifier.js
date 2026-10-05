@@ -321,7 +321,6 @@ async function decodeToInput(blob, quality = RESIZE_QUALITY) {
  * resample differently and moved scores by up to 40 points on full-size
  * posters, so they fail the gate (see 'bitmap' below).
  */
-let legacyCropCtx = null;
 async function decodeLikeLegacy(blob) {
   const bitmap = await createImageBitmap(blob);
   let full;
@@ -339,11 +338,13 @@ async function decodeLikeLegacy(blob) {
   resized.getContext('2d').drawImage(full, 0, 0, w, h);
   full.width = full.height = 0; // release the backing store now, not at GC
   // RawImage.center_crop: fractional offsets, drawn the way it draws them.
-  if (!legacyCropCtx) legacyCropCtx = new OffscreenCanvas(INPUT_SIZE, INPUT_SIZE).getContext('2d');
-  const crop = legacyCropCtx;
+  // A fresh canvas per image, as legacy does: a reused one trips Chrome's
+  // repeated-readback warning, and willReadFrequently would silence it by
+  // rendering on the CPU, which resamples these offsets differently (up to
+  // 3.4 points on the page set).
+  const crop = new OffscreenCanvas(INPUT_SIZE, INPUT_SIZE).getContext('2d');
   const sx = (w - INPUT_SIZE) / 2;
   const sy = (h - INPUT_SIZE) / 2;
-  crop.clearRect(0, 0, INPUT_SIZE, INPUT_SIZE);
   crop.drawImage(resized, Math.max(sx, 0), Math.max(sy, 0), INPUT_SIZE, INPUT_SIZE,
     Math.max(-sx, 0), Math.max(-sy, 0), INPUT_SIZE, INPUT_SIZE);
   const { data } = crop.getImageData(0, 0, INPUT_SIZE, INPUT_SIZE);
