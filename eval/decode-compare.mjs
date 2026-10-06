@@ -11,9 +11,15 @@
  *            'bitmap-<quality>' (createImageBitmap straight to 256 px + one
  *            reused canvas crop, no full-size buffer at all)
  *   variants (--variants) the page's CDN URL vs the smaller rendition from
- *            image-key.js smallVariantUrl, fetched live: TMDB original vs
- *            w500, Amazon/IMDb ._V1_ vs ._V1_UX512_, YouTube maxresdefault
- *            vs hqdefault
+ *            image-key.js smallVariantUrl, fetched live: Amazon/IMDb ._V1_
+ *            vs ._V1_UX512_ for the calibration posters, and YouTube
+ *            maxresdefault vs hqdefault for the trailer ids in --yt-ids
+ *
+ * No TMDB images or pages, ever: TMDB's API terms count validating a
+ * machine learning system with its content as commercial use. So the
+ * image.tmdb.org rule in smallVariantUrl has no score gate here; turn small
+ * variants on without it (cdns: ['amzn', 'yt']). eval/tmdb-rule-test.mjs
+ * keeps TMDB hosts out of the eval scripts.
  *
  * Gate (per comparison): max |Δ| <= --tolerance (2) and no image crossing an
  * ml-bridge.js decision bar (41/40/65/76/80).
@@ -23,7 +29,7 @@
  * forced GC; canvas and bitmap pixels outside JS are not counted).
  *
  *   SC_CHROME_BIN=<chrome> node eval/decode-compare.mjs [--paths canvas,bitmap-high,bitmap-low]
- *     [--sets full,page] [--device webgpu|wasm] [--variants] [--tolerance 2] [--json out.json]
+ *     [--sets full,page] [--device webgpu|wasm] [--variants [--yt-ids id1,id2]] [--tolerance 2] [--json out.json]
  *
  * Calibration images: posters and trailer stills from IMDb's suggestion API,
  * cached in CALIB_DIR on first run, in two sets: 'full' (the originals, 1-23
@@ -35,7 +41,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
-import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
@@ -49,6 +54,8 @@ const PATHS = argVal('--paths', 'canvas,bitmap-high,bitmap-low').split(',');
 const SETS = argVal('--sets', 'full,page').split(',');
 const DEVICE = argVal('--device', 'webgpu');
 const VARIANTS = args.includes('--variants');
+// YouTube video ids (11 chars) of trailers to score as maxresdefault vs hqdefault.
+const YT_IDS = argVal('--yt-ids', '').split(',').filter(id => /^[A-Za-z0-9_-]{11}$/.test(id));
 const JSON_OUT = argVal('--json', null);
 const CALIB_DIR = '/tmp/scaredycat-fixtures/calib-decode';
 const BARS = [41, 40, 65, 76, 80]; // ml-bridge.js decision bars
@@ -114,34 +121,6 @@ async function ensureFixtures() {
   console.log(` ${sources.length} calibration images`);
   fs.writeFileSync(sourcesFile, JSON.stringify(sources, null, 2));
   return sources;
-}
-
-/**
- * TMDB poster file + YouTube trailer key per title, scraped from
- * themoviedb.org (no API key). Through curl: the site answers Node's fetch
- * with a 403.
- */
-function curlText(url) {
-  return execFileSync('curl', ['-sL', '-A', UA, url], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
-}
-
-async function tmdbSources(titles) {
-  const out = [];
-  for (const [title, year] of titles) {
-    try {
-      const search = curlText(`https://www.themoviedb.org/search/movie?query=${encodeURIComponent(title)}`);
-      const id = /href="\/movie\/(\d+)[^"]*"/.exec(search)?.[1];
-      if (!id) continue;
-      const page = curlText(`https://www.themoviedb.org/movie/${id}`);
-      const poster = /t\/p\/w300_and_h450_[a-z_]+\/([A-Za-z0-9]+\.jpg)/.exec(page)?.[1];
-      const videos = curlText(`https://www.themoviedb.org/movie/${id}/videos?active_nav_item=Trailers`);
-      const yt = /data-id="([A-Za-z0-9_-]{11})"/.exec(videos)?.[1];
-      out.push({ title, year, tmdb: id, poster, yt });
-    } catch (e) {
-      console.warn(`  tmdb lookup failed for ${title}: ${e.message}`);
-    }
-  }
-  return out;
 }
 
 function loadImageKey() {
@@ -240,10 +219,8 @@ try {
     const { smallVariantUrl } = loadImageKey();
     const pairs = [];
     for (const s of sources.filter(x => x.set === 'full')) pairs.push({ cdn: 'amzn', name: s.file, url: s.url });
-    for (const t of await tmdbSources(TITLES.slice(0, 16))) {
-      if (t.poster) pairs.push({ cdn: 'tmdb', name: `${slug(t.title)} tmdb`, url: `https://image.tmdb.org/t/p/original/${t.poster}` });
-      if (t.yt) pairs.push({ cdn: 'yt', name: `${slug(t.title)} yt`, url: `https://i.ytimg.com/vi/${t.yt}/maxresdefault.jpg` });
-    }
+    for (const id of YT_IDS) pairs.push({ cdn: 'yt', name: `${id} yt`, url: `https://i.ytimg.com/vi/${id}/maxresdefault.jpg` });
+    if (!YT_IDS.length) console.log('  no --yt-ids given: the YouTube variant rule is not checked');
     for (const p of pairs) {
       p.variant = smallVariantUrl(p.url, { cdns: [p.cdn] });
       if (p.variant === p.url) continue;
@@ -284,7 +261,8 @@ for (const label of PATHS) {
   }
 }
 if (VARIANTS) {
-  for (const cdn of ['amzn', 'tmdb', 'yt']) {
+  for (const cdn of ['amzn', 'yt']) {
+    if (cdn === 'yt' && !YT_IDS.length) continue;
     const rows = results.variants.filter(p => p.cdn === cdn && p.variant !== p.url).map(p => ({ name: p.name, a: p.a, b: p.b }));
     summaries.push(compare(`variant ${cdn} (page URL -> smaller)`, rows));
   }

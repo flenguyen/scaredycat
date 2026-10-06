@@ -42,7 +42,8 @@ const ScaredyCatMLRouter = (function () {
   const FAILED_MAX = 2000;
   // Fetch a smaller CDN variant instead of the page's URL (2.3 in the
   // hardening plan). Off: see image-key.js smallVariantUrl and
-  // eval/decode-compare.mjs for the score gate it has to pass first.
+  // eval/decode-compare.mjs for the score gate it has to pass first. That gate
+  // never scores TMDB images (their terms), so turn it on without the tmdb rule.
   const USE_SMALL_VARIANTS = false;
   // A port that drops within this window of connecting most likely hit the
   // offscreen module-load race (listener not registered yet): retry.

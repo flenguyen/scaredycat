@@ -5,7 +5,7 @@
   "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
   "type": "module",
   "scripts": {
-    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs && node eval/image-key-test.mjs && node eval/auto-titles-test.mjs && node eval/synopses-test.mjs && node eval/releases-test.mjs && node eval/welcome-test.mjs && node eval/guards-test.mjs && node eval/db-validate-test.mjs && node eval/allowlist-test.mjs && node eval/db-signature-test.mjs && node eval/feedback-test.mjs && node eval/model-manifest-test.mjs && node eval/cards-test.mjs",
+    "eval": "node eval/run-eval.mjs && node eval/genre-signal-eval.mjs && node eval/image-key-test.mjs && node eval/auto-titles-test.mjs && node eval/synopses-test.mjs && node eval/releases-test.mjs && node eval/welcome-test.mjs && node eval/guards-test.mjs && node eval/db-validate-test.mjs && node eval/allowlist-test.mjs && node eval/db-signature-test.mjs && node eval/feedback-test.mjs && node eval/model-manifest-test.mjs && node eval/cards-test.mjs && node eval/tmdb-rule-test.mjs",
     "eval:genre": "node eval/genre-signal-eval.mjs",
     "eval:combined": "node eval/combined-eval.mjs",
     "eval:image": "node eval/run-eval.mjs --image",
