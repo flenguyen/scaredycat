@@ -16,7 +16,7 @@
     return; // Exit immediately - no overhead on regular sites
   }
 
-  console.log('Scaredy Cat: Media site detected, enabling early protection');
+  console.debug('Scaredy Cat: Media site detected, enabling early protection');
   window.__scaredycatMediaSite = true;
 
   // No model warm-up from here: content.js asks for it only once settings

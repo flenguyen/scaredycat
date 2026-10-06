@@ -149,7 +149,7 @@ const ScaredyCatDBUpdater = (function () {
         [ETAG_KEY]: res.headers.get('ETag') || null,
         [FETCHED_AT_KEY]: Date.now()
       });
-      console.log(
+      console.debug(
         `Scaredy Cat: horror DB refreshed to v${db.version} (${db.titles.length} titles)`
       );
     } catch (e) {
@@ -189,7 +189,7 @@ const ScaredyCatDBUpdater = (function () {
         [SYNOPSES_ETAG_KEY]: res.headers.get('ETag') || null,
         [SYNOPSES_FETCHED_AT_KEY]: Date.now()
       });
-      console.log(`Scaredy Cat: synopses refreshed (${payload.titles.length} titles)`);
+      console.debug(`Scaredy Cat: synopses refreshed (${payload.titles.length} titles)`);
     } catch (e) {
       // Network/storage error — keep the last good copy silently.
     }

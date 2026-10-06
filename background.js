@@ -104,7 +104,7 @@ function migrateLegacyAllowlist() {
         )
       });
       await chrome.storage.sync.set({ settings: next });
-      console.log(`Scaredy Cat: moved ${images.length} allowed images to local storage, kept ${titles.length} titles`);
+      console.debug(`Scaredy Cat: moved ${images.length} allowed images to local storage, kept ${titles.length} titles`);
     })().finally(() => { migrationPromise = null; });
   }
   return migrationPromise;
@@ -222,6 +222,58 @@ async function clearAllBadges(hostname = null) {
 chrome.runtime.onInstalled.addListener(setBadgeColors);
 chrome.runtime.onStartup.addListener(setBadgeColors);
 
+// ---- Toolbar icon on macOS --------------------------------------------------
+// The shipped icons are the Twemoji weary cat (CC-BY 4.0). On a Mac the
+// toolbar shows Apple's version instead, drawn here from the Mac's own emoji
+// font, so no Apple artwork ships in the package. The extensions page,
+// install dialog and store keep the shipped icon. If the glyph comes out
+// empty or colourless (font missing, tofu box), the shipped icon stays.
+const ICON_EMOJI = '\u{1F640}';
+const ICON_SIZES = [16, 32, 48];
+
+function drawEmojiIcon(size) {
+  const canvas = new OffscreenCanvas(size, size);
+  const ctx = canvas.getContext('2d');
+  ctx.font = `${Math.round(size * 0.86)}px "Apple Color Emoji"`;
+  const m = ctx.measureText(ICON_EMOJI);
+  const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+  const h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+  ctx.fillText(ICON_EMOJI,
+    (size - w) / 2 + m.actualBoundingBoxLeft,
+    (size - h) / 2 + m.actualBoundingBoxAscent);
+  const image = ctx.getImageData(0, 0, size, size);
+  let opaque = 0;
+  let coloured = 0;
+  for (let i = 0; i < image.data.length; i += 4) {
+    if (image.data[i + 3] === 0) continue;
+    opaque++;
+    if (Math.abs(image.data[i] - image.data[i + 2]) > 60) coloured++;
+  }
+  // A real colour emoji covers a good part of the square and is mostly
+  // yellow; a tofu box or a monochrome fallback glyph is not.
+  const ok = opaque > size * size * 0.3 && coloured > opaque * 0.5;
+  return ok ? image : null;
+}
+
+async function useSystemEmojiIcon() {
+  try {
+    const { os } = await chrome.runtime.getPlatformInfo();
+    if (os !== 'mac') return;
+    const imageData = {};
+    for (const size of ICON_SIZES) {
+      const image = drawEmojiIcon(size);
+      if (!image) return;
+      imageData[size] = image;
+    }
+    await chrome.action.setIcon({ imageData });
+  } catch (e) {
+    // Keep the shipped icon.
+  }
+}
+
+chrome.runtime.onInstalled.addListener(useSystemEmojiIcon);
+chrome.runtime.onStartup.addListener(useSystemEmojiIcon);
+
 // ---- Horror database seeding ------------------------------------------------
 // Content scripts read the database from chrome.storage.local in one call, in
 // parallel with settings, instead of fetching + parsing the bundled JSON on
@@ -243,7 +295,7 @@ async function seedBundledDatabase() {
       return; // stored copy is at least as new
     }
     await chrome.storage.local.set({ [DB_CACHE_KEY]: bundled });
-    console.log(`Scaredy Cat: seeded horror DB v${bundled.version} (${bundled.titles.length} titles)`);
+    console.debug(`Scaredy Cat: seeded horror DB v${bundled.version} (${bundled.titles.length} titles)`);
   } catch (e) {
     // Content scripts fall back to GET_DB (the bundled file, via the worker).
   }
@@ -324,7 +376,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     // popup footer. Updates leave this key alone, so people coming from an
     // older version see the marker (popup/whats-new.js).
     await chrome.storage.local.set({ whatsNewSeen: chrome.runtime.getManifest().version });
-    console.log('Scaredy Cat installed! Default settings applied.');
+    console.debug('Scaredy Cat installed! Default settings applied.');
     // First run only: the welcome page shows how blocking, unblocking and
     // reporting work. Updates and unpacked reloads never reopen it.
     chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
@@ -344,7 +396,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
     // current shape (unknown keys such as the old counters are dropped).
     await migrateLegacyAllowlist();
     await updateSettings(current => current);
-    console.log('Scaredy Cat updated!');
+    console.debug('Scaredy Cat updated!');
   }
 });
 
@@ -559,4 +611,4 @@ async function notifyAllTabs(message) {
   );
 }
 
-console.log('Scaredy Cat background service worker loaded!');
+console.debug('Scaredy Cat background service worker loaded!');

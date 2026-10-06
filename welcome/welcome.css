@@ -813,6 +813,20 @@ html.wc-ext body {
   display: none;
 }
 
+.wc .wc-privacy {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.wc-privacy a {
+  color: var(--sc-muted);
+  text-underline-offset: 2px;
+}
+
+.wc-privacy a:hover {
+  color: var(--sc-plum);
+}
+
 /* TMDB credit: required by their terms, kept small and quieter than the mascot.
    Scoped under .wc so it beats the .wc p margin reset. */
 .wc .wc-credit {

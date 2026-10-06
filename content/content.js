@@ -225,7 +225,7 @@
     // (no-op off YouTube).
     if (!IS_SUBFRAME) window.ScaredyCatYouTubeGuard?.init();
 
-    console.log('Scaredy Cat: Initialized');
+    console.debug('Scaredy Cat: Initialized');
   }
 
   function stopProtection() {

@@ -259,6 +259,15 @@
     footer.appendChild(el('p', 'wc-aside', copy.footer.aside));
     refs.version = el('p', 'wc-version');
     footer.appendChild(refs.version);
+    const privacy = el('p', 'wc-privacy');
+    const privacyLink = el('a', '', copy.footer.privacy);
+    privacyLink.href = copy.footer.privacyHref;
+    if (MODE === 'extension') {
+      privacyLink.target = '_blank';
+      privacyLink.rel = 'noopener';
+    }
+    privacy.appendChild(privacyLink);
+    footer.appendChild(privacy);
     // TMDB's terms want their logo and notice in the app. The website's own
     // footer already carries them, so the web page skips this.
     if (MODE === 'extension') {

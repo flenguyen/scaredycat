@@ -1,6 +1,6 @@
 {
   "name": "scaredycat",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "description": "Dev tooling for the Scaredy Cat extension: eval harness, model setup",
   "type": "module",

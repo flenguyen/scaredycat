@@ -191,7 +191,7 @@ async function loadModel(dtypeOverride, deviceOverride) {
     activeDevice = device;
     activeDtype = dtype;
     loadMs = Math.round(performance.now() - t0);
-    console.log(`Scaredy Cat: classifier ready (${manifest.version}, ${device}, ${dtype}, ${loadMs}ms)`);
+    console.debug(`Scaredy Cat: classifier ready (${manifest.version}, ${device}, ${dtype}, ${loadMs}ms)`);
   })();
   return loadPromise;
 }
@@ -227,7 +227,7 @@ function warmUp() {
       const image = new RawImage(pixels, INPUT_SIZE, INPUT_SIZE, 3);
       const inputs = await processor(image);
       await runInference(inputs);
-      console.log(`Scaredy Cat: classifier warm (${Math.round(performance.now() - t0)}ms)`);
+      console.debug(`Scaredy Cat: classifier warm (${Math.round(performance.now() - t0)}ms)`);
     } catch (e) {
       // Warm-up is best effort; real requests will surface any real failure.
     }

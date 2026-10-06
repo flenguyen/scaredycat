@@ -3,6 +3,8 @@
  * Handles the popup UI interactions and communication with background/content scripts
  */
 
+const PRIVACY_URL = 'https://www.scaredycat.app/privacy';
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Elements
   const enableToggle = document.getElementById('enableToggle');
@@ -289,6 +291,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // The welcome page from first install, for anyone who closed it.
     document.getElementById('howItWorks')?.addEventListener('click', () => {
       chrome.tabs.create({ url: chrome.runtime.getURL('welcome/welcome.html') });
+      window.close();
+    });
+    document.getElementById('privacyPolicy')?.addEventListener('click', () => {
+      chrome.tabs.create({ url: PRIVACY_URL });
       window.close();
     });
   }

@@ -68,7 +68,7 @@
       { "title": "Everyone gets the fix", "text": "Scaredy Cat checks for a new title list every 6 hours, so corrections arrive without an update to install." }
     ],
     "consentLabel": "Share reports to improve detection",
-    "consentDetail": "Reports include the page and picture addresses, what we matched, your settings and any note you add. We never send the picture itself or your browsing history. You can turn this off anytime in the popup.",
+    "consentDetail": "Reports include the page and picture addresses (cut off before any ? or #), what we matched and how sure we were, your settings and version numbers, and any note or email you add. A report of missed horror also includes the text next to the picture. We never send the picture itself or your browsing history. Reports are deleted after 6 months. You can turn this off anytime in the popup.",
     "consentOn": "Sharing is on. Thanks for helping Scaredy Cat.",
     "consentOff": "Sharing is off. Nothing will be sent.",
     "consentError": "Couldn't save that. Try again in a moment.",
@@ -86,7 +86,7 @@
     ],
     "placeholder": "What should Scaredy Cat know?",
     "emailPlaceholder": "Email (optional, if you'd like a reply)",
-    "consentText": "We'll send your note, your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report database. We never send images or your browsing history. Sending also turns on report sharing, which you can turn off above or in the popup.",
+    "consentText": "We'll send your note and its category, your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report database. We never send images or your browsing history. Sending also turns on report sharing, which you can turn off above or in the popup.",
     "consentDecline": "Not now",
     "consentAccept": "Share & send",
     "send": "Send",
@@ -116,6 +116,8 @@
   },
   "footer": {
     "aside": "Keeping you safe from spooky stuff! 👻",
+    "privacy": "Privacy policy",
+    "privacyHref": "https://www.scaredycat.app/privacy",
     "tmdb": "This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
     "tmdbHref": "https://www.themoviedb.org"
   }

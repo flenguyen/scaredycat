@@ -25,7 +25,7 @@ A Chrome extension that protects you from horror-related content while browsing.
 1. **Download/Clone this repository**
    ```bash
    git lfs install              # once per machine: the image model is in Git LFS
-   git clone https://github.com/yourusername/scaredycat.git
+   git clone https://github.com/flenguyen/scaredycat.git
    ```
    Without Git LFS the model file is a small pointer and image checks stay off
    (`git lfs pull` fixes it).
@@ -376,25 +376,18 @@ Weight guide:
 
 ### Debugging
 
-Open DevTools (F12) and check the Console for messages starting with "Scaredy Cat:".
+Status messages starting with "Scaredy Cat:" are logged with `console.debug`, so they
+only show when the Console's level includes **Verbose**. The service worker and the
+offscreen classifier log the same way; open them from `chrome://extensions`.
 
-You can also use the global `ScaredyCat` object in the console:
+The content script runs in its own isolated world, so its `ScaredyCat` object is not on
+the page's `window`. In DevTools, pick **Scaredy Cat** in the Console's context menu
+(the dropdown that says "top"), then:
 
 ```javascript
-// Check extension status
-ScaredyCat.isEnabled()
-
-// Get stats
-ScaredyCat.getStats()
-
-// Force rescan
-ScaredyCat.rescan()
-
-// Temporarily disable
-ScaredyCat.disable()
-
-// Re-enable
-ScaredyCat.enable()
+ScaredyCat.isEnabled()   // is blocking on for this page?
+ScaredyCat.getStats()    // counts for this page
+ScaredyCat.rescan()      // scan the page again
 ```
 
 ## Privacy
@@ -407,19 +400,23 @@ never leaves the device. These are the only requests the extension makes:
   list isn't downloaded again), so the server sees what any website sees: an IP address
   and the browser type. A download is used only when it carries the website's signature.
 - **Pictures being checked** are downloaded a second time from the site already showing
-  them, without your cookies, so the on-device model can look at them. The result stays
-  on your computer.
+  them, without your cookies, so the on-device model can look at them. For an embedded
+  YouTube video, that is the video's thumbnail from YouTube's image server
+  (`i.ytimg.com`). The result stays on your computer.
 - **Reports and notes, only if you opt in.** Sharing is off until you say yes, and you can
   turn it off in the popup. Reports are sent to scaredycat.app, which checks them and
   passes them on to our report database without keeping a copy. Each one contains: the report type, a random report ID and time, the page
   address cut off before any `?` or `#`, the picture or video link, what we matched and
   how confident we were (with the reasons), your sensitivity setting, the extension,
   title-list and model versions, and your note or category. A missed-horror pick sends
-  the text next to the picture as its note. Your email is included only if you type it.
+  the text next to the picture as its note (up to 240 characters). Your email is
+  included only if you type it. Reports are deleted from the report database after
+  6 months; to have yours deleted sooner, email hello@scaredycat.app.
 
 Settings are stored in Chrome's sync storage; counts, the cached title list and image
 verdicts stay in local storage. Every change to what leaves the device is listed on
-https://www.scaredycat.app/changelog.
+https://www.scaredycat.app/changelog. The full privacy policy is at
+https://www.scaredycat.app/privacy.
 
 Title data comes from [TMDB](https://www.themoviedb.org). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB. The popup footer and the welcome page show this notice with the TMDB logo (`icons/tmdb.svg`), as TMDB's terms require.
 
@@ -427,7 +424,9 @@ The tip link on the welcome page is off while we wait for TMDB to confirm that t
 
 ## License
 
-MIT License - Feel free to modify and distribute.
+MIT, see [LICENSE](LICENSE). Third-party parts (the image model, ONNX Runtime,
+Transformers.js, the fonts and the Twemoji icon artwork) keep their own licences, listed
+in [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES).
 
 ## Contributing
 
@@ -451,7 +450,9 @@ Contributions welcome! Please:
 ## Acknowledgments
 
 - Horror database compiled from various sources
-- Icon design inspired by the classic scaredy cat emoji
+- Icons: the weary cat face from [Twemoji](https://github.com/jdecked/twemoji), CC-BY 4.0
+  (`scripts/make-icons.mjs` renders them). On macOS the toolbar icon is drawn at runtime
+  from the system emoji font.
 - Built with modern Chrome Extension APIs (Manifest V3)
 
 ---

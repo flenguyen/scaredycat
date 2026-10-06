@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "2.1.1",
+  "current": "2.1.2",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -11,20 +11,52 @@
     },
     {
       "what": "Pictures being checked",
-      "where": "The site already showing them",
-      "sends": "A second request for the same picture, without cookies. The check itself runs on your computer.",
+      "where": "The site already showing them, or YouTube's image server for embedded YouTube videos",
+      "sends": "A second request for the same picture, without cookies. For an embedded YouTube video it is the video's thumbnail. The check itself runs on your computer.",
       "since": "1.1.0",
       "optIn": false
     },
     {
       "what": "Reports you choose to send",
       "where": "Our report database, through scaredycat.app",
-      "sends": "The page and picture addresses, cut off before any ? or #, plus what we matched, your settings and your note. Never the picture itself or your browsing history. The full list is in the consent message you see before your first report. Reports go through scaredycat.app, which passes them on to the report database without keeping a copy.",
+      "sends": "The page and picture addresses, cut off before any ? or #, plus what we matched and how sure we were, your settings and version numbers, and your note. A report of missed horror includes the text next to the picture as its note. Your email is included only if you type it. Never the picture itself or your browsing history. Reports go through scaredycat.app, which passes them on to the report database without keeping a copy. The database deletes them after 6 months. The full list is at scaredycat.app/privacy.",
       "since": "1.3.0",
       "optIn": true
     }
   ],
   "releases": [
+    {
+      "id": "2.1.2",
+      "surface": "extension",
+      "version": "2.1.2",
+      "level": 3,
+      "date": "2026-10-05",
+      "title": "A new icon and a privacy policy",
+      "summary": "Scaredy Cat has a new icon from the open Twemoji set, and the popup now links to a full privacy policy.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "The extension icon is now the weary cat face from Twemoji, which is free to share. On a Mac the toolbar still shows Apple's version, drawn from the Mac's own emoji font."
+        },
+        {
+          "type": "improved",
+          "text": "The popup and the welcome page link to the privacy policy at scaredycat.app/privacy."
+        },
+        {
+          "type": "fixed",
+          "text": "The message you see before sending your first note from the popup did not say that sending also turns on report sharing, or that the note's category is included. It says both now."
+        },
+        {
+          "type": "improved",
+          "text": "The report sharing switch on the welcome page now lists everything a report can contain, including the text next to a missed-horror picture and your email if you add one. Reports are deleted after 6 months."
+        },
+        {
+          "type": "improved",
+          "text": "Scaredy Cat no longer writes status messages to the console of every page you visit."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "2.1.1",
       "surface": "extension",

@@ -99,7 +99,7 @@
 
         <div class="feedback-consent-row" id="popupConsentRow" hidden>
           <p class="feedback-consent-text">
-            We'll send your note, this page's address (cut off before any ? or #), your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report database. We never send images or your browsing history.
+            We'll send your note and its category, this page's address (cut off before any ? or #), your sensitivity setting and our version numbers, plus your email if you add one. It goes to our report database, which deletes reports after 6 months. We never send images or your browsing history. Sending also turns on report sharing, so later reports go out without asking again. You can turn it off with the Share reports switch below.
           </p>
           <div class="feedback-consent-actions">
             <button type="button" class="feedback-cat" id="popupConsentDecline">Not now</button>
@@ -128,6 +128,8 @@
         <span class="footer-version" id="footerVersion" hidden></span>
         <span aria-hidden="true">·</span>
         <button type="button" class="footer-link" id="howItWorks">How it works</button>
+        <span aria-hidden="true">·</span>
+        <button type="button" class="footer-link" id="privacyPolicy">Privacy</button>
       </p>
       <!-- Required by the TMDB API terms: their logo and notice, in the app -->
       <p class="footer-credit">
