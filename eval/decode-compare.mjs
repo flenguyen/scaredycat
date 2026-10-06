@@ -5,15 +5,26 @@
  * offscreen classifier over CDP through its __scEval dev hook (shipped fp16
  * tower), and scores the calibration images two ways:
  *
- *   decode   'legacy' (RawImage.fromBlob + transformers.js resize/crop) vs
- *            'canvas' (the same canvas resize/crop, drawn straight from the
- *            decoded bitmap: one full-size buffer instead of five) and
- *            'bitmap-<quality>' (createImageBitmap straight to 256 px + one
- *            reused canvas crop, no full-size buffer at all)
+ *   decode   the shipped path (the one models/image-model.json's decode.view
+ *            selects: 'canvas' for crop, 'squash' for squash), scored twice,
+ *            vs any candidate paths named in --paths: 'bitmap-<quality>'
+ *            (createImageBitmap straight to 256 px + one reused canvas crop,
+ *            no full-size buffer at all), 'canvas', 'squash', or 'legacy'
+ *            (RawImage.fromBlob, then the model's own processor)
  *   variants (--variants) the page's CDN URL vs the smaller rendition from
  *            image-key.js smallVariantUrl, fetched live: Amazon/IMDb ._V1_
  *            vs ._V1_UX512_ for the calibration posters, and YouTube
  *            maxresdefault vs hqdefault for the trailer ids in --yt-ids
+ *
+ * The reference is always the shipped path, because that is what the head was
+ * trained and calibrated on. Every run checks that its repeat matches. With
+ * --paths, the run also fails unless at least one candidate could replace it.
+ * Today none can: bitmap-high and bitmap-low move full-size posters by up to
+ * 25 points, which is why the extension doesn't use them. 'legacy' is only a
+ * like-for-like candidate when the processor itself crops: transformers.js
+ * reads a plain "size": 224 (the TinyCLIP and OpenAI CLIP configs) as a squash
+ * of the whole image, so for those models legacy is a different geometry and
+ * moves posters by 30+ points (eval/bakeoff/PROGRESS.md, 2026-10-05).
  *
  * No TMDB images or pages, ever: TMDB's API terms count validating a
  * machine learning system with its content as commercial use. So the
@@ -21,14 +32,14 @@
  * variants on without it (cdns: ['amzn', 'yt']). eval/tmdb-rule-test.mjs
  * keeps TMDB hosts out of the eval scripts.
  *
- * Gate (per comparison): max |Δ| <= --tolerance (2) and no image crossing an
+ * Pass (per comparison): max |Δ| <= --tolerance (2) and no image crossing an
  * ml-bridge.js decision bar (41/40/65/76/80).
  *
  * Also reports the offscreen document's peak JS memory per path (JS heap +
  * ArrayBuffer backing stores, sampled every 25 ms over the set after a
  * forced GC; canvas and bitmap pixels outside JS are not counted).
  *
- *   SC_CHROME_BIN=<chrome> node eval/decode-compare.mjs [--paths canvas,bitmap-high,bitmap-low]
+ *   SC_CHROME_BIN=<chrome> node eval/decode-compare.mjs [--paths bitmap-high,bitmap-low,legacy]
  *     [--sets full,page] [--device webgpu|wasm] [--variants [--yt-ids id1,id2]] [--tolerance 2] [--json out.json]
  *
  * Calibration images: posters and trailer stills from IMDb's suggestion API,
@@ -50,7 +61,12 @@ if (!CHROME) throw new Error('SC_CHROME_BIN not set');
 const args = process.argv.slice(2);
 const argVal = (flag, dflt) => { const i = args.indexOf(flag); return i >= 0 ? args[i + 1] : dflt; };
 const TOLERANCE = parseFloat(argVal('--tolerance', '2'));
-const PATHS = argVal('--paths', 'canvas,bitmap-high,bitmap-low').split(',');
+// The shipped decode path, as offscreen/classifier.js DECODE_PATHS picks it.
+const MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'models/image-model.json'), 'utf8'));
+const SHIPPED = { crop: 'canvas', squash: 'squash' }[MANIFEST.decode?.view];
+if (!SHIPPED) throw new Error(`models/image-model.json: unknown decode.view ${JSON.stringify(MANIFEST.decode?.view)}`);
+const PATHS = argVal('--paths', '').split(',').filter(p => p && p !== SHIPPED);
+const REPEAT = `${SHIPPED}-repeat`;
 const SETS = argVal('--sets', 'full,page').split(',');
 const DEVICE = argVal('--device', 'webgpu');
 const VARIANTS = args.includes('--variants');
@@ -180,7 +196,7 @@ try {
 
   // ---- decode paths ---------------------------------------------------------------
   const optsFor = (label) => label.startsWith('bitmap-') ? { decode: 'bitmap', quality: label.slice(7) } : { decode: label };
-  const paths = [['legacy', { decode: 'legacy' }], ...PATHS.map(label => [label, optsFor(label)])];
+  const paths = [[SHIPPED, { decode: SHIPPED }], [REPEAT, { decode: SHIPPED }], ...PATHS.map(label => [label, optsFor(label)])];
   // JS heap plus ArrayBuffer backing stores (where decoded pixel arrays live).
   const heapUsed = async () => {
     const u = await cdp.send('Runtime.getHeapUsage');
@@ -253,11 +269,12 @@ function compare(label, rows) {
 }
 
 const summaries = [];
-const legacy = results.decode.legacy.scores;
-for (const label of PATHS) {
+const ref = results.decode[SHIPPED].scores;
+const decodeLabel = (label, set) => `decode ${SHIPPED} (shipped) -> ${label} [${set}]`;
+for (const label of [REPEAT, ...PATHS]) {
   for (const set of SETS) {
-    const rows = sources.filter(s => s.set === set).map(s => ({ name: s.file, a: legacy[s.file], b: results.decode[label].scores[s.file] }));
-    summaries.push(compare(`decode legacy -> ${label} [${set}]`, rows));
+    const rows = sources.filter(s => s.set === set).map(s => ({ name: s.file, a: ref[s.file], b: results.decode[label].scores[s.file] }));
+    summaries.push(compare(decodeLabel(label, set), rows));
   }
 }
 if (VARIANTS) {
@@ -275,7 +292,13 @@ for (const s of summaries) {
 console.log('\nmedian ms/image: ' + Object.entries(results.decode).map(([k, v]) => `${k} ${v.medianMs}`).join(', '));
 console.log('peak offscreen JS memory over the set: ' + Object.entries(results.decode).map(([k, v]) => `${k} +${v.peakHeapMB} MB`).join(', '));
 if (JSON_OUT) fs.writeFileSync(JSON_OUT, JSON.stringify({ results, summaries: summaries.map(({ lines, ...s }) => s) }, null, 2));
-const passing = PATHS.filter(label => summaries.filter(s => s.label.startsWith(`decode legacy -> ${label} [`)).every(s => s.pass));
-const decodePass = passing.length > 0;
-console.log(`\nDECODE GATE ${decodePass ? 'PASS' : 'FAIL'}: paths within tolerance on every set: ${passing.join(', ') || 'none'}`);
+const passesEverySet = (label) => SETS.every(set => summaries.find(s => s.label === decodeLabel(label, set))?.pass);
+const stable = passesEverySet(REPEAT);
+console.log(`\nSHIPPED PATH ${stable ? 'PASS' : 'FAIL'}: ${SHIPPED} scored twice, repeat within tolerance on every set`);
+let decodePass = stable;
+if (PATHS.length) {
+  const passing = PATHS.filter(passesEverySet);
+  console.log(`CANDIDATES ${passing.length ? 'PASS' : 'FAIL'}: could replace ${SHIPPED} (within tolerance on every set): ${passing.join(', ') || 'none'}`);
+  decodePass = decodePass && passing.length > 0;
+}
 process.exit(decodePass ? 0 : 1);

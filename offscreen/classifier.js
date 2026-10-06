@@ -45,8 +45,9 @@ let INPUT_SIZE = 256;
 // (decodeLikeLegacy). 'squash' (view 'squash'): decodeSquash. 'bitmap':
 // createImageBitmap resizes during decode, no full-size buffer at all, but it
 // scores differently on large images and would need a recalibration first.
-// 'legacy': the old RawImage.fromBlob path. The last two stay for
-// eval/decode-compare.mjs.
+// 'legacy': the old RawImage.fromBlob path, which leaves the geometry to the
+// processor (a whole-image squash for TinyCLIP's "size": 224 config). The
+// last two stay as candidates for eval/decode-compare.mjs.
 const DECODE_PATHS = { crop: 'canvas', squash: 'squash' };
 let DECODE_PATH = 'canvas';
 const RESIZE_QUALITY = 'high';
@@ -386,11 +387,13 @@ async function decodeToInput(blob, quality = RESIZE_QUALITY) {
 }
 
 /**
- * Blob -> INPUT_SIZE square RGB RawImage (view 'crop', 256) with exactly the
- * pixels of the legacy path (RawImage.fromBlob, then the processor's
- * shortest-edge resize and center crop, each a canvas drawImage;
- * eval/decode-compare.mjs: Δ 0.00 on every calibration image), minus its
- * copies. Legacy held the decoded image as a bitmap, a canvas, a full-size
+ * Blob -> INPUT_SIZE square RGB RawImage (view 'crop', 256): a shortest-edge
+ * resize and center crop, each a canvas drawImage. It was written to give
+ * exactly the legacy path's pixels under MobileCLIP, whose processor crops
+ * (eval/decode-compare.mjs: Δ 0.00 then). TinyCLIP's processor squashes
+ * instead, so legacy no longer matches; this path is the one the current head
+ * was trained and calibrated on, and decode-compare uses it as the reference.
+ * Compared with legacy it also saves copies. Legacy held the decoded image as a bitmap, a canvas, a full-size
  * RGBA array, an RGB array and another canvas (~140 MB for a 2000x3000
  * poster). Here the bitmap is drawn into one full-size canvas and closed,
  * that canvas is drawn down to INPUT_SIZE px and released, and only
