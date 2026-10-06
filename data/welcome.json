@@ -103,14 +103,20 @@
   },
   "band": {
     "title": "You're all set. Go browse bravely.",
-    "body": "Scaredy Cat is free and has no ads. If it saved you from a jump scare, you can buy the person who makes it a coffee.",
-    "cta": "Buy Scaredy Cat's creator a coffee on Ko-fi",
-    "url": "https://ko-fi.com/francoislenguyen",
+    "body": "Scaredy Cat is free and has no ads.",
+    "tip": {
+      "enabled": false,
+      "body": "If it saved you from a jump scare, you can buy the person who makes it a coffee.",
+      "cta": "Buy Scaredy Cat's creator a coffee on Ko-fi",
+      "url": "https://ko-fi.com/francoislenguyen"
+    },
     "webInstall": "Don't have Scaredy Cat yet?",
     "webInstallLink": "Join the free beta",
     "webInstallHref": "/"
   },
   "footer": {
-    "aside": "Keeping you safe from spooky stuff! 👻"
+    "aside": "Keeping you safe from spooky stuff! 👻",
+    "tmdb": "This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.",
+    "tmdbHref": "https://www.themoviedb.org"
   }
 }

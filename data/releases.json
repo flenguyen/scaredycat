@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "current": "2.1.0",
+  "current": "2.1.1",
   "dataFlows": [
     {
       "what": "The title list and spoiler summaries",
@@ -25,6 +25,26 @@
     }
   ],
   "releases": [
+    {
+      "id": "2.1.1",
+      "surface": "extension",
+      "version": "2.1.1",
+      "level": 3,
+      "date": "2026-10-05",
+      "title": "Credit for TMDB, and no tip link for now",
+      "summary": "The popup and the welcome page now credit TMDB for the title list, and the welcome page no longer links to Ko-fi.",
+      "changes": [
+        {
+          "type": "improved",
+          "text": "The popup and the welcome page now show the TMDB logo and notice. Scaredy Cat's daily list of new horror titles comes from TMDB, and its terms ask apps to say so."
+        },
+        {
+          "type": "improved",
+          "text": "The welcome page no longer has a link to tip the person who makes Scaredy Cat. It is switched off while we check that tips fit TMDB's rules for free projects."
+        }
+      ],
+      "commits": []
+    },
     {
       "id": "2.1.0",
       "surface": "extension",

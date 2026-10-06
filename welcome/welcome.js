@@ -229,18 +229,23 @@
     }
     root.appendChild(s5.section);
 
-    // The one plum band: you're set, and the tip jar
+    // The one plum band: you're set, and the tip jar when copy.band.tip.enabled
     const band = el('section', 'wc-band');
     band.setAttribute('aria-labelledby', 'wcBandTitle');
     const bandCat = el('span', 'wc-band-mascot', '🙀');
     bandCat.setAttribute('aria-hidden', 'true');
     const bandTitle = el('h2', 'wc-band-title', copy.band.title);
     bandTitle.id = 'wcBandTitle';
-    const kofi = el('a', 'wc-band-btn', copy.band.cta);
-    kofi.href = copy.band.url;
-    kofi.target = '_blank';
-    kofi.rel = 'noopener';
-    band.append(bandCat, bandTitle, el('p', 'wc-band-body', copy.band.body), kofi);
+    const tip = copy.band.tip.enabled === true;
+    const bandBody = tip ? copy.band.body + ' ' + copy.band.tip.body : copy.band.body;
+    band.append(bandCat, bandTitle, el('p', 'wc-band-body', bandBody));
+    if (tip) {
+      const kofi = el('a', 'wc-band-btn', copy.band.tip.cta);
+      kofi.href = copy.band.tip.url;
+      kofi.target = '_blank';
+      kofi.rel = 'noopener';
+      band.appendChild(kofi);
+    }
     if (MODE === 'web') {
       const install = el('p', 'wc-band-install', copy.band.webInstall + ' ');
       const link = el('a', 'wc-band-link', copy.band.webInstallLink);
@@ -254,6 +259,21 @@
     footer.appendChild(el('p', 'wc-aside', copy.footer.aside));
     refs.version = el('p', 'wc-version');
     footer.appendChild(refs.version);
+    // TMDB's terms want their logo and notice in the app. The website's own
+    // footer already carries them, so the web page skips this.
+    if (MODE === 'extension') {
+      const credit = el('p', 'wc-credit');
+      const tmdb = el('a', 'wc-credit-logo');
+      tmdb.href = copy.footer.tmdbHref;
+      tmdb.target = '_blank';
+      tmdb.rel = 'noopener';
+      const logo = el('img');
+      logo.src = '../icons/tmdb.svg';
+      logo.alt = 'TMDB';
+      tmdb.appendChild(logo);
+      credit.append(tmdb, ' ' + copy.footer.tmdb);
+      footer.appendChild(credit);
+    }
     root.appendChild(footer);
 
     return refs;

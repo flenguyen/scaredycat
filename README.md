@@ -421,7 +421,9 @@ Settings are stored in Chrome's sync storage; counts, the cached title list and 
 verdicts stay in local storage. Every change to what leaves the device is listed on
 https://www.scaredycat.app/changelog.
 
-Title data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
+Title data comes from [TMDB](https://www.themoviedb.org). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB. The popup footer and the welcome page show this notice with the TMDB logo (`icons/tmdb.svg`), as TMDB's terms require.
+
+The tip link on the welcome page is off while we wait for TMDB to confirm that tips are allowed under its non-commercial licence. It is the `band.tip.enabled` flag in `data/welcome.json`.
 
 ## License
 

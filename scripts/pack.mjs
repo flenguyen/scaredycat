@@ -54,7 +54,7 @@ const INCLUDE = [
   'data',
   'vendor',
   'models',
-  'icons/icon16.png', 'icons/icon48.png', 'icons/icon128.png',
+  'icons/icon16.png', 'icons/icon48.png', 'icons/icon128.png', 'icons/tmdb.svg',
   'THIRD_PARTY_NOTICES'
 ];
 // Anything matching these must never end up in the zip.

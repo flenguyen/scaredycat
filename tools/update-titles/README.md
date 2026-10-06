@@ -94,5 +94,5 @@ SC_CHROME_BIN=<chrome-for-testing> node eval/browser-latency.mjs --db /tmp/merge
 `eval/auto-titles-test.mjs` (part of `npm run eval`) covers the scoring rules
 above; `npm run smoke:remote-db` checks the live endpoint (200 then 304).
 
-Title data from TMDB. This product uses the TMDB API but is not endorsed or
-certified by TMDB.
+Title data from TMDB. This product uses TMDB and the TMDB APIs but is not
+endorsed, certified, or otherwise approved by TMDB.

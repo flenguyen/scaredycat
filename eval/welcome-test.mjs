@@ -62,8 +62,14 @@ test('no empty strings, no em dashes, balanced bold markers', () => {
   }
 });
 
+test('the tip jar is a plain on/off flag', () => {
+  assert.equal(typeof copy.band.tip.enabled, 'boolean', 'band.tip.enabled must be true or false');
+});
+
 test('links are absolute https or site-relative', () => {
-  assert.match(copy.band.url, /^https:\/\//);
+  // Checked even while the tip is off, so turning it back on is one flag.
+  assert.match(copy.band.tip.url, /^https:\/\//);
+  assert.match(copy.footer.tmdbHref, /^https:\/\//);
   assert.match(copy.band.webInstallHref, /^(\/|https:\/\/)/);
 });
 

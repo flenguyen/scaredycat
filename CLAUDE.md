@@ -12,6 +12,10 @@ Scaredy Cat is both the product and its mascot, a character. It is the one who g
 
 The positioning behind this is in [context/persona.md](context/persona.md).
 
+**Tip link: off since 2.1.1.** TMDB's free licence bans commercial use, and a tip jar may count, so it stays off until TMDB confirms in writing (sales@themoviedb.org). The copy and URL stay in `data/welcome.json` under `band.tip`. Turning it back on means setting `band.tip.enabled` to `true`, which is a Level 2 release. Do not add tip links anywhere else meanwhile.
+
+**TMDB attribution** (their terms, section 3): the notice "This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB." plus the official logo (`icons/tmdb.svg`, never recoloured except to white or black, always smaller than our mark), in the popup footer, the welcome page footer (extension mode) and the website footer.
+
 ## Image model
 
 `models/image-model.json` names the shipped image model and how to score it; the runbook is [models/README.md](models/README.md).

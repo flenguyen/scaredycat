@@ -813,6 +813,28 @@ html.wc-ext body {
   display: none;
 }
 
+/* TMDB credit: required by their terms, kept small and quieter than the mascot.
+   Scoped under .wc so it beats the .wc p margin reset. */
+.wc .wc-credit {
+  max-width: 34em;
+  margin: 12px auto 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--sc-muted);
+}
+
+.wc-credit-logo {
+  display: inline-block;
+  border-radius: 4px;
+}
+
+.wc-credit-logo img {
+  display: inline-block;
+  height: 11px;
+  width: auto;
+  vertical-align: -1px;
+}
+
 /* ---- Narrow windows ---- */
 @media (max-width: 760px) {
   :root {

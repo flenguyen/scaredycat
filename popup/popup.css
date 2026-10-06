@@ -126,6 +126,7 @@ body {
 /* ---- Shared focus ring: 2px plum, 2px offset, on every control ---- */
 button:focus-visible,
 .text-btn:focus-visible,
+.footer-credit-logo:focus-visible,
 .toggle-input:focus-visible + .toggle-slider {
   outline: 2px solid var(--sc-plum);
   outline-offset: 2px;
@@ -725,6 +726,27 @@ button:focus-visible,
   color: var(--sc-plum);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* TMDB credit: their terms require it in the app; smallest text in the popup */
+.footer-credit {
+  margin: 4px auto 0;
+  max-width: 260px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--sc-muted);
+}
+
+.footer-credit-logo {
+  display: inline-block;
+  border-radius: 3px;
+}
+
+.footer-credit-logo img {
+  display: inline-block;
+  height: 9px;
+  width: auto;
+  vertical-align: -1px;
 }
 
 /* An unseen Level 1/2 release: plum and a touch heavier. Static, no dot. */
